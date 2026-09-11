@@ -1,0 +1,4 @@
+std = "roblox"
+
+# Third-party code we don't maintain.
+exclude = ["src/server/Vendor/*"]

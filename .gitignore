@@ -1,0 +1,15 @@
+# Rojo build output and Studio lock files
+/build
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
+sourcemap.json
+
+# Secrets (Open Cloud API key)
+.env
+
+# Wally packages
+/Packages
+/ServerPackages
+/DevPackages

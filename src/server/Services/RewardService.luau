@@ -1,0 +1,67 @@
+--!strict
+-- Income queries and reward granting (cash scaled to income, bonus items).
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local DataService = require(script.Parent.DataService)
+local Economy = require(ReplicatedStorage.Shared.Economy)
+local Format = require(ReplicatedStorage.Shared.Format)
+local ItemService = require(script.Parent.ItemService)
+local PassService = require(script.Parent.PassService)
+local StateService = require(script.Parent.StateService)
+local Types = require(ReplicatedStorage.Shared.Types)
+
+local Theme = Config.Theme
+
+-- When a bonus item won't fit, the player gets this many seconds of its income instead.
+local FULL_GARDEN_SECONDS = 600
+
+local RewardService = {}
+
+function RewardService.incomePerSecond(player: Player): number
+	local data = DataService.get(player)
+	return if data then Economy.incomePerSecond(data, PassService.cashMultiplier(player)) else 0
+end
+
+function RewardService.grantCash(player: Player, amount: number)
+	local data = DataService.get(player)
+	if not data then
+		return
+	end
+	data.Cash += amount
+	data.TotalEarned += amount
+	StateService.markDirty(player)
+end
+
+-- Grants a reward bundle and returns a description like "1.2K Goo + a Mochi".
+function RewardService.grant(player: Player, reward: Types.Reward): string
+	local data = DataService.get(player)
+	if not data then
+		return ""
+	end
+	local parts = {}
+
+	if reward.IncomeMinutes or reward.MinCash then
+		local amount =
+			Economy.incomeReward(RewardService.incomePerSecond(player), reward.IncomeMinutes or 0, reward.MinCash or 0)
+		RewardService.grantCash(player, amount)
+		table.insert(parts, `{Format.number(amount)} {Theme.Text.Currency}`)
+	end
+
+	if reward.UnitTierBonus then
+		local tier = math.min(Economy.dropTier(data) + reward.UnitTierBonus, Config.MaxTier)
+		if Economy.hasRoom(data) and ItemService.dropItem(player, tier, nil, true) then
+			table.insert(parts, `a {Theme.Units[tier].Name}`)
+		else
+			local multiplier = Economy.cashMultiplier(data, PassService.cashMultiplier(player))
+			local amount = math.floor(Economy.tierIncome(tier) * multiplier * FULL_GARDEN_SECONDS)
+			RewardService.grantCash(player, amount)
+			table.insert(parts, `{Format.number(amount)} {Theme.Text.Currency} (garden full)`)
+		end
+	end
+
+	return table.concat(parts, " + ")
+end
+
+return RewardService
