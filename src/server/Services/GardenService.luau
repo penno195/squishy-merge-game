@@ -9,6 +9,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 
 local Balance = Config.Balance
 local Garden = Balance.Garden
+local Hub = Balance.Hub
 local Theme = Config.Theme
 
 local FLOOR_HEIGHT = 1
@@ -16,12 +17,21 @@ local RAIL_HEIGHTS = { 1.8, 3.4 }
 local RAIL_THICKNESS = 0.35
 local POST_SPACING = 6
 local POST_SIZE = 0.6
-local PLOT_GAP = 16
-local HUB_CLEARANCE = 34
+-- How much of the board's backing plate shows around the screen.
+local BOARD_EDGE = 0.9
+-- The bin sits in the front-left corner, tucked behind the item drop zone so
+-- nothing ever lands on it and players only reach it on purpose.
+local BIN_INSET = 3
+local BIN_SIZE = 4
+local BIN_HEIGHT = 4.5
+-- Items keep this far clear of the bin's centre.
+local BIN_CLEARANCE = 8
 
 local GardenService = {}
 
 local plots: { Model } = {}
+local binPositions: { [Model]: Vector3 } = {}
+local worldFolder: Folder? = nil
 local owners: { [Player]: Model } = {}
 local itemFolders: { [Model]: Folder } = {}
 local signLabels: { [Model]: TextLabel } = {}
@@ -48,14 +58,15 @@ local function makePart(
 	return part
 end
 
--- Far enough out that neighbouring gardens and the hub never overlap.
-local function plotRadius(): number
+-- Far enough out that neighbouring gardens and the hub never overlap. Hub.PlotGap
+-- is the knob for how spread out the arena feels.
+function GardenService.plotRadius(): number
 	local count = Balance.PlotCount
-	local fromHub = HUB_CLEARANCE + Garden.Depth / 2
+	local fromHub = Hub.Clearance + Garden.Depth / 2
 	if count <= 1 then
 		return fromHub
 	end
-	return math.max(fromHub, (Garden.Width + PLOT_GAP) / (2 * math.sin(math.pi / count)))
+	return math.max(fromHub, (Garden.Width + Hub.PlotGap) / (2 * math.sin(math.pi / count)))
 end
 
 -- Two rails and a line of posts between two points in the garden's local space.
@@ -113,35 +124,37 @@ local function buildFence(plot: Model, origin: CFrame)
 	buildFenceRun(plot, origin, Vector3.new(halfGate, 0, -halfDepth), frontRight)
 end
 
--- A big screen standing over the back wall. The owner's client draws the
--- upgrade UI onto its front face.
+-- A big screen standing over the back wall, spanning the full width of the
+-- fence. The owner's client draws the upgrade UI onto its front face.
 local function buildUpgradeBoard(plot: Model, origin: CFrame)
-	local width = Garden.BoardWidth
+	local width = Garden.Width
 	local height = Garden.BoardHeight
 	local bottom = FLOOR_HEIGHT + Garden.FenceHeight - 1
 	local centreY = bottom + height / 2
 	local backZ = Garden.Depth / 2
 
-	-- The part's Front face (-Z) looks into the garden.
-	local screen = makePart(
-		"UpgradeBoard",
-		Vector3.new(width, height, 0.6),
-		origin * CFrame.new(0, centreY, backZ - 0.5),
-		Theme.Palette.Background,
-		Enum.Material.SmoothPlastic,
-		plot
-	)
-	screen.CanCollide = false
-
+	-- The backing plate is the full width; the screen is inset in front of it,
+	-- so what's left showing around the edge reads as a border.
 	local frame = makePart(
 		"BoardFrame",
-		Vector3.new(width + 1.6, height + 1.6, 0.4),
+		Vector3.new(width, height, 0.4),
 		origin * CFrame.new(0, centreY, backZ - 0.1),
 		Theme.World.Border,
 		Enum.Material.SmoothPlastic,
 		plot
 	)
 	frame.CanCollide = false
+
+	-- The part's Front face (-Z) looks into the garden.
+	local screen = makePart(
+		"UpgradeBoard",
+		Vector3.new(width - BOARD_EDGE * 2, height - BOARD_EDGE * 2, 0.6),
+		origin * CFrame.new(0, centreY, backZ - 0.5),
+		Theme.Palette.Background,
+		Enum.Material.SmoothPlastic,
+		plot
+	)
+	screen.CanCollide = false
 
 	-- Legs down to the ground so it doesn't float.
 	for _, side in { -1, 1 } do
@@ -155,6 +168,66 @@ local function buildUpgradeBoard(plot: Model, origin: CFrame)
 		)
 		leg.CanCollide = false
 	end
+end
+
+-- Where the bin stands, in the garden's own space.
+local function binOffset(): Vector3
+	return Vector3.new(-(Garden.Width / 2 - BIN_INSET), 0, -(Garden.Depth / 2 - BIN_INSET))
+end
+
+-- Run into it carrying a unit and it's sold. CanCollide is off so players run
+-- through it rather than getting stuck on the corner.
+local function buildBin(plot: Model, origin: CFrame)
+	local offset = binOffset()
+	local bin = makePart(
+		"Bin",
+		Vector3.new(BIN_SIZE, BIN_HEIGHT, BIN_SIZE),
+		origin * CFrame.new(offset.X, FLOOR_HEIGHT + BIN_HEIGHT / 2, offset.Z),
+		Theme.World.Border,
+		Enum.Material.SmoothPlastic,
+		plot
+	)
+	bin.CanCollide = false
+
+	local rim = makePart(
+		"BinRim",
+		Vector3.new(BIN_SIZE + 0.7, 0.5, BIN_SIZE + 0.7),
+		origin * CFrame.new(offset.X, FLOOR_HEIGHT + BIN_HEIGHT, offset.Z),
+		Theme.World.Fence,
+		Theme.World.FenceMaterial,
+		plot
+	)
+	rim.CanCollide = false
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.fromScale(10, 3)
+	billboard.StudsOffsetWorldSpace = Vector3.new(0, BIN_HEIGHT / 2 + 2, 0)
+	billboard.MaxDistance = 90
+	billboard.LightInfluence = 0
+	billboard.Parent = bin
+
+	local function line(text: string, color: Color3, position: UDim2, size: UDim2)
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Position = position
+		label.Size = size
+		label.FontFace = Theme.Font
+		label.Text = text
+		label.TextColor3 = color
+		label.TextScaled = true
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 2
+		stroke.Color = Theme.Palette.Background
+		stroke.Parent = label
+		label.Parent = billboard
+	end
+	line(Theme.Text.Bin, Theme.Palette.Accent, UDim2.fromScale(0, 0), UDim2.fromScale(1, 0.55))
+	line(
+		`Run in carrying a {Theme.Text.Unit} to sell it`,
+		Theme.Palette.Text,
+		UDim2.fromScale(0, 0.55),
+		UDim2.fromScale(1, 0.45)
+	)
 end
 
 local function buildSign(plot: Model, origin: CFrame): TextLabel
@@ -219,6 +292,8 @@ local function buildGarden(index: number, origin: CFrame, parent: Instance): Mod
 	)
 	buildFence(plot, origin)
 	buildUpgradeBoard(plot, origin)
+	buildBin(plot, origin)
+	binPositions[plot] = (origin * CFrame.new(binOffset())).Position
 
 	local items = Instance.new("Folder")
 	items.Name = "Items"
@@ -253,7 +328,7 @@ function GardenService.init()
 	local world = Instance.new("Folder")
 	world.Name = "World"
 
-	local radius = plotRadius()
+	local radius = GardenService.plotRadius()
 	local groundSize = (radius + Garden.Depth) * 2 + 60
 	makePart(
 		"Ground",
@@ -268,8 +343,10 @@ function GardenService.init()
 	spawn.Anchored = true
 	spawn.Neutral = true
 	spawn.Duration = 0
-	spawn.Size = Vector3.new(12, 1, 12)
-	spawn.CFrame = CFrame.new(0, 0.5, 0)
+	spawn.Size = Vector3.new(12, 0.5, 12)
+	-- Off-centre, because the prize wheel stands in the middle of the hub, and
+	-- lifted to sit on the hub pad rather than inside it.
+	spawn.CFrame = CFrame.new(0, FLOOR_HEIGHT + 0.25, -Hub.SpawnOffset)
 	spawn.Color = Theme.Palette.Primary
 	spawn.Material = Enum.Material.SmoothPlastic
 	spawn.TopSurface = Enum.SurfaceType.Smooth
@@ -286,6 +363,11 @@ function GardenService.init()
 	end
 
 	world.Parent = Workspace
+	worldFolder = world
+end
+
+function GardenService.world(): Folder?
+	return worldFolder
 end
 
 function GardenService.assign(player: Player): Model?
@@ -332,6 +414,27 @@ function GardenService.itemsFolder(player: Player): Folder?
 	return if plot then itemFolders[plot] else nil
 end
 
+function GardenService.binPosition(player: Player): Vector3?
+	local plot = owners[player]
+	return if plot then binPositions[plot] else nil
+end
+
+-- Pushes a resting spot out of the bin's clearance. The bin is in a corner, so
+-- "away from the bin" is always further into the garden.
+local function clearOfBin(x: number, z: number): (number, number)
+	local offset = binOffset()
+	local dx, dz = x - offset.X, z - offset.Z
+	local distance = math.sqrt(dx * dx + dz * dz)
+	if distance >= BIN_CLEARANCE then
+		return x, z
+	end
+	if distance < 1e-3 then
+		dx, dz, distance = 1, 1, math.sqrt(2)
+	end
+	local scale = BIN_CLEARANCE / distance
+	return offset.X + dx * scale, offset.Z + dz * scale
+end
+
 -- A resting spot somewhere inside the fence, with a random facing.
 function GardenService.randomRestCFrame(player: Player): CFrame?
 	local plot = owners[player]
@@ -342,10 +445,9 @@ function GardenService.randomRestCFrame(player: Player): CFrame?
 	local padding = Balance.Drop.EdgePadding
 	local halfWidth = Garden.Width / 2 - padding
 	local halfDepth = Garden.Depth / 2 - padding
-	local x = (math.random() * 2 - 1) * halfWidth
-	local z = (math.random() * 2 - 1) * halfDepth
-	local restY = FLOOR_HEIGHT + Balance.Drop.RestLift
-	return origin * CFrame.new(x, restY, z) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
+	local x, z = clearOfBin((math.random() * 2 - 1) * halfWidth, (math.random() * 2 - 1) * halfDepth)
+	x, z = math.clamp(x, -halfWidth, halfWidth), math.clamp(z, -halfDepth, halfDepth)
+	return origin * CFrame.new(x, FLOOR_HEIGHT, z) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
 end
 
 -- The same, but as close as possible to a world position (used when a player
@@ -358,10 +460,14 @@ function GardenService.restCFrameAt(player: Player, worldPosition: Vector3): CFr
 	local origin = plot:GetAttribute("Origin") :: CFrame
 	local localPosition = origin:PointToObjectSpace(worldPosition)
 	local padding = Balance.Drop.EdgePadding
-	local x = math.clamp(localPosition.X, -(Garden.Width / 2 - padding), Garden.Width / 2 - padding)
-	local z = math.clamp(localPosition.Z, -(Garden.Depth / 2 - padding), Garden.Depth / 2 - padding)
-	local restY = FLOOR_HEIGHT + Balance.Drop.RestLift
-	return origin * CFrame.new(x, restY, z) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
+	local halfWidth = Garden.Width / 2 - padding
+	local halfDepth = Garden.Depth / 2 - padding
+	local x, z = clearOfBin(
+		math.clamp(localPosition.X, -halfWidth, halfWidth),
+		math.clamp(localPosition.Z, -halfDepth, halfDepth)
+	)
+	x, z = math.clamp(x, -halfWidth, halfWidth), math.clamp(z, -halfDepth, halfDepth)
+	return origin * CFrame.new(x, FLOOR_HEIGHT, z) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
 end
 
 return GardenService

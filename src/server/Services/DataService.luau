@@ -16,6 +16,8 @@ type Callback = (Player, PlayerData) -> ()
 
 local TEMPLATE: PlayerData = {
 	Cash = Config.Balance.StartingCash,
+	Gems = 0,
+	BoostEndsAt = 0,
 	Items = Economy.startingItems(),
 	Carried = 0,
 	Upgrades = {},
@@ -25,6 +27,8 @@ local TEMPLATE: PlayerData = {
 	HighestTier = 1,
 	LastOnline = 0,
 	Daily = { Streak = 0, LastClaimDay = -1 },
+	Spins = 0,
+	LastFreeSpinDay = -1,
 	PurchaseIds = {},
 }
 

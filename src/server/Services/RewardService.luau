@@ -19,9 +19,20 @@ local FULL_GARDEN_SECONDS = 600
 
 local RewardService = {}
 
-function RewardService.incomePerSecond(player: Player): number
+-- `boostMultiplier` overrides the player's timed boost; offline earnings pass
+-- 1 so a boost can't be banked against hours of away time.
+function RewardService.incomePerSecond(player: Player, boostMultiplier: number?): number
 	local data = DataService.get(player)
-	return if data then Economy.incomePerSecond(data, PassService.cashMultiplier(player)) else 0
+	return if data then Economy.incomePerSecond(data, PassService.cashMultiplier(player), boostMultiplier) else 0
+end
+
+function RewardService.grantGems(player: Player, amount: number)
+	local data = DataService.get(player)
+	if not data then
+		return
+	end
+	data.Gems += amount
+	StateService.markDirty(player)
 end
 
 function RewardService.grantCash(player: Player, amount: number)
@@ -47,6 +58,11 @@ function RewardService.grant(player: Player, reward: Types.Reward): string
 			Economy.incomeReward(RewardService.incomePerSecond(player), reward.IncomeMinutes or 0, reward.MinCash or 0)
 		RewardService.grantCash(player, amount)
 		table.insert(parts, `{Format.number(amount)} {Theme.Text.Currency}`)
+	end
+
+	if reward.Gems then
+		RewardService.grantGems(player, reward.Gems)
+		table.insert(parts, `{reward.Gems} Gems`)
 	end
 
 	if reward.UnitTierBonus then

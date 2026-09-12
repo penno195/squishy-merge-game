@@ -12,9 +12,19 @@ local theme: Types.Theme = {
 		Unit = "Squishy",
 		UnitPlural = "Squishies",
 		Rebirth = "Rebirth",
+		Bin = "Compost Heap",
 	},
 
-	Icons = {},
+	Icons = {
+		Currency = "💧",
+		Gems = "💎",
+		Boost = "🔥",
+		SpawnTier = "⭐",
+		SpawnSpeed = "⚡",
+		GardenSpace = "📦",
+		Luck = "🍀",
+		Income = "💰",
+	},
 
 	Font = Font.fromEnum(Enum.Font.FredokaOne),
 
@@ -39,9 +49,49 @@ local theme: Types.Theme = {
 		Fence = Color3.fromRGB(225, 160, 120),
 		FenceMaterial = Enum.Material.Wood,
 		Border = Color3.fromRGB(255, 120, 190),
+		-- The hub pad and the walkway ringing it.
+		Hub = Color3.fromRGB(95, 70, 135),
+		Path = Color3.fromRGB(150, 130, 200),
+		PathMaterial = Enum.Material.SmoothPlastic,
 	},
 
 	Sounds = {},
+
+	-- Scenery, keyed by the zones in Balance.PropZones. Nothing here is required:
+	-- a theme that omits `Props` simply gets a bare map.
+	Props = {
+		HubEdge = {
+			{
+				Shape = "Cone",
+				Height = 24,
+				Color = Color3.fromRGB(120, 200, 255),
+				Accent = Color3.fromRGB(255, 255, 255),
+			},
+			{
+				Shape = "Stack",
+				Height = 18,
+				Color = Color3.fromRGB(255, 150, 190),
+				Accent = Color3.fromRGB(255, 220, 90),
+			},
+		},
+		BetweenGardens = {
+			{
+				Shape = "Cone",
+				Height = 28,
+				Color = Color3.fromRGB(150, 220, 160),
+				Accent = Color3.fromRGB(235, 245, 255),
+			},
+		},
+		Outer = {
+			{
+				Shape = "Cone",
+				Height = 30,
+				Color = Color3.fromRGB(190, 160, 255),
+				Accent = Color3.fromRGB(235, 245, 255),
+			},
+			{ Shape = "Sphere", Height = 16, Color = Color3.fromRGB(150, 220, 255) },
+		},
+	},
 
 	Units = {
 		{ Name = "Droplet", Color = Color3.fromRGB(150, 220, 255) },

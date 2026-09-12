@@ -22,7 +22,7 @@ function DailyService.applyOffline(player: Player, data: Types.PlayerData)
 		return
 	end
 	local away = os.time() - data.LastOnline
-	local amount = Economy.offlineEarnings(RewardService.incomePerSecond(player), away)
+	local amount = Economy.offlineEarnings(RewardService.incomePerSecond(player, 1), away)
 	if amount > 0 then
 		RewardService.grantCash(player, amount)
 		StateService.notify(

@@ -11,6 +11,9 @@ local EVENTS = {
 	"DropCarried",
 	"BuyUnit",
 	"BuyUpgrade",
+	"BuyBoost",
+	"Spin",
+	"BuySpin",
 	"Rebirth",
 	"ClaimDaily",
 	-- Fired once the client's UI is listening, so nothing sent at join is lost.
@@ -19,6 +22,7 @@ local EVENTS = {
 	"StateUpdate",
 	"Notify",
 	"MergeEffect",
+	"SpinResult",
 	"Leaderboard",
 }
 

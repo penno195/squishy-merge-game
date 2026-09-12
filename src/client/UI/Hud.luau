@@ -1,8 +1,15 @@
 --!strict
 -- The heads-up display: currency, income, what you're carrying, the drop
 -- timer, the buy button, the menu that opens each panel, and toasts.
+--
+-- Laid out by importance rather than by convenience. Cash is the biggest thing
+-- on screen because it's what every decision is measured against; income,
+-- capacity and rebirths sit under it in muted text; and anything that only
+-- matters sometimes (the boost, the drop button) appears only when it does.
 
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
+local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -23,6 +30,7 @@ local LeaderboardPanel = require(script.Parent.Panels.Leaderboard)
 local RebirthPanel = require(script.Parent.Panels.Rebirth)
 local ShopPanel = require(script.Parent.Panels.Shop)
 local UpgradesPanel = require(script.Parent.Panels.Upgrades)
+local WheelPanel = require(script.Parent.Panels.Wheel)
 
 local LocalPlayer = Players.LocalPlayer
 local Palette = Components.Palette
@@ -37,6 +45,19 @@ local TOAST_COLORS: { [string]: Color3 } = {
 	Rebirth = Palette.Primary,
 }
 
+-- Menu icons. Generic UI symbols rather than theme art, so a reskin that sets
+-- no icons of its own still gets a readable menu.
+local MENU_ICONS: { [string]: string } = {
+	Upgrades = "⬆️",
+	Shop = "🛒",
+	Daily = "🎁",
+	Wheel = "🎡",
+	Ranks = "🏆",
+	Index = "📖",
+}
+-- The name the wheel's own ProximityPrompt out in the hub opens.
+local WHEEL_PANEL = "Wheel"
+
 local Hud = {}
 
 function Hud.start()
@@ -44,7 +65,8 @@ function Hud.start()
 	local screen: ScreenGui = Components.new("ScreenGui", {
 		Name = "MergeHud",
 		ResetOnSpawn = false,
-		IgnoreGuiInset = true,
+		-- Left false so Roblox keeps the HUD clear of its own top bar.
+		IgnoreGuiInset = false,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 		Parent = playerGui,
 	})
@@ -62,52 +84,97 @@ function Hud.start()
 		Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
 	end
 
-	-- Stats card (top left) ----------------------------------------------
-	local statsCard = Components.card({
-		Position = UDim2.fromOffset(16, 16),
-		Size = UDim2.fromOffset(280, 148),
+	-- Left column: stats, then the menu (top left) ------------------------
+	-- Both live in one auto-sizing column so the buttons always start below
+	-- the last stat line. Floating the menu at half screen height overlapped
+	-- the stats on anything shorter than about 1000px, and the stack changes
+	-- height anyway as the boost pill comes and goes.
+	-- Roblox's own chrome can sit above the inset on some devices, so start
+	-- below whatever it reserves rather than at a fixed margin.
+	local topInset = GuiService:GetGuiInset().Y
+	local column = Components.new("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(16, 16 + topInset),
+		Size = UDim2.fromOffset(300, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
 		Parent = screen,
 	})
-	local function statLine(height: number, y: number, color: Color3): TextLabel
+	Components.listLayout({ Padding = UDim.new(0, 14), HorizontalAlignment = Enum.HorizontalAlignment.Left }).Parent =
+		column
+
+	local stats = Components.new("Frame", {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(300, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		LayoutOrder = 1,
+		Parent = column,
+	})
+	Components.listLayout({ Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Left }).Parent =
+		stats
+
+	-- The hero stat: biggest element on screen, in the brightest colour.
+	local cashPill = Components.pill({
+		Size = UDim2.fromOffset(300, 68),
+		LayoutOrder = 1,
+	}, Theme.Icons.Currency or "", Palette.Accent)
+	cashPill.Instance.Parent = stats
+
+	local gemPill = Components.pill({
+		Size = UDim2.fromOffset(210, 46),
+		LayoutOrder = 2,
+	}, Theme.Icons.Gems or "", Palette.Secondary)
+	gemPill.Instance.Parent = stats
+
+	-- Only on screen while it's running, so a quiet HUD stays quiet.
+	local boostPill = Components.pill({
+		Size = UDim2.fromOffset(250, 46),
+		LayoutOrder = 3,
+		BackgroundColor3 = Palette.Primary,
+	}, Theme.Icons.Boost or "", Palette.Text)
+	boostPill.Instance.Parent = stats
+	boostPill.setVisible(false)
+
+	local function statLine(order: number, color: Color3): TextLabel
 		return Components.label({
 			Text = "",
-			Size = UDim2.new(1, -20, 0, height),
-			Position = UDim2.fromOffset(10, y),
+			Size = UDim2.fromOffset(300, 22),
+			LayoutOrder = order,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextColor3 = color,
-			Parent = statsCard,
+			MaxTextSize = 20,
+			Stroke = 2,
+			Parent = stats,
 		})
 	end
-	local cashLabel = statLine(40, 6, Palette.Text)
-	local incomeLabel = statLine(24, 46, Palette.Positive)
-	local rebirthLabel = statLine(22, 72, Palette.TextMuted)
-	local itemsLabel = statLine(22, 94, Palette.TextMuted)
-	local carryLabel = statLine(24, 118, Palette.Accent)
+	local incomeLabel = statLine(4, Palette.Positive)
+	local detailLabel = statLine(5, Palette.TextMuted)
 
 	-- Panels and the menu that opens them --------------------------------
 	local panels = {
-		{ Name = "Upgrades", Panel = UpgradesPanel.create(screen) },
-		{ Name = "Shop", Panel = ShopPanel.create(screen) },
-		{ Name = Theme.Text.Rebirth, Panel = RebirthPanel.create(screen) },
-		{ Name = "Daily", Panel = DailyPanel.create(screen) },
-		{ Name = "Ranks", Panel = LeaderboardPanel.create(screen) },
-		{ Name = "Index", Panel = IndexPanel.create(screen) },
+		{ Name = "Upgrades", Icon = MENU_ICONS.Upgrades, Panel = UpgradesPanel.create(screen) },
+		{ Name = "Shop", Icon = MENU_ICONS.Shop, Panel = ShopPanel.create(screen) },
+		{ Name = Theme.Text.Rebirth, Icon = "🔁", Panel = RebirthPanel.create(screen) },
+		{ Name = "Daily", Icon = MENU_ICONS.Daily, Panel = DailyPanel.create(screen) },
+		{ Name = WHEEL_PANEL, Icon = MENU_ICONS.Wheel, Panel = WheelPanel.create(screen) },
+		{ Name = "Ranks", Icon = MENU_ICONS.Ranks, Panel = LeaderboardPanel.create(screen) },
+		{ Name = "Index", Icon = MENU_ICONS.Index, Panel = IndexPanel.create(screen) },
 	}
 
 	local menu = Components.new("Frame", {
 		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 16, 0.5, 0),
-		Size = UDim2.fromOffset(120, 360),
-		Parent = screen,
+		Size = UDim2.fromOffset(148, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		LayoutOrder = 2,
+		Parent = column,
 	})
 	Components.listLayout({ Padding = UDim.new(0, 8), HorizontalAlignment = Enum.HorizontalAlignment.Left }).Parent =
 		menu
 
 	for order, entry in panels do
+		-- 56 tall: comfortably above the size a thumb can hit reliably.
 		local button = Components.button({
 			Text = entry.Name,
-			Size = UDim2.fromOffset(120, 48),
+			Size = UDim2.fromOffset(148, 56),
 			LayoutOrder = order,
 			BackgroundColor3 = Palette.Secondary,
 			Parent = menu,
@@ -119,43 +186,67 @@ function Hud.start()
 			entry.Panel.setOpen(opening)
 			Sound.play(Theme.Sounds.Purchase)
 		end)
+		button.setIcon(entry.Icon)
 		button.Instance.Parent = menu
 	end
+
+	-- Walking up to the wheel in the hub opens the same panel as the menu.
+	ProximityPromptService.PromptTriggered:Connect(function(prompt)
+		if prompt.Name ~= "SpinPrompt" then
+			return
+		end
+		for _, entry in panels do
+			entry.Panel.setOpen(entry.Name == WHEEL_PANEL)
+		end
+	end)
 
 	-- Buy button and drop timer (bottom centre) --------------------------
 	local bottom = Components.new("Frame", {
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -16),
-		Size = UDim2.fromOffset(340, 172),
+		Size = UDim2.fromOffset(360, 200),
 		Parent = screen,
+	})
+	local carryLabel = Components.label({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 24),
+		TextColor3 = Palette.Accent,
+		TextWrapped = true,
+		MaxTextSize = 22,
+		Stroke = 2,
+		Parent = bottom,
 	})
 	local dropLabel = Components.label({
 		Text = "",
-		Size = UDim2.new(1, 0, 0, 24),
+		Size = UDim2.new(1, 0, 0, 22),
+		Position = UDim2.fromOffset(0, 28),
 		TextColor3 = Palette.TextMuted,
+		MaxTextSize = 20,
+		Stroke = 2,
 		Parent = bottom,
 	})
 	local dropBar = Components.bar({
-		Position = UDim2.fromOffset(0, 28),
+		Position = UDim2.fromOffset(0, 52),
 		Size = UDim2.new(1, 0, 0, 14),
 		Parent = bottom,
 	})
 	local buyButton = Components.button({
 		Text = "",
-		Position = UDim2.fromOffset(0, 50),
-		Size = UDim2.new(1, 0, 0, 60),
+		Position = UDim2.fromOffset(0, 74),
+		Size = UDim2.new(1, 0, 0, 62),
 		Parent = bottom,
 	}, function()
 		Sound.play(Theme.Sounds.Purchase)
 		Net.event("BuyUnit"):FireServer()
 	end)
+	buyButton.setIcon(Theme.Icons.Currency or "")
 
 	-- On-screen drop, so touch players (and anyone who'd rather click) have one.
 	local dropButton = Components.button({
 		Text = "",
-		Position = UDim2.fromOffset(0, 116),
-		Size = UDim2.new(1, 0, 0, 52),
+		Position = UDim2.fromOffset(0, 142),
+		Size = UDim2.new(1, 0, 0, 54),
 		BackgroundColor3 = Palette.Secondary,
 		Parent = bottom,
 	}, function()
@@ -174,14 +265,14 @@ function Hud.start()
 
 	local function toast(message: string, kind: string)
 		local card = Components.card({
-			Size = UDim2.new(1, 0, 0, 44),
+			Size = UDim2.new(1, 0, 0, 46),
 			BackgroundColor3 = TOAST_COLORS[kind] or Palette.Surface,
 			Parent = toasts,
 		})
 		Components.label({
 			Text = message,
-			Size = UDim2.new(1, -16, 1, -8),
-			Position = UDim2.fromOffset(8, 4),
+			Size = UDim2.new(1, -20, 1, -8),
+			Position = UDim2.fromOffset(10, 4),
 			TextScaled = false,
 			TextSize = 18,
 			TextWrapped = true,
@@ -202,22 +293,23 @@ function Hud.start()
 		latest = snapshot
 		local data: Types.PlayerData = snapshot.Data
 
-		cashLabel.Text = `{Format.number(data.Cash)} {Theme.Text.Currency}`
-		incomeLabel.Text = `+{Format.number(snapshot.IncomePerSecond or 0)}/s`
-		rebirthLabel.Text = `{Theme.Text.Rebirth}s: {data.Rebirths} (x{Economy.rebirthMultiplier(data.Rebirths)})`
-		itemsLabel.Text =
-			`{Theme.Text.UnitPlural}: {Economy.usedSpace(data)} / {snapshot.GardenCapacity or Economy.gardenCapacity(
-				data
+		cashPill.setText(Format.number(data.Cash))
+		gemPill.setText(Format.number(data.Gems))
+		incomeLabel.Text = `+{Format.number(snapshot.IncomePerSecond or 0)} {Theme.Text.Currency}/s`
+
+		local capacity = snapshot.GardenCapacity or Economy.gardenCapacity(data)
+		detailLabel.Text =
+			`{Economy.usedSpace(data)}/{capacity} {Theme.Text.UnitPlural}  ·  {Theme.Text.Rebirth} x{Economy.rebirthMultiplier(
+				data.Rebirths
 			)}`
-		carryLabel.Text = if data.Carried > 0
-			then `Carrying: {Theme.Units[data.Carried].Name}  (Q or G to drop)`
-			else "Carrying: nothing"
+
+		carryLabel.Text = if data.Carried > 0 then `Carrying {Theme.Units[data.Carried].Name}` else "Carrying nothing"
 
 		local cost = Economy.buyUnitCost(data)
 		buyButton.setText(`Buy {Theme.Text.Unit} — {Format.number(cost)}`)
 		buyButton.setEnabled(data.Cash >= cost and Economy.hasRoom(data))
 
-		dropButton.setText(if data.Carried > 0 then `Drop {Theme.Units[data.Carried].Name}  (Q)` else "Nothing to drop")
+		dropButton.setText(if data.Carried > 0 then "Drop  (Q)" else "Nothing to drop")
 		dropButton.setEnabled(data.Carried > 0)
 
 		for _, entry in panels do
@@ -225,13 +317,20 @@ function Hud.start()
 		end
 	end)
 
-	-- The drop timer runs between snapshots.
+	-- The drop timer and the boost both count down between snapshots.
 	RunService.RenderStepped:Connect(function()
 		local snapshot = latest
 		if not snapshot then
 			return
 		end
 		local data: Types.PlayerData = snapshot.Data
+
+		local boostLeft = Economy.boostRemaining(data)
+		boostPill.setVisible(boostLeft > 0)
+		if boostLeft > 0 then
+			boostPill.setText(`x{Config.Balance.Boost.Multiplier}  {Format.time(boostLeft)}`)
+		end
+
 		if not Economy.hasRoom(data) then
 			dropLabel.Text = "Garden full — merge to make room!"
 			dropBar.setProgress(1)
@@ -239,7 +338,7 @@ function Hud.start()
 		end
 		local interval = snapshot.DropInterval or 1
 		local remaining = math.max((snapshot.NextDropAt or 0) - Workspace:GetServerTimeNow(), 0)
-		dropLabel.Text = `Next {Theme.Text.Unit} drops in {Format.time(math.ceil(remaining))}`
+		dropLabel.Text = `Next {Theme.Text.Unit} in {Format.time(math.ceil(remaining))}`
 		dropBar.setProgress(1 - remaining / interval)
 	end)
 

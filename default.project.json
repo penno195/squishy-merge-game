@@ -10,6 +10,9 @@
         "$className": "Folder",
         "Units": {
           "$path": "assets/units"
+        },
+        "Props": {
+          "$path": "assets/props"
         }
       }
     },

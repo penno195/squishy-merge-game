@@ -39,6 +39,31 @@ local function buyUpgrade(player: Player, id: any)
 	StateService.markDirty(player)
 end
 
+-- The timed earning boost, paid for in gems. Buying again while one is running
+-- extends it rather than throwing the remaining time away.
+local function buyBoost(player: Player)
+	local data = DataService.get(player)
+	if not data then
+		return
+	end
+	local cost = Economy.boostCost()
+	if data.Gems < cost then
+		StateService.notify(player, `You need {cost} Gems for that boost!`, "Error")
+		return
+	end
+	data.Gems -= cost
+	local now = os.time()
+	data.BoostEndsAt = math.max(data.BoostEndsAt, now) + Economy.boostSeconds()
+	StateService.markDirty(player)
+	StateService.notify(
+		player,
+		`Earning boost active! x{Config.Balance.Boost.Multiplier} {Theme.Text.Currency} for {Format.time(
+			data.BoostEndsAt - now
+		)}.`,
+		"Reward"
+	)
+end
+
 local function rebirth(player: Player)
 	local data = DataService.get(player)
 	if not data then
@@ -55,6 +80,8 @@ local function rebirth(player: Player)
 	end
 
 	data.Rebirths += 1
+	-- Gems and any running boost survive a rebirth: they're premium, not progress.
+	data.Gems += Config.Balance.Gems.PerRebirth
 	data.Cash = Config.Balance.StartingCash
 	data.Items = Economy.startingItems()
 	data.Carried = 0
@@ -67,13 +94,14 @@ local function rebirth(player: Player)
 	local multiplier = Economy.rebirthMultiplier(data.Rebirths)
 	StateService.notify(
 		player,
-		`{Theme.Text.Rebirth} complete! You now earn x{multiplier} {Theme.Text.Currency}.`,
+		`{Theme.Text.Rebirth} complete! You now earn x{multiplier} {Theme.Text.Currency}, plus {Config.Balance.Gems.PerRebirth} Gems.`,
 		"Rebirth"
 	)
 end
 
 function ShopService.init()
 	Net.event("BuyUpgrade").OnServerEvent:Connect(buyUpgrade)
+	Net.event("BuyBoost").OnServerEvent:Connect(buyBoost)
 	Net.event("Rebirth").OnServerEvent:Connect(rebirth)
 end
 

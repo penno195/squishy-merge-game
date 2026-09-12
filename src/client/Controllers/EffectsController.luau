@@ -12,24 +12,24 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
 local UnitVisuals = require(ReplicatedStorage.Shared.UnitVisuals)
 
-local BOB_HEIGHT = 0.25
-local BOB_SPEED = 2.2
-local SQUASH = 0.06
+local SQUASH = 0.09
+local SQUASH_SPEED = 2.2
 
 local EffectsController = {}
 
--- Where each unit rests, captured before any local animation moves it.
-local homes: { [Model]: CFrame } = setmetatable({}, { __mode = "k" }) :: any
-
-function EffectsController.home(model: Model): CFrame
-	local home = homes[model]
-	if not home then
-		home = model:GetPivot()
-		homes[model] = home
-	end
-	return home
+-- Where a unit rests. The server sets this before the model is ever parented,
+-- so it's known even mid-fall. Reading the replicated pivot instead used to
+-- strand items in mid-air: the landing position and the "Landed" attribute
+-- replicate on separate paths, so an item could be treated as landed while its
+-- position was still part-way down the drop.
+local function restPose(model: Model): CFrame?
+	local rest = model:GetAttribute("Rest")
+	return if typeof(rest) == "CFrame" then rest else nil
 end
 
+-- The idle: units squash and stretch on the spot with their base planted on
+-- the floor. Scaling the mesh alone would lift them off it and sink them
+-- through it in turn, since a part scales about its centre.
 local function animate(now: number)
 	for _, instance in CollectionService:GetTagged(UnitVisuals.Tag) do
 		local model = instance :: Model
@@ -37,16 +37,24 @@ local function animate(now: number)
 		if not model.Parent or model:GetAttribute("Carried") or not model:GetAttribute("Landed") then
 			continue
 		end
-		local home = EffectsController.home(model)
-		-- Offset each item's phase so a garden full of them doesn't pulse in lockstep.
-		local phase = now * BOB_SPEED + (model:GetAttribute("Tier") or 0) :: number + home.Position.X % 6.28
-		model:PivotTo(home * CFrame.new(0, math.abs(math.sin(phase)) * BOB_HEIGHT, 0))
+		local rest = restPose(model)
+		if not rest then
+			continue
+		end
+
+		-- Offset each unit's phase by where it stands, so a garden full of them
+		-- doesn't pulse in lockstep.
+		local phase = now * SQUASH_SPEED + rest.Position.X + rest.Position.Z
+		local squash = math.sin(phase) * SQUASH
 
 		local body = model:FindFirstChild("Body")
 		local mesh = body and body:FindFirstChildOfClass("SpecialMesh")
-		if mesh then
-			local squash = math.sin(phase * 2) * SQUASH
+		if mesh and body and body:IsA("BasePart") then
 			mesh.Scale = Vector3.new(1 + squash, 1 - squash, 1 + squash)
+			model:PivotTo(rest * CFrame.new(0, -body.Size.Y * squash / 2, 0))
+		else
+			-- A theme model with no squishable body just sits where it landed.
+			model:PivotTo(rest)
 		end
 	end
 end

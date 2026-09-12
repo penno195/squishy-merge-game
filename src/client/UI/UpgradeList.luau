@@ -1,8 +1,10 @@
 --!strict
--- The upgrade rows, shared by the Upgrades panel and the garden's upgrade
--- board so the two can never drift apart.
+-- The upgrade entries, and the two ways they're drawn: tiles across the garden
+-- board, and rows in the Upgrades panel. Both read the same spec and the same
+-- update function, so the two can never drift apart.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Components = require(script.Parent.Components)
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -15,13 +17,46 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Palette = Components.Palette
 local Theme = Config.Theme
 
+-- The gem-bought earning boost isn't an upgrade, but it sits alongside them.
+local BOOST_ID = "Boost"
+
 local UpgradeList = {}
+
+export type Entry = {
+	Id: string,
+	Name: string,
+	Icon: string,
+}
 
 export type List = {
 	update: ({ [string]: any }) -> (),
 }
 
--- What the upgrade does right now, in the theme's own words.
+local function icon(id: string): string
+	return (Theme.Icons :: { [string]: string? })[id] or ""
+end
+
+local function entryFor(id: string): Entry
+	if id == BOOST_ID then
+		return { Id = BOOST_ID, Name = "Earning Boost", Icon = icon("Boost") }
+	end
+	return { Id = id, Name = Economy.getUpgrade(id).Name, Icon = icon(id) }
+end
+
+-- What the garden board shows, in this order. Everything else lives in the
+-- Upgrades panel, which lists the lot.
+UpgradeList.BoardIds = { "SpawnTier", "SpawnSpeed", "GardenSpace", BOOST_ID, "Luck" }
+
+function UpgradeList.allIds(): { string }
+	local ids = {}
+	for _, upgrade in Config.Balance.Upgrades do
+		table.insert(ids, upgrade.Id)
+	end
+	table.insert(ids, BOOST_ID)
+	return ids
+end
+
+-- What the entry does right now, in the theme's own words.
 local function describe(id: string, data: Types.PlayerData, passes: { [string]: boolean }): string
 	if id == "SpawnSpeed" then
 		local passMultiplier = if passes.FastSpawn then Config.Balance.Monetisation.FastSpawnMultiplier else 1
@@ -31,73 +66,258 @@ local function describe(id: string, data: Types.PlayerData, passes: { [string]: 
 		return `Drops up to {Theme.Units[Economy.dropTier(data)].Name}`
 	elseif id == "GardenSpace" then
 		return `Garden holds {Economy.gardenCapacity(data)} {Theme.Text.UnitPlural}`
+	elseif id == "Luck" then
+		local _, top = Economy.dropTierRange(data)
+		local chance = math.floor(Economy.topTierChance(data) * 100 + 0.5)
+		return `{chance}% of drops are {Theme.Units[top].Name}`
 	elseif id == "Income" then
 		local upgrade = Economy.getUpgrade("Income")
 		local multiplier = 1 + Economy.upgradeLevel(data, "Income") * upgrade.PerLevel
 		return `Earning x{string.format("%.2f", multiplier)} {Theme.Text.Currency}`
+	elseif id == BOOST_ID then
+		local remaining = Economy.boostRemaining(data)
+		if remaining > 0 then
+			return `Active — {Format.time(remaining)} left`
+		end
+		local boost = Config.Balance.Boost
+		return `x{boost.Multiplier} {Theme.Text.Currency} for {Format.time(boost.Seconds)}`
 	end
 	return ""
 end
 
-function UpgradeList.create(parent: Instance): List
-	local list = Components.scroller({ Size = UDim2.fromScale(1, 1), Parent = parent })
-	Components.listLayout({ Padding = UDim.new(0, 8) }).Parent = list
+-- The line above the button: an upgrade's level, or the boost's state.
+local function statusOf(id: string, data: Types.PlayerData): string
+	if id == BOOST_ID then
+		return if Economy.boostActive(data) then "RUNNING" else "Ready"
+	end
+	return `Level {Economy.upgradeLevel(data, id)} / {Economy.upgradeMaxLevel(id)}`
+end
 
-	local rows = {}
-	for order, upgrade in Config.Balance.Upgrades do
+type Row = {
+	Status: TextLabel,
+	Detail: TextLabel,
+	Button: Components.Button,
+}
+
+local function buy(id: string)
+	Sound.play(Theme.Sounds.Purchase)
+	if id == BOOST_ID then
+		Net.event("BuyBoost"):FireServer()
+	else
+		Net.event("BuyUpgrade"):FireServer(id)
+	end
+end
+
+-- Drives both layouts. `rows` maps entry id to the three things that change.
+local function makeUpdater(rows: { [string]: Row }): ({ [string]: any }) -> ()
+	return function(snapshot: { [string]: any })
+		local data: Types.PlayerData = snapshot.Data
+		local passes = snapshot.Passes or {}
+		for id, row in rows do
+			row.Status.Text = statusOf(id, data)
+			row.Detail.Text = describe(id, data, passes)
+
+			if id == BOOST_ID then
+				local cost = Economy.boostCost()
+				row.Button.setText(`{cost} Gems`)
+				row.Button.setEnabled(data.Gems >= cost)
+			else
+				local level = Economy.upgradeLevel(data, id)
+				if level >= Economy.upgradeMaxLevel(id) then
+					row.Button.setText("MAXED")
+					row.Button.setEnabled(false)
+				else
+					local cost = Economy.upgradeCost(id, level)
+					row.Button.setText(Format.number(cost))
+					row.Button.setEnabled(data.Cash >= cost)
+				end
+			end
+		end
+	end
+end
+
+-- The boost counts down between snapshots, so re-render once a second.
+local function keepBoostLive(host: Instance, update: ({ [string]: any }) -> (), latest: () -> { [string]: any }?)
+	local elapsed = 0
+	local connection: RBXScriptConnection
+	connection = RunService.Heartbeat:Connect(function(delta)
+		if not host.Parent then
+			connection:Disconnect()
+			return
+		end
+		elapsed += delta
+		if elapsed < 1 then
+			return
+		end
+		elapsed = 0
+		local snapshot = latest()
+		if snapshot then
+			update(snapshot)
+		end
+	end)
+end
+
+-- Tiles: one column per entry, side by side across the garden board.
+function UpgradeList.tiles(parent: Instance, ids: { string }): List
+	local strip: Frame = Components.new("Frame", {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		Parent = parent,
+	})
+	Components.listLayout({
+		FillDirection = Enum.FillDirection.Horizontal,
+		Padding = UDim.new(0, 12),
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+	}).Parent =
+		strip
+
+	local width = 1 / #ids
+	local rows: { [string]: Row } = {}
+
+	for order, id in ids do
+		local entry = entryFor(id)
+		local isBoost = id == BOOST_ID
 		local card = Components.card({
-			Size = UDim2.new(1, -12, 0, 80),
+			-- Each tile gives up its share of the gaps between them.
+			Size = UDim2.new(width, -12, 1, 0),
 			LayoutOrder = order,
-			Parent = list,
+			BackgroundColor3 = if isBoost then Palette.Secondary else Palette.Surface,
+			Parent = strip,
 		})
-		local title = Components.label({
-			Text = upgrade.Name,
-			Size = UDim2.new(0.55, 0, 0, 28),
-			Position = UDim2.fromOffset(12, 8),
-			TextXAlignment = Enum.TextXAlignment.Left,
+		Components.padding(14).Parent = card
+
+		Components.label({
+			Text = entry.Icon,
+			Size = UDim2.fromScale(1, 0.16),
+			Parent = card,
+		})
+		Components.label({
+			Text = entry.Name,
+			Size = UDim2.fromScale(1, 0.15),
+			Position = UDim2.fromScale(0, 0.17),
+			TextColor3 = Palette.Text,
+			Stroke = 2,
+			Parent = card,
+		})
+		local status = Components.label({
+			Text = "",
+			Size = UDim2.fromScale(1, 0.09),
+			Position = UDim2.fromScale(0, 0.33),
+			TextColor3 = Palette.Accent,
+			Stroke = 2,
 			Parent = card,
 		})
 		local detail = Components.label({
 			Text = "",
-			Size = UDim2.new(0.55, 0, 0, 24),
-			Position = UDim2.fromOffset(12, 42),
+			Size = UDim2.fromScale(1, 0.25),
+			Position = UDim2.fromScale(0, 0.44),
+			TextColor3 = Palette.TextMuted,
+			TextWrapped = true,
+			Stroke = 2,
+			Parent = card,
+		})
+		local button = Components.button({
+			Text = "",
+			Size = UDim2.fromScale(1, 0.26),
+			Position = UDim2.fromScale(0, 0.74),
+			BackgroundColor3 = if isBoost then Palette.Accent else Palette.Positive,
+			TextColor3 = if isBoost then Palette.Background else Palette.Text,
+			Parent = card,
+		}, function()
+			buy(id)
+		end)
+		button.setIcon(if isBoost then icon("Gems") else icon("Currency"))
+
+		rows[id] = { Status = status, Detail = detail, Button = button }
+	end
+
+	local update = makeUpdater(rows)
+	local latest: { [string]: any }? = nil
+	local function wrapped(snapshot: { [string]: any })
+		latest = snapshot
+		update(snapshot)
+	end
+	keepBoostLive(strip, update, function()
+		return latest
+	end)
+	return { update = wrapped }
+end
+
+-- Rows: one per entry, stacked in a scrolling panel.
+function UpgradeList.rows(parent: Instance, ids: { string }): List
+	local list = Components.scroller({ Size = UDim2.fromScale(1, 1), Parent = parent })
+	Components.listLayout({ Padding = UDim.new(0, 8) }).Parent = list
+
+	local rows: { [string]: Row } = {}
+
+	for order, id in ids do
+		local entry = entryFor(id)
+		local isBoost = id == BOOST_ID
+		local card = Components.card({
+			Size = UDim2.new(1, -12, 0, 88),
+			LayoutOrder = order,
+			BackgroundColor3 = if isBoost then Palette.Secondary else Palette.Surface,
+			Parent = list,
+		})
+
+		Components.label({
+			Text = entry.Icon,
+			Size = UDim2.fromOffset(44, 44),
+			Position = UDim2.fromOffset(10, 22),
+			Parent = card,
+		})
+		Components.label({
+			Text = entry.Name,
+			Size = UDim2.new(0.45, 0, 0, 26),
+			Position = UDim2.fromOffset(60, 10),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			MaxTextSize = 24,
+			Parent = card,
+		})
+		local status = Components.label({
+			Text = "",
+			Size = UDim2.new(0.45, 0, 0, 20),
+			Position = UDim2.fromOffset(60, 36),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = Palette.Accent,
+			MaxTextSize = 18,
+			Parent = card,
+		})
+		local detail = Components.label({
+			Text = "",
+			Size = UDim2.new(0.55, 0, 0, 22),
+			Position = UDim2.fromOffset(60, 58),
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextColor3 = Palette.TextMuted,
+			MaxTextSize = 18,
 			Parent = card,
 		})
 		local button = Components.button({
 			Text = "",
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.new(1, -12, 0.5, 0),
-			Size = UDim2.fromOffset(170, 56),
+			Size = UDim2.fromOffset(168, 58),
+			BackgroundColor3 = if isBoost then Palette.Accent else Palette.Positive,
+			TextColor3 = if isBoost then Palette.Background else Palette.Text,
 			Parent = card,
 		}, function()
-			Sound.play(Theme.Sounds.Purchase)
-			Net.event("BuyUpgrade"):FireServer(upgrade.Id)
+			buy(id)
 		end)
-		rows[upgrade.Id] = { Title = title, Detail = detail, Button = button }
+		button.setIcon(if isBoost then icon("Gems") else icon("Currency"))
+
+		rows[id] = { Status = status, Detail = detail, Button = button }
 	end
 
-	local function update(snapshot: { [string]: any })
-		local data: Types.PlayerData = snapshot.Data
-		local passes = snapshot.Passes or {}
-		for id, row in rows do
-			local level = Economy.upgradeLevel(data, id)
-			local maxLevel = Economy.upgradeMaxLevel(id)
-			row.Title.Text = `{Economy.getUpgrade(id).Name}  ·  Lv {level}`
-			row.Detail.Text = describe(id, data, passes)
-			if level >= maxLevel then
-				row.Button.setText("MAXED")
-				row.Button.setEnabled(false)
-			else
-				local cost = Economy.upgradeCost(id, level)
-				row.Button.setText(`{Format.number(cost)} {Theme.Text.Currency}`)
-				row.Button.setEnabled(data.Cash >= cost)
-			end
-		end
+	local update = makeUpdater(rows)
+	local latest: { [string]: any }? = nil
+	local function wrapped(snapshot: { [string]: any })
+		latest = snapshot
+		update(snapshot)
 	end
-
-	return { update = update }
+	keepBoostLive(list, update, function()
+		return latest
+	end)
+	return { update = wrapped }
 end
 
 return UpgradeList

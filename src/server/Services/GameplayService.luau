@@ -9,6 +9,8 @@ local Workspace = game:GetService("Workspace")
 local Config = require(ReplicatedStorage.Shared.Config)
 local DataService = require(script.Parent.DataService)
 local Economy = require(ReplicatedStorage.Shared.Economy)
+local Format = require(ReplicatedStorage.Shared.Format)
+local GardenService = require(script.Parent.GardenService)
 local ItemService = require(script.Parent.ItemService)
 local Net = require(ReplicatedStorage.Shared.Net)
 local PassService = require(script.Parent.PassService)
@@ -29,6 +31,10 @@ type Timers = {
 	-- Items the player is currently standing in range of. Only items that
 	-- weren't here last frame count as being run over.
 	touching: { [Item]: boolean },
+	-- Whether the player is stood on the bin. Same rule as items: you have to
+	-- arrive carrying something, so picking a unit up while already stood on
+	-- the bin doesn't instantly throw it away.
+	onBin: boolean,
 }
 
 local GameplayService = {}
@@ -73,6 +79,25 @@ local function checkPickup(player: Player, playerTimers: Timers)
 	end
 
 	playerTimers.touching = touchingNow
+
+	local bin = GardenService.binPosition(player)
+	if bin then
+		local delta = bin - root.Position
+		local onBin = Vector2.new(delta.X, delta.Z).Magnitude <= Config.Balance.Bin.Radius
+		if onBin and not playerTimers.onBin and data.Carried > 0 then
+			local tier = ItemService.binCarried(player)
+			if tier then
+				local amount = Economy.binValue(tier)
+				RewardService.grantCash(player, amount)
+				StateService.notify(
+					player,
+					`{Theme.Units[tier].Name} binned for {Format.number(amount)} {Theme.Text.Currency}.`,
+					"Reward"
+				)
+			end
+		end
+		playerTimers.onBin = onBin
+	end
 end
 
 local function tick(player: Player, playerTimers: Timers, now: number)
@@ -121,6 +146,7 @@ function GameplayService.addPlayer(player: Player)
 		dropInterval = wait,
 		nextAutoMerge = now,
 		touching = {},
+		onBin = false,
 	}
 	-- A carried item dies with the character, so rebuild it on respawn.
 	characterConnections[player] = player.CharacterAdded:Connect(function()

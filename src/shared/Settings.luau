@@ -11,7 +11,7 @@ export type Settings = {
 }
 
 local settings: Settings = {
-	Theme = "Squishies",
+	Theme = "CandyLand",
 
 	-- Changing this starts every player fresh. Keep it stable once the game is live.
 	DataStoreName = "PlayerData_v1",
@@ -28,6 +28,7 @@ local settings: Settings = {
 		CashSmall = 0,
 		CashLarge = 0,
 		UnitBoost = 0,
+		GemPack = 0,
 	},
 }
 

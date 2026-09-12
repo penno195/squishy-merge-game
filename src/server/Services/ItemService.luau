@@ -49,7 +49,16 @@ local function noteDiscovery(player: Player, tier: number)
 	local data = DataService.get(player)
 	if data and tier > data.HighestTier then
 		data.HighestTier = tier
-		StateService.notify(player, `New {Theme.Text.Unit} discovered: {Theme.Units[tier].Name}!`, "Discovery")
+		-- Gems are granted here rather than through RewardService, which
+		-- requires this module and so can't be required back.
+		local gems = Balance.Gems.PerDiscovery
+		data.Gems += gems
+		StateService.markDirty(player)
+		StateService.notify(
+			player,
+			`New {Theme.Text.Unit} discovered: {Theme.Units[tier].Name}!  +{gems} Gems`,
+			"Discovery"
+		)
 	end
 end
 
@@ -114,6 +123,12 @@ function ItemService.dropItem(player: Player, tier: number, restCFrame: CFrame?,
 	end
 
 	local model = UnitVisuals.build(tier)
+	-- The client animates items around this pose. Sending it explicitly, before
+	-- the model is ever parented, is what stops an item being left hanging in
+	-- mid-air: reading the replicated pivot instead can catch a falling item
+	-- part-way down, because the landing position and the "Landed" attribute
+	-- replicate on separate paths and don't always arrive in that order.
+	model:SetAttribute("Rest", rest)
 	model:SetAttribute("Landed", not falling)
 	model:PivotTo(if falling then rest + Vector3.new(0, Balance.Drop.FallHeight, 0) else rest)
 	model.Parent = folder
@@ -244,6 +259,21 @@ function ItemService.dropCarried(player: Player): Item?
 	clearCarried(player)
 	data.Carried = 0
 	return ItemService.dropItem(player, tier, rest, false)
+end
+
+-- Throws away whatever the player is carrying, returning its tier so the
+-- caller can pay for it. Paying happens there rather than here because
+-- RewardService requires this module and so can't be required back.
+function ItemService.binCarried(player: Player): number?
+	local data = DataService.get(player)
+	if not data or data.Carried == 0 then
+		return nil
+	end
+	local tier = data.Carried
+	clearCarried(player)
+	data.Carried = 0
+	syncData(player)
+	return tier
 end
 
 -- Merges the first matching pair lying in the garden (the auto-merge gamepass).

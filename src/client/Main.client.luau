@@ -9,11 +9,13 @@ local EffectsController = require(script.Parent.Controllers.EffectsController)
 local Hud = require(script.Parent.UI.Hud)
 local Net = require(ReplicatedStorage.Shared.Net)
 local State = require(script.Parent.State)
+local WheelController = require(script.Parent.Controllers.WheelController)
 
 Hud.start()
 Board.start()
 EffectsController.start()
 CarryController.start()
+WheelController.start()
 State.start()
 
 -- Tell the server the UI is listening; it replies with state, any queued

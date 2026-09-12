@@ -30,12 +30,23 @@ local function rewardText(key: string): string
 	if reward.IncomeMinutes then
 		table.insert(parts, fill(`{reward.IncomeMinutes} minutes of {Theme.Text.Currency} income`))
 	end
+	if reward.Gems then
+		table.insert(parts, `{reward.Gems} Gems, for earning boosts`)
+	end
 	if reward.UnitTierBonus then
 		-- Plain string: the braces are placeholders for fill(), not interpolation.
 		table.insert(parts, fill("a bonus {Unit}, " .. reward.UnitTierBonus .. " tiers above your spawn"))
 	end
 	return table.concat(parts, " and ")
 end
+
+-- Products are keyed by a code name; these are what players actually see.
+local PRODUCT_TITLES: { [string]: string } = {
+	CashSmall = fill("Pouch of {Currency}"),
+	CashLarge = fill("Barrel of {Currency}"),
+	UnitBoost = fill("Bonus {Unit}"),
+	GemPack = "Gem Pack",
+}
 
 local PASSES = {
 	{
@@ -111,7 +122,7 @@ function Shop.create(parent: Instance)
 
 	for key, id in Config.Settings.Products do
 		if id ~= 0 and Monetisation.ProductRewards[key] then
-			addEntry(key, rewardText(key), id, Enum.InfoType.Product, function()
+			addEntry(PRODUCT_TITLES[key] or key, rewardText(key), id, Enum.InfoType.Product, function()
 				MarketplaceService:PromptProductPurchase(LocalPlayer, id)
 			end)
 		end
