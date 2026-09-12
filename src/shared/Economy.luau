@@ -109,10 +109,26 @@ function Economy.dropTier(data: Types.PlayerData): number
 	return math.min(1 + Economy.upgradeLevel(data, "SpawnTier"), Config.MaxTier - 1)
 end
 
+-- The average wait between drops.
 function Economy.dropInterval(data: Types.PlayerData, passMultiplier: number): number
 	local drop = Balance.Drop
 	local interval = drop.BaseInterval * drop.Factor ^ Economy.upgradeLevel(data, "SpawnSpeed")
 	return math.max(interval * passMultiplier, drop.MinInterval)
+end
+
+-- One actual wait, scattered around the average.
+function Economy.randomDropInterval(data: Types.PlayerData, passMultiplier: number): number
+	local jitter = Balance.Drop.Jitter
+	local spread = 1 + (math.random() * 2 - 1) * jitter
+	return math.max(Economy.dropInterval(data, passMultiplier) * spread, Balance.Drop.MinInterval / 2)
+end
+
+-- Drops arrive as a random tier from the top of the player's range, so an
+-- upgraded garden still receives the lower tiers it needs to merge with.
+function Economy.randomDropTier(data: Types.PlayerData): number
+	local top = Economy.dropTier(data)
+	local bottom = math.max(1, top - (Balance.Drop.TierWindow - 1))
+	return math.random(bottom, top)
 end
 
 function Economy.buyUnitCost(data: Types.PlayerData): number

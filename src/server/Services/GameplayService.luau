@@ -22,6 +22,9 @@ type Item = ItemService.Item
 type Timers = {
 	nextIncome: number,
 	nextDrop: number,
+	-- The randomised wait currently being counted down, so the HUD bar can
+	-- show real progress rather than the average.
+	dropInterval: number,
 	nextAutoMerge: number,
 	-- Items the player is currently standing in range of. Only items that
 	-- weren't here last frame count as being run over.
@@ -90,8 +93,10 @@ local function tick(player: Player, playerTimers: Timers, now: number)
 
 	-- A full garden leaves the drop "due", so one falls as soon as there's room.
 	if now >= playerTimers.nextDrop and Economy.hasRoom(data) then
-		if ItemService.dropItem(player, Economy.dropTier(data), nil, true) then
-			playerTimers.nextDrop = now + Economy.dropInterval(data, PassService.spawnMultiplier(player))
+		if ItemService.dropItem(player, Economy.randomDropTier(data), nil, true) then
+			local wait = Economy.randomDropInterval(data, PassService.spawnMultiplier(player))
+			playerTimers.nextDrop = now + wait
+			playerTimers.dropInterval = wait
 		end
 	end
 
@@ -109,9 +114,11 @@ function GameplayService.addPlayer(player: Player)
 		return
 	end
 	local now = Workspace:GetServerTimeNow()
+	local wait = Economy.randomDropInterval(data, PassService.spawnMultiplier(player))
 	timers[player] = {
 		nextIncome = now + 1,
-		nextDrop = now + Economy.dropInterval(data, PassService.spawnMultiplier(player)),
+		nextDrop = now + wait,
+		dropInterval = wait,
 		nextAutoMerge = now,
 		touching = {},
 	}
@@ -135,8 +142,9 @@ function GameplayService.resetDropTimer(player: Player)
 	local playerTimers = timers[player]
 	local data = DataService.get(player)
 	if playerTimers and data then
-		playerTimers.nextDrop = Workspace:GetServerTimeNow()
-			+ Economy.dropInterval(data, PassService.spawnMultiplier(player))
+		local wait = Economy.randomDropInterval(data, PassService.spawnMultiplier(player))
+		playerTimers.nextDrop = Workspace:GetServerTimeNow() + wait
+		playerTimers.dropInterval = wait
 	end
 end
 
@@ -188,7 +196,7 @@ function GameplayService.init()
 		local data = DataService.get(player)
 		if playerTimers and data then
 			snapshot.NextDropAt = playerTimers.nextDrop
-			snapshot.DropInterval = Economy.dropInterval(data, PassService.spawnMultiplier(player))
+			snapshot.DropInterval = playerTimers.dropInterval
 			snapshot.IncomePerSecond = RewardService.incomePerSecond(player)
 			snapshot.GardenCapacity = Economy.gardenCapacity(data)
 		end

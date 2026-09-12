@@ -2,7 +2,7 @@
 -- Builds the model for a unit tier. A theme can supply real models under
 -- ReplicatedStorage.ThemeAssets.Units (matched by UnitDef.Model); anything
 -- missing falls back to a procedural squishy blob in the unit's colour.
--- Models are pivoted at their bottom centre so they sit on a slot.
+-- Models are pivoted at their bottom centre so they rest on the ground.
 
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -67,8 +67,21 @@ local function buildBlob(tier: number, color: Color3): Model
 		makeBall("Shine", Vector3.one * eyeSize * 0.35, shinePosition, Color3.new(1, 1, 1), model)
 	end
 
-	model.WorldPivot = CFrame.new()
 	return model
+end
+
+-- Pivot at the bottom centre, so placing an item rests it on the ground
+-- instead of burying it to the waist. Model.WorldPivot is ignored once a
+-- PrimaryPart exists, so the offset has to go on the part itself.
+local function setBottomPivot(model: Model)
+	local boxCFrame, boxSize = model:GetBoundingBox()
+	local bottomCentre = CFrame.new(boxCFrame.Position.X, boxCFrame.Position.Y - boxSize.Y / 2, boxCFrame.Position.Z)
+	local primary = model.PrimaryPart
+	if primary then
+		primary.PivotOffset = primary.CFrame:Inverse() * bottomCentre
+	else
+		model.WorldPivot = bottomCentre
+	end
 end
 
 local function addLabel(model: Model, name: string, tier: number)
@@ -157,12 +170,11 @@ function UnitVisuals.build(tier: number): Model
 				descendant.CanTouch = false
 			end
 		end
-		local boxCFrame, boxSize = model:GetBoundingBox()
-		model.WorldPivot = boxCFrame * CFrame.new(0, -boxSize.Y / 2, 0)
 	else
 		model = buildBlob(tier, def.Color)
 	end
 
+	setBottomPivot(model)
 	model.Name = def.Name
 	model:SetAttribute("Tier", tier)
 	addLabel(model, def.Name, tier)

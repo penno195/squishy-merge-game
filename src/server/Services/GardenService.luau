@@ -344,7 +344,8 @@ function GardenService.randomRestCFrame(player: Player): CFrame?
 	local halfDepth = Garden.Depth / 2 - padding
 	local x = (math.random() * 2 - 1) * halfWidth
 	local z = (math.random() * 2 - 1) * halfDepth
-	return origin * CFrame.new(x, FLOOR_HEIGHT, z) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
+	local restY = FLOOR_HEIGHT + Balance.Drop.RestLift
+	return origin * CFrame.new(x, restY, z) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
 end
 
 -- The same, but as close as possible to a world position (used when a player
@@ -359,7 +360,8 @@ function GardenService.restCFrameAt(player: Player, worldPosition: Vector3): CFr
 	local padding = Balance.Drop.EdgePadding
 	local x = math.clamp(localPosition.X, -(Garden.Width / 2 - padding), Garden.Width / 2 - padding)
 	local z = math.clamp(localPosition.Z, -(Garden.Depth / 2 - padding), Garden.Depth / 2 - padding)
-	return origin * CFrame.new(x, FLOOR_HEIGHT, z) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
+	local restY = FLOOR_HEIGHT + Balance.Drop.RestLift
+	return origin * CFrame.new(x, restY, z) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
 end
 
 return GardenService

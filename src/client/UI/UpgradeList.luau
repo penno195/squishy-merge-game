@@ -26,9 +26,9 @@ local function describe(id: string, data: Types.PlayerData, passes: { [string]: 
 	if id == "SpawnSpeed" then
 		local passMultiplier = if passes.FastSpawn then Config.Balance.Monetisation.FastSpawnMultiplier else 1
 		local interval = Economy.dropInterval(data, passMultiplier)
-		return `A {Theme.Text.Unit} drops every {string.format("%.1f", interval)}s`
+		return `A {Theme.Text.Unit} drops about every {string.format("%.1f", interval)}s`
 	elseif id == "SpawnTier" then
-		return `Drops arrive as {Theme.Units[Economy.dropTier(data)].Name}`
+		return `Drops up to {Theme.Units[Economy.dropTier(data)].Name}`
 	elseif id == "GardenSpace" then
 		return `Garden holds {Economy.gardenCapacity(data)} {Theme.Text.UnitPlural}`
 	elseif id == "Income" then

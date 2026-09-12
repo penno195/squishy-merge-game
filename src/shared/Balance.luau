@@ -22,10 +22,18 @@ return {
 	GardenCapacities = { 12, 16, 21, 27, 33, 40 },
 
 	Drop = {
-		BaseInterval = 5,
-		MinInterval = 0.75,
+		BaseInterval = 10,
+		MinInterval = 2,
 		-- Interval multiplier per Drop Speed level.
 		Factor = 0.9,
+		-- Each wait is randomised by up to this fraction either way, so drops
+		-- don't arrive like a metronome.
+		Jitter = 0.4,
+		-- Drops pick a random tier from the top of the player's range: the drop
+		-- tier and the 3 below it, or down to tier 1, whichever comes first.
+		TierWindow = 4,
+		-- Items rest a touch above the floor so they read as sitting on it.
+		RestLift = 0.2,
 		-- Items fall in from this height, over this long.
 		FallHeight = 70,
 		FallSeconds = 0.9,
