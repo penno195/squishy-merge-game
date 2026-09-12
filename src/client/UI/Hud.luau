@@ -16,6 +16,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Components = require(script.Parent.Components)
+local Confirm = require(script.Parent.Confirm)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Economy = require(ReplicatedStorage.Shared.Economy)
 local Format = require(ReplicatedStorage.Shared.Format)
@@ -205,12 +206,12 @@ function Hud.start()
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -16),
-		Size = UDim2.fromOffset(360, 200),
+		Size = UDim2.fromOffset(360, 216),
 		Parent = screen,
 	})
 	local carryLabel = Components.label({
 		Text = "",
-		Size = UDim2.new(1, 0, 0, 24),
+		Size = UDim2.new(1, 0, 0, 42),
 		TextColor3 = Palette.Accent,
 		TextWrapped = true,
 		MaxTextSize = 22,
@@ -220,20 +221,20 @@ function Hud.start()
 	local dropLabel = Components.label({
 		Text = "",
 		Size = UDim2.new(1, 0, 0, 22),
-		Position = UDim2.fromOffset(0, 28),
+		Position = UDim2.fromOffset(0, 44),
 		TextColor3 = Palette.TextMuted,
 		MaxTextSize = 20,
 		Stroke = 2,
 		Parent = bottom,
 	})
 	local dropBar = Components.bar({
-		Position = UDim2.fromOffset(0, 52),
+		Position = UDim2.fromOffset(0, 68),
 		Size = UDim2.new(1, 0, 0, 14),
 		Parent = bottom,
 	})
 	local buyButton = Components.button({
 		Text = "",
-		Position = UDim2.fromOffset(0, 74),
+		Position = UDim2.fromOffset(0, 90),
 		Size = UDim2.new(1, 0, 0, 62),
 		Parent = bottom,
 	}, function()
@@ -245,12 +246,25 @@ function Hud.start()
 	-- On-screen drop, so touch players (and anyone who'd rather click) have one.
 	local dropButton = Components.button({
 		Text = "",
-		Position = UDim2.fromOffset(0, 142),
+		Position = UDim2.fromOffset(0, 158),
 		Size = UDim2.new(1, 0, 0, 54),
 		BackgroundColor3 = Palette.Secondary,
 		Parent = bottom,
 	}, function()
 		Net.event("DropCarried"):FireServer()
+	end)
+
+	-- Selling at the bin (centre) ----------------------------------------
+	local confirm = Confirm.create(screen)
+	Net.event("SellPrompt").OnClientEvent:Connect(function(tier: number?, amount: number?)
+		if not (tier and amount) then
+			confirm.close()
+			return
+		end
+		confirm.ask(`Sell your {Theme.Units[tier].Name}?`, `+{Format.number(amount)} {Theme.Text.Currency}`, function()
+			Sound.play(Theme.Sounds.Purchase)
+			Net.event("SellCarried"):FireServer()
+		end)
 	end)
 
 	-- Toasts (top centre) ------------------------------------------------

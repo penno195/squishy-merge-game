@@ -33,8 +33,11 @@ type Timers = {
 	touching: { [Item]: boolean },
 	-- Whether the player is stood on the bin. Same rule as items: you have to
 	-- arrive carrying something, so picking a unit up while already stood on
-	-- the bin doesn't instantly throw it away.
+	-- the bin doesn't instantly ask about throwing it away.
 	onBin: boolean,
+	-- Whether a sell confirmation is open, so it can be taken back down if the
+	-- player wanders off instead of answering.
+	sellPrompt: boolean,
 }
 
 local GameplayService = {}
@@ -85,16 +88,14 @@ local function checkPickup(player: Player, playerTimers: Timers)
 		local delta = bin - root.Position
 		local onBin = Vector2.new(delta.X, delta.Z).Magnitude <= Config.Balance.Bin.Radius
 		if onBin and not playerTimers.onBin and data.Carried > 0 then
-			local tier = ItemService.binCarried(player)
-			if tier then
-				local amount = Economy.binValue(tier)
-				RewardService.grantCash(player, amount)
-				StateService.notify(
-					player,
-					`{Theme.Units[tier].Name} binned for {Format.number(amount)} {Theme.Text.Currency}.`,
-					"Reward"
-				)
-			end
+			-- Ask rather than sell. Selling is destructive and irreversible, and
+			-- the bin sits where a player might wander while carrying something
+			-- they meant to keep.
+			playerTimers.sellPrompt = true
+			Net.event("SellPrompt"):FireClient(player, data.Carried, Economy.binValue(data.Carried))
+		elseif playerTimers.sellPrompt and (not onBin or data.Carried == 0) then
+			playerTimers.sellPrompt = false
+			Net.event("SellPrompt"):FireClient(player)
 		end
 		playerTimers.onBin = onBin
 	end
@@ -147,6 +148,7 @@ function GameplayService.addPlayer(player: Player)
 		nextAutoMerge = now,
 		touching = {},
 		onBin = false,
+		sellPrompt = false,
 	}
 	-- A carried item dies with the character, so rebuild it on respawn.
 	characterConnections[player] = player.CharacterAdded:Connect(function()
@@ -198,6 +200,42 @@ function GameplayService.init()
 		if playerTimers then
 			playerTimers.touching[dropped] = true
 		end
+	end)
+
+	-- The answer to the sell confirmation. Everything is re-checked here: the
+	-- client can fire this whenever it likes, and the prompt it came from may
+	-- be stale by now.
+	Net.event("SellCarried").OnServerEvent:Connect(function(player)
+		local data = DataService.get(player)
+		local playerTimers = timers[player]
+		if not (data and playerTimers) or data.Carried == 0 then
+			return
+		end
+
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		local bin = GardenService.binPosition(player)
+		if not (root and root:IsA("BasePart") and bin) then
+			return
+		end
+		local delta = bin - root.Position
+		if Vector2.new(delta.X, delta.Z).Magnitude > Config.Balance.Bin.Radius then
+			StateService.notify(player, `Stand at the {Theme.Text.Bin} to sell.`, "Error")
+			return
+		end
+
+		local tier = ItemService.binCarried(player)
+		if tier then
+			local amount = Economy.binValue(tier)
+			RewardService.grantCash(player, amount)
+			StateService.notify(
+				player,
+				`{Theme.Units[tier].Name} sold for {Format.number(amount)} {Theme.Text.Currency}.`,
+				"Reward"
+			)
+		end
+		playerTimers.sellPrompt = false
+		Net.event("SellPrompt"):FireClient(player)
 	end)
 
 	Net.event("BuyUnit").OnServerEvent:Connect(function(player)

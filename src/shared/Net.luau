@@ -9,6 +9,7 @@ local FOLDER_NAME = "Remotes"
 local EVENTS = {
 	-- Client -> server
 	"DropCarried",
+	"SellCarried",
 	"BuyUnit",
 	"BuyUpgrade",
 	"BuyBoost",
@@ -23,6 +24,7 @@ local EVENTS = {
 	"Notify",
 	"MergeEffect",
 	"SpinResult",
+	"SellPrompt",
 	"Leaderboard",
 }
 

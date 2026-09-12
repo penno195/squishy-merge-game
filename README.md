@@ -64,12 +64,13 @@ plus a few IDs — no gameplay code is copied or edited.
   the top tier from about 5% to about 65% at max level without ever making a
   tier impossible. The board quotes the resulting percentage. Rebirth trades
   everything for a permanent multiplier.
-- A bin sits in the front-left corner of each garden. Run into it carrying a
-  unit and it's sold for half that tier's base price -- somewhere to dump tiers
-  that have dropped out of the window and can no longer find a partner. The
-  refund is priced off the tier's base cost rather than its income, so binning
-  a bought unit can never turn a profit. The HUD says so outright when the unit
-  you're holding can no longer be merged with anything.
+- A bin sits in the front-left corner of each garden -- somewhere to dump tiers
+  that have dropped out of the window and can no longer find a partner. What a
+  unit is worth shows on the carry line the moment you pick it up, and running
+  into the bin asks before it sells rather than taking the unit off you. The
+  price is half that tier's base cost rather than a slice of its income, so
+  selling a bought unit can never turn a profit. The HUD also says outright
+  when the unit you're holding can no longer be merged with anything.
 - Gems are the premium currency, earned from discoveries, daily rewards and
   rebirths, or bought with Robux. They buy the timed earning boost and nothing
   else, so the drip is deliberately small.
