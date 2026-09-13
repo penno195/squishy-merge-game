@@ -1,5 +1,15 @@
 # Roadmap
 
+**Where things stand (2026-09-13).** Batch 1 is done and committed; batch 2 is
+half done — `ClaimList` and quests are in, playtime rewards and leaderboard
+payouts are not. None of it has been played yet beyond the first pass that
+turned up the daily-panel, rebirth and leaderboard fixes. Next session: play
+what's there, then finish batch 2 (both remaining items ride on `ClaimList`,
+and `data.Playtime` and the session clock already exist, so neither is large).
+
+`tests/README.md` explains how to run the headless checks — worth doing before
+and after any change to the shared modules.
+
 Planned work, in dependency order. Each batch is meant to be synced to Studio
 and played before the next one starts.
 
