@@ -18,7 +18,10 @@ local Theme = Config.Theme
 local Daily = {}
 
 function Daily.create(parent: Instance)
-	local panel = Components.panel("Daily Rewards", UDim2.fromOffset(560, 320), parent)
+	-- Tall enough for the row of cards, the status line and the claim button with
+	-- air between them: 150 of cards, 32 of status and 56 of button don't fit in
+	-- the 238 of content a 320-tall panel leaves.
+	local panel = Components.panel("Daily Rewards", UDim2.fromOffset(560, 360), parent)
 
 	local row = Components.new("Frame", {
 		BackgroundTransparency = 1,

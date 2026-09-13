@@ -33,6 +33,12 @@ local TEMPLATE: PlayerData = {
 	PurchaseIds = {},
 	Craft = { Inputs = {}, EndsAt = 0 },
 	Sparkles = {},
+	Discovered = {},
+	Stats = {},
+	Playtime = 0,
+	Codes = {},
+	Tutorial = 0,
+	Quests = { Day = -1, Week = -1, Active = {} },
 }
 
 local DataService = {}
@@ -62,11 +68,32 @@ local function migrateLegacy(data: PlayerData)
 		upgrades.GardenSpace = math.max(upgrades.GardenSpace or 0, upgrades.PlotSize)
 		upgrades.PlotSize = nil
 	end
+
+	-- `Discovered` arrived with variants, so a save from before it is empty
+	-- while the player plainly has discovered things. Fill it in from what was
+	-- already recorded, or every unit they own announces itself as new the
+	-- first time they log in after the update.
+	if next(data.Discovered) == nil then
+		for tier = 1, data.HighestTier do
+			data.Discovered[tostring(tier)] = true
+		end
+		for position, sparkle in Config.Sparkles do
+			if (data.Sparkles[sparkle.Id] or 0) > 0 then
+				data.Discovered[tostring(Economy.sparkleIndex(position))] = true
+			end
+		end
+		for _, index in data.Items do
+			data.Discovered[tostring(index)] = true
+		end
+	end
 end
 
--- The theme can change between versions (fewer tiers, fewer sparkles), so fit
--- saved data to it. Items are clamped to the whole unit list rather than the
--- merge ladder, since the sparkles live on the end of it.
+-- The theme can change between versions (fewer tiers, fewer sparkles, fewer
+-- variants), so fit saved data to it. Items are clamped to the whole unit list
+-- rather than the merge ladder, since the sparkles and the variant blocks live
+-- on the end of it. Clamping is blunt: shortening the list can land a saved
+-- item in a different block than it left in. That's the same trade the theme
+-- swap has always made, and the reason DataStoreName is per game.
 local function fitToConfig(data: PlayerData)
 	local maxUnit = #Config.Units
 	for index, tier in data.Items do
@@ -74,10 +101,17 @@ local function fitToConfig(data: PlayerData)
 	end
 	data.Carried = math.clamp(data.Carried, 0, maxUnit)
 	data.HighestTier = math.clamp(data.HighestTier, 1, Config.MaxTier)
-	-- Only ordinary units are ever loaded into the machine.
-	for index, tier in data.Craft.Inputs do
-		data.Craft.Inputs[index] = math.clamp(tier, 1, Config.MaxTier)
+	-- The machine takes ordinary units and variants, never sparkles. Anything
+	-- that no longer fits the list is clamped, and a sparkle that somehow got
+	-- in is dropped rather than clamped into an ordinary unit.
+	local inputs = {}
+	for _, index in data.Craft.Inputs do
+		local fitted = math.clamp(index, 1, maxUnit)
+		if not Economy.isSparkle(fitted) then
+			table.insert(inputs, fitted)
+		end
 	end
+	data.Craft.Inputs = inputs
 end
 
 local function runCallbacks(callbacks: { Callback }, player: Player, data: PlayerData)

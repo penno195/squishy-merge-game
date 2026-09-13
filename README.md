@@ -52,6 +52,15 @@ earned. A published server ignores it; set it to 0 to test the real drip.
   `Hub.PlotGap` sets how far out the gardens are (the plot radius is 48 plus
   it, with six of them) and `Hub.RingFraction` how much of that the walkway
   takes; between them they decide how much open ground is left.
+- A leaderboard stands on the other side of the crafting station from the
+  wheel, raised on a post so it reads at eye level. One face, one ranking:
+  total earned, with each player's rebirth count as a badge on their row. A
+  board nobody can see both sides of at once can't be compared, and a combined
+  score of cash and rebirths is a number no player can act on — so it ranks the
+  one thing that's always moving and carries the other alongside it. A second
+  metric, if it ever wants ranking properly, belongs on a second board standing
+  beside this one. `Leaderboard.BoardRows` sets how many places it shows; the
+  panel still lists the full top 25.
 - A prize wheel stands beside the crafting station, a little taller than the
   players queuing at it. Everyone gets one free spin a day and can buy more
   with gems; prizes are cash, gems and bonus units. Walk up to it or use the
@@ -68,7 +77,7 @@ earned. A published server ignores it; set it to 0 to test the real drip.
   buy one. A drop rolls a tier from a five-rung window at the top of the
   player's range, weighted as a pyramid (roughly 48/24/14/10/5 by default), so
   there's always low-tier fodder to merge with and the top of the window stays
-  a prize.
+  a prize. It then rolls a **variant** over the top of that — see below.
 - Run over a unit to pick it up. You carry one at a time. Run over a *matching*
   tier and both are destroyed, leaving the next tier on the ground to be picked
   up again — merges don't chain in your hands. Running over a different tier is
@@ -79,13 +88,18 @@ earned. A published server ignores it; set it to 0 to test the real drip.
   sparkle on your plinths. Whatever you're carrying doesn't earn.
 - The board across the back of the garden sells Drop Tier, Drop Speed and Max
   Items for cash, and the two timed things for gems: the Earning Boost and a
-  Lucky Charm. Luck tilts the drop pyramid upward while it runs -- every rung
+  Lucky Charm. Luck tilts the drop pyramid upward while it runs — every rung
   is multiplied by `(1 + bias)` more than the one below it, taking the top of
   the drop window from about 5% of drops to about 43% without ever making a
   tier impossible. Ten minutes for 10 gems; the tile quotes what buying one
   would do, not the odds you already have. Rebirth trades everything for a
-  permanent multiplier.
-- A bin sits in the front-left corner of each garden -- somewhere to dump tiers
+  permanent multiplier, and needs two things rather than one: the cash, and a
+  unit on the ground at or above a required rung. Cash alone made it a waiting
+  game — park a full garden, come back, press the button — where a rung has to
+  be merged for. The requirement starts at tier 10 and climbs by one per
+  rebirth, stopping two short of the top of the ladder so the late ones stay
+  reachable; `Balance.Rebirth.BaseTier` and `TierPerRebirth` are the knobs.
+- A bin sits in the front-left corner of each garden — somewhere to dump tiers
   that have dropped out of the window and can no longer find a partner. What a
   unit is worth shows on the carry line the moment you pick it up, and running
   into the bin asks before it sells rather than taking the unit off you. The
@@ -93,8 +107,8 @@ earned. A published server ignores it; set it to 0 to test the real drip.
   selling a bought unit can never turn a profit. The HUD also says outright
   when the unit you're holding can no longer be merged with anything.
 - Gems are the premium currency, earned from discoveries, daily rewards and
-  rebirths, or bought with Robux. They buy the two timed effects -- the earning
-  boost and the lucky charm -- and finish a craft early, so the drip is
+  rebirths, or bought with Robux. They buy the two timed effects — the earning
+  boost and the lucky charm — and finish a craft early, so the drip is
   deliberately small.
 - Offline earnings, a 7-day daily reward streak and global leaderboards keep
   players coming back. Offline earnings ignore the boost, so one can't be
@@ -108,7 +122,7 @@ The one place in the game that makes something you can't merge your way to.
   whatever happens, and carrying is one at a time, so a full machine is four
   trips out of the garden.
 - The panel shows the odds as they're loaded, recalculated from
-  `Economy.craftOutcomes` -- the same function the server rolls with, so what's
+  `Economy.craftOutcomes` — the same function the server rolls with, so what's
   on screen is exactly what will happen.
 - Start it, and it runs for **four hours of real time**, offline included. The
   machine's own screen out in the hub counts down, and a toast lands when it's
@@ -119,8 +133,8 @@ The one place in the game that makes something you can't merge your way to.
 
 ### How the odds are built
 
-Each sparkle covers a **band** of three ordinary tiers -- ten bands over the
-thirty-rung ladder both shipped themes use -- and the best unit in the machine
+Each sparkle covers a **band** of three ordinary tiers — ten bands over the
+thirty-rung ladder both shipped themes use — and the best unit in the machine
 picks which sparkle is being played for. Every input counts for
 `TierWeight ^ (tier - the bottom of that band)`, so one unit from the top of a
 band is worth four from the bottom of it, and a unit below the band counts for
@@ -129,7 +143,7 @@ that sparkle's ceiling; anything less curves away below it.
 
 So four tier 3s, playing for a 1-3 sparkle: **50% sparkle, 30% tier 6, 20%
 tier 4**. Four tier 1s in the same band: about 9%. One tier 3 on its own: the
-same as four tier 1s, which is the rule in a sentence -- one good one is worth
+same as four tier 1s, which is the rule in a sentence — one good one is worth
 four poor ones.
 
 The ceiling comes down as the bands climb (50% at the bottom, 30% at the top),
@@ -138,8 +152,8 @@ they pay out less often. Nothing reaches certainty, by design.
 
 ### Sparkles and the plinths
 
-A sparkle is a unit like any other -- it lies in the garden, earns, and can be
-picked up and carried -- with three differences: it can't be merged, the bin
+A sparkle is a unit like any other — it lies in the garden, earns, and can be
+picked up and carried — with three differences: it can't be merged, the bin
 won't take it, and it survives a rebirth. It earns like a unit four tiers above
 its band, which is more than anything else a craft can produce.
 
@@ -148,7 +162,7 @@ The first one of each also earns a **permanent share of everything you make**
 bonus belongs to the trophy rather than the copy: it's counted off the
 collection record, so it survives a rebirth and never has to be kept in the
 garden, and a second copy of the same sparkle doesn't pay it twice. Duplicates
-are still worth crafting -- they're among the best-earning units in the game --
+are still worth crafting — they're among the best-earning units in the game —
 they just don't stack the multiplier.
 
 **The plinths** are where the collection is shown off. Every garden has one
@@ -164,6 +178,97 @@ it.
 Mechanically sparkles are the tail of the same unit list: `Config.Units` is the
 merge ladder with the theme's sparkles appended, and `Config.MaxTier` stays the
 top of the ladder, which is what stops anything ever merging into one.
+
+## Variants
+
+The same unit, worth more. After a drop has rolled its tier it rolls a variant:
+Shiny, Golden or Rainbow by default, at 6%, 1.2% and 0.2%. The rest of the
+time — almost all of it — an ordinary unit lands.
+
+A variant multiplies what that unit earns and what it sells for (x3, x12, x60
+by default) without changing its rung, so a Golden tier 4 earns more than an
+ordinary tier 9 while still merging like a tier 4. That's the point of them: a
+drop that would otherwise be fodder is occasionally the best thing in the
+garden, and it arrives on its own schedule rather than the upgrade board's.
+
+The variant roll is independent of the tier roll, so a variant is as likely on
+a low rung as a high one — the prize is the variant, not the pairing. Luck
+lifts each variant's chance by the same `(1 + Bias)` it puts on the tier
+pyramid, so a lucky charm is worth buying for two reasons at once.
+
+### What a variant is for
+
+Two things, and the second is the one that matters.
+
+**It can be merged**, with another of the same tier *and* the same variant.
+That works, and on its own it isn't enough: climbing a variant costs
+exponentially — a Shiny tier 5 needs sixteen Shiny tier 1s — and the rarer the
+variant the further out of reach that gets. Treat it as something that
+occasionally happens near the bottom of the ladder, not as the point of them.
+
+**It can be fed to the crafting machine**, which is the point of them. A
+variant counts as the rung it copies for choosing the sparkle and for progress,
+and on top of that it lifts the ceiling on that load's sparkle chance. So a
+variant is a decision rather than a windfall: leave it in the garden earning
+its multiple, or spend it on the odds of a trophy.
+
+What the boost buys is a share of the gap between that sparkle's own ceiling
+and `Craft.HardCap`, not a multiple of the ceiling. Multiplying looks simpler
+and behaves badly — the bottom band's ceiling is already 50%, so one Golden
+would reach the cap by itself and a machine full of Rainbows would be worth no
+more than that. Closing the gap keeps every rung of the variant ladder
+distinguishable and keeps stacking worth something:
+
+| load, on the 1–3 band | sparkle chance |
+|---|---|
+| four ordinary tier 3 | 50% |
+| three, plus one Shiny | 60% |
+| three, plus one Golden | 71% |
+| three, plus one Rainbow | 79% |
+| four Rainbow | 90% |
+| one Rainbow, alone | 13% |
+
+That last row is the shape of the whole thing: the machine still wants to be
+full, and a single rare unit doesn't substitute for filling it. Variants help
+most on the deepest bands, where the ceiling is lowest and the gap widest —
+one Shiny takes the 28–30 band from 30% to 46%.
+
+Sparkles still can't go in. Variants now can.
+
+**Merging matches on the whole unit, not the rung.** Two Golden tier 4s make a
+Golden tier 5; a Golden and an ordinary tier 4 do nothing at all. So a variant
+is a decision rather than a windfall: it's worth far more than its tier, but
+climbing with it means finding another of the same kind. Variants do not
+survive a rebirth — they're progress, not limited editions, which is what the
+sparkles are for.
+
+### How they're built
+
+Variants are the sparkle trick used a second time. `Config.Units` is the merge
+ladder, then the sparkles, then one full copy of the ladder per variant:
+
+```
+1 .. MaxTier                            the merge ladder
+MaxTier + 1 .. VariantBase              the sparkles
+VariantBase + (v - 1) * MaxTier + tier  variant v of that tier
+```
+
+So a variant unit is just another unit index. It drops, merges, is carried,
+earns, is sold and is labelled by code that has never heard of variants. And
+because each block is a copy of the ladder *in order*, merging is still "the
+next index up", which is what keeps a merge inside the variant it started in
+without anything having to check.
+
+Config stamps `Tier` and `Variant` onto every entry as it builds the list, so
+reading either back is a lookup rather than arithmetic. The arithmetic that's
+left — going from a tier and a variant to an index — lives in
+`Economy.variantIndex` and nowhere else.
+
+`Balance.Variants` is the mechanics: the Id, how rare each one is, and what it
+multiplies by. A theme's own `Variants` table names and colours them by that
+Id. Anything a theme leaves out falls back to the Id as a name and a tint
+toward white, so a new skin has working variants before anyone has styled them,
+and `Balance.Variants = {}` turns them off entirely.
 
 ## Scenery
 
@@ -208,16 +313,57 @@ height, and the difference is large enough to matter when picking numbers:
 A garden reaches 28 studs either side of its centre once its plinths are
 counted. The tightest ring for width is `Approach`, which passes about 10
 studs in front of the garden fences, and the tightest for height is `HubEdge`,
-which has to stay off the walkway -- so a `Butter` there wants a `Height`
+which has to stay off the walkway — so a `Butter` there wants a `Height`
 around 9, where a `Cane` could be 45. They
 exist so a new skin looks dressed before a single asset has been modelled or
-bought, and they're a shared vocabulary rather than a themed one -- a new skin
+bought, and they're a shared vocabulary rather than a themed one — a new skin
 that needs a shape nobody has built yet adds it here, and every other theme can
 then use it too. `Blob` and `Butter` carry a face on the side turned towards
 the middle of the map, which is what makes a giant prop read as one of the
 things the game is about rather than as furniture. To swap in real
 artwork later, drop an `.rbxm` into `assets/props/` and name it in the entry's
 `Model` field — no placement or gameplay code changes.
+
+## Quests
+
+Three a day and one a week, drawn from pools in `Balance.Quests`. Each one is a
+tally of a verb the game already announces — merges, drops, sales, upgrades,
+spins, crafts, discoveries — so adding a quest is a line in Balance and nothing
+else. Rewards are ordinary reward bundles, the same ones the wheel and the daily
+streak use, so they scale with the player's income.
+
+Two things make this cheap. Progress is measured off the lifetime tallies
+`StatsService` already keeps, from where the counter stood when the quest was
+handed out, so nothing is counted twice and a quest can't be completed by work
+done before it was set. And which quests a player gets is a pure function of
+their user id and the day, so the same three come back on a rejoin without the
+set being stored, and the server and the panel agree without talking.
+
+Dailies and the weekly roll over independently: a weekly in progress survives
+the daily reset. The panel is built on `ClaimList`, a shared list of
+"make progress, then claim" rows — the playtime ladder and the leaderboard
+payouts are the same shape and will use it rather than growing their own.
+
+## What the game measures
+
+Every verb the game has — a drop, a merge, a sale, an upgrade, a craft, a
+spin, a rebirth, a purchase — is announced once through `ActionService`, a
+server-side bus that requires nothing and that anything can subscribe to.
+
+Two things listen today. `AnalyticsService` reports to Roblox's analytics:
+currency in and out of every action, custom events for the rare ones, the
+merge ladder as a progression path, and one summary when a session ends.
+Currencies are reported as "Cash" and "Gems" whatever the theme calls them, so
+one dashboard reads every game built from this base. `StatsService` keeps
+lifetime tallies in the save, because "has this player ever..." and "how many
+more until..." are the questions quests and the tutorial are made of.
+
+Analytics has to be switched on for the experience in the Creator Dashboard.
+Until it is, every call throws; they're all wrapped, so the game plays normally
+and warns once.
+
+Measuring something new is a line in `AnalyticsService`, not an edit to the
+gameplay that reported it.
 
 ## Reskinning
 
@@ -229,7 +375,7 @@ change in `Settings.Theme`. Squishies is the theme this place currently ships.
 
 One caveat when swapping themes over an existing save: units carry across by
 tier, and so do sparkles, which are indexed the same way. The *collection
-record* behind the plinths is keyed by sparkle `Id`, so it doesn't -- a Cherry
+record* behind the plinths is keyed by sparkle `Id`, so it doesn't — a Cherry
 Sparkle isn't a Red Sparkle. That's right for two separate games, each with its
 own `DataStoreName`, and only surprising when testing both over one save.
 
@@ -274,6 +420,10 @@ cp .env.example .env     # then fill in the API key, universe ID and place ID
 The API key needs the **universe-places** permission with **Write** on that
 experience, from https://create.roblox.com/dashboard/credentials. `.env` is
 git-ignored — don't commit the key.
+
+## What's next
+
+`ROADMAP.md` has the planned work in dependency order.
 
 ## Layout
 

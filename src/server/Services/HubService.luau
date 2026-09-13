@@ -1,7 +1,7 @@
 --!strict
 -- The middle of the map: the pad players spawn on, the moving walkway that
 -- rings it, the paths out to each garden gate, the crafting station in the
--- middle and the prize wheel beside it.
+-- middle, the prize wheel to one side of it and the leaderboard to the other.
 --
 -- Built after GardenService, which owns the World folder and decides how far
 -- out the gardens sit.
@@ -42,9 +42,31 @@ local MACHINE_PLINTH = 1.2
 -- How much of the frame shows around the screen on the front of it.
 local SCREEN_EDGE = 1
 
+-- The leaderboard, mirroring the wheel on the other side of the machine. Raised
+-- on a post so the reading surface sits at eye level rather than at the ankles.
+--
+-- One face, one ranking. A board nobody can see both sides of at once can't be
+-- compared, and a combined score of cash and rebirths is a number no player can
+-- act on. So it ranks the one thing that's always moving -- total earned -- and
+-- carries each player's rebirth count as a badge on their row, which is both
+-- facts in one ranking. A second metric, if it ever wants ranking properly,
+-- belongs on a second board standing beside this one.
+local BOARD_OFFSET = 19
+local BOARD_WIDTH = 14
+local BOARD_HEIGHT = 11
+local BOARD_THICKNESS = 1.2
+local BOARD_POST = 4
+local BOARD_EDGE = 0.7
+-- Enough that a name is legible from the spawn pad, 22 studs away.
+local BOARD_PIXELS_PER_STUD = 34
+-- The saved field the board ranks.
+local BOARD_STAT = "TotalEarned"
+
 local HubService = {}
 
 local machinePosition: Vector3? = nil
+-- Row labels for each face of the leaderboard, filled in by LeaderboardService.
+local boardRows: { [string]: { { Name: TextLabel, Value: TextLabel, Badge: TextLabel } } } = {}
 
 local function makePart(
 	name: string,
@@ -335,9 +357,141 @@ local function buildMachine(parent: Instance, origin: CFrame)
 	machinePosition = (origin * CFrame.new(0, bodyY, 0)).Position
 end
 
+-- One face of the leaderboard: a title and a column of rows, drawn onto a
+-- screen inset into the board the same way the machine's is. The rows are built
+-- empty and kept, so refreshing the board is setting text rather than rebuilding
+-- a surface every minute.
+local function buildBoardFace(model: Model, origin: CFrame, stat: string, title: string)
+	-- A part's Front face is its -Z, which is the side looking at the spawn pad.
+	local screen = makePart(
+		`Screen{stat}`,
+		Vector3.new(BOARD_WIDTH - BOARD_EDGE * 2, BOARD_HEIGHT - BOARD_EDGE * 2, 0.3),
+		origin * CFrame.new(0, 0, -(BOARD_THICKNESS / 2 + 0.08)),
+		Theme.Palette.Background,
+		Enum.Material.SmoothPlastic,
+		model
+	)
+	screen.CanCollide = false
+
+	local surface = Instance.new("SurfaceGui")
+	surface.Face = Enum.NormalId.Front
+	surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	surface.PixelsPerStud = BOARD_PIXELS_PER_STUD
+	surface.LightInfluence = 0
+	surface.Parent = screen
+
+	local function label(props: { [string]: any }): TextLabel
+		local text = Instance.new("TextLabel")
+		text.BackgroundTransparency = 1
+		text.FontFace = Theme.Font
+		text.TextScaled = false
+		text.TextColor3 = Theme.Palette.Text
+		for key, value in props do
+			(text :: any)[key] = value
+		end
+		text.Parent = surface
+		return text
+	end
+
+	local rowCount = Balance.Leaderboard.BoardRows
+	local headerHeight = 0.16
+	local rowHeight = (1 - headerHeight) / rowCount
+
+	label({
+		Text = title,
+		Size = UDim2.fromScale(1, headerHeight),
+		TextColor3 = Theme.Palette.Accent,
+		TextSize = math.floor(BOARD_HEIGHT * headerHeight * BOARD_PIXELS_PER_STUD * 0.8),
+	})
+
+	local rows = {}
+	for rank = 1, rowCount do
+		local y = headerHeight + (rank - 1) * rowHeight
+		local size = math.floor(BOARD_HEIGHT * rowHeight * BOARD_PIXELS_PER_STUD * 0.72)
+		rows[rank] = {
+			Name = label({
+				Text = "",
+				Position = UDim2.fromScale(0.04, y),
+				Size = UDim2.fromScale(0.62, rowHeight),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextSize = size,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+			}),
+			Value = label({
+				Text = "",
+				Position = UDim2.fromScale(0.58, y),
+				Size = UDim2.fromScale(0.26, rowHeight),
+				TextXAlignment = Enum.TextXAlignment.Right,
+				TextColor3 = Theme.Palette.Accent,
+				TextSize = size,
+			}),
+			-- The second fact, carried rather than ranked.
+			Badge = label({
+				Text = "",
+				Position = UDim2.fromScale(0.86, y),
+				Size = UDim2.fromScale(0.12, rowHeight),
+				TextXAlignment = Enum.TextXAlignment.Right,
+				TextColor3 = Theme.Palette.TextMuted,
+				TextSize = size,
+			}),
+		}
+	end
+	boardRows[stat] = rows
+end
+
+-- The leaderboard itself: a post and a board, turned to face the spawn pad the
+-- same way the wheel is. Server-built, like the plinths and the garden name
+-- boards, because the whole point of a ranking is that everyone can read it.
+local function buildLeaderboard(parent: Instance, origin: CFrame)
+	local board = Instance.new("Model")
+	board.Name = "Leaderboard"
+	board.Parent = parent
+
+	makePart(
+		"Post",
+		Vector3.new(1.8, BOARD_POST, 1.8),
+		origin * CFrame.new(0, PAD_THICKNESS + BOARD_POST / 2, 0),
+		Theme.World.Border,
+		Enum.Material.SmoothPlastic,
+		board
+	)
+
+	local bodyY = PAD_THICKNESS + BOARD_POST + BOARD_HEIGHT / 2
+	makePart(
+		"Body",
+		Vector3.new(BOARD_WIDTH, BOARD_HEIGHT, BOARD_THICKNESS),
+		origin * CFrame.new(0, bodyY, 0),
+		Theme.World.Fence,
+		Theme.World.FenceMaterial,
+		board
+	)
+
+	buildBoardFace(board, origin * CFrame.new(0, bodyY, 0), BOARD_STAT, `Top {Theme.Text.Currency}`)
+end
+
 -- Where the crafting station stands, for the range check on feeding it.
 function HubService.machinePosition(): Vector3?
 	return machinePosition
+end
+
+-- Fills one face of the leaderboard. Entries are already ranked and formatted;
+-- rows past the end of the list are blanked, so a board that shrinks doesn't
+-- leave a stale name on the bottom row.
+function HubService.setLeaderboard(stat: string, entries: { { Name: string, Value: string, Badge: string } })
+	local rows = boardRows[stat]
+	if not rows then
+		return
+	end
+	for rank, row in rows do
+		local entry = entries[rank]
+		row.Name.Text = if entry then `{rank}. {entry.Name}` else ""
+		row.Value.Text = if entry then entry.Value else ""
+		row.Badge.Text = if entry then entry.Badge else ""
+	end
+	-- An empty board should say so rather than sit blank and look broken.
+	if #entries == 0 and rows[1] then
+		rows[1].Name.Text = "No one yet — be the first!"
+	end
 end
 
 function HubService.init()
@@ -377,6 +531,10 @@ function HubService.init()
 	-- warped wheel rather than an angled one.
 	local wheelPosition = Vector3.new(-WHEEL_OFFSET, 0, 0)
 	buildWheel(hub, CFrame.lookAt(wheelPosition, Vector3.new(0, 0, -Hub.SpawnOffset)))
+	-- Mirrored across the machine from the wheel, and turned to the spawn pad
+	-- for the same reason: a flat face read at an angle is a hard read.
+	local boardPosition = Vector3.new(BOARD_OFFSET, 0, 0)
+	buildLeaderboard(hub, CFrame.lookAt(boardPosition, Vector3.new(0, 0, -Hub.SpawnOffset)))
 end
 
 return HubService

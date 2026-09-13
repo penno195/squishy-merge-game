@@ -111,6 +111,35 @@ return {
 		Spacing = 6.5,
 	},
 
+	-- Variants: the same unit, worth more. A drop rolls a tier first and then a
+	-- variant, so a variant is a second axis over the whole ladder rather than
+	-- content of its own -- thirty rungs become a hundred and twenty without a
+	-- single new model, and every drop carries a chance of something better
+	-- than its tier.
+	--
+	-- This list is the mechanics: how rare each one is, and what it multiplies
+	-- income and sale value by. A theme names and colours them in its own
+	-- `Variants` table, keyed by these Ids; one it says nothing about falls
+	-- back to the Id as its name and a default tint, so a new skin gets working
+	-- variants before anyone has picked a palette for them.
+	--
+	-- Ordinary-first, rarest-last, and the chances have to add up to less than
+	-- 1 -- whatever is left over is an ordinary unit, which is most of them.
+	-- Luck lifts each chance by (1 + Bias), the same tilt it puts on the tier
+	-- pyramid, so a charm is worth buying for two reasons at once.
+	-- `CraftBoost` is what a variant is worth in the crafting machine. It lifts
+	-- the ceiling on that load's sparkle chance rather than the chance itself,
+	-- so a rare one is worth feeding to a machine already full of the band's
+	-- best tier. That's the decision a variant is for — leave it in the garden
+	-- earning, or spend it on the odds. Boosts multiply when several go in, and
+	-- what they buy is a share of the gap up to Craft.HardCap, so the ladder
+	-- stays distinguishable instead of everything above Shiny hitting the cap.
+	Variants = {
+		{ Id = "Shiny", Chance = 0.06, Income = 3, CraftBoost = 1.35 },
+		{ Id = "Golden", Chance = 0.012, Income = 12, CraftBoost = 2.1 },
+		{ Id = "Rainbow", Chance = 0.002, Income = 60, CraftBoost = 3.6 },
+	},
+
 	Pickup = {
 		-- How close the player has to get to scoop an item up.
 		Radius = 4,
@@ -198,6 +227,15 @@ return {
 		Growth = 4,
 		-- Permanent cash multiplier gained per rebirth.
 		MultiplierPerRebirth = 0.5,
+		-- A rebirth also needs the garden to have climbed: the best rung lying
+		-- in it has to reach this one. Cash on its own makes the gate a waiting
+		-- game -- park a full garden, come back, press the button -- where a
+		-- rung has to be merged for. The requirement rises with each rebirth,
+		-- so the run after a rebirth is a longer climb rather than a faster
+		-- repeat of the same one, and it stops short of the top of the ladder
+		-- so the last rebirths stay reachable.
+		BaseTier = 10,
+		TierPerRebirth = 1,
 	},
 
 	OfflineEarnings = {
@@ -277,9 +315,12 @@ return {
 		SkipGemsPerHour = 8,
 		TierWeight = 2,
 		-- The odds at an empty-ish machine and at a full one. A theme's sparkle
-		-- can lower its own ceiling; nothing raises it.
+		-- can lower its own ceiling; only variants raise it.
 		MinChance = 0.02,
 		MaxChance = 0.5,
+		-- However many variants go in, a craft never becomes a certainty. Four
+		-- Rainbows on the bottom band reach this and stop.
+		HardCap = 0.9,
 		-- Above 1, so a nearly-full machine is worth far more than a half-full
 		-- one and there's a reason to wait for the fourth unit.
 		Curve = 1.4,
@@ -296,9 +337,107 @@ return {
 		},
 	},
 
+	-- Quests: three a day and one a week, each one a tally of a verb the game
+	-- already announces. `Stat` names a StatsService counter, and progress is
+	-- measured from where that counter stood when the quest was handed out, so
+	-- nothing has to be tracked twice.
+	--
+	-- Rewards are ordinary reward bundles, the same ones the wheel and the
+	-- daily streak use, so they scale with the player's income and a theme can
+	-- re-price them without touching any code.
+	Quests = {
+		DailyCount = 3,
+		-- Pool for the daily three. Wider than DailyCount so the set changes.
+		Daily = {
+			{
+				Id = "DailyMerge",
+				Text = "Merge units",
+				Stat = "Merges",
+				Target = 30,
+				Reward = { IncomeMinutes = 6, MinCash = 400 },
+			},
+			{
+				Id = "DailyCollect",
+				Text = "Collect drops",
+				Stat = "Drops",
+				Target = 40,
+				Reward = { IncomeMinutes = 5, MinCash = 300 },
+			},
+			{
+				Id = "DailyUpgrade",
+				Text = "Buy upgrades",
+				Stat = "Upgrades",
+				Target = 3,
+				Reward = { IncomeMinutes = 8, MinCash = 500 },
+			},
+			{
+				Id = "DailySell",
+				Text = "Sell units to the bin",
+				Stat = "Sales",
+				Target = 8,
+				Reward = { IncomeMinutes = 4, MinCash = 250 },
+			},
+			{
+				Id = "DailySpin",
+				Text = "Spin the prize wheel",
+				Stat = "Spins",
+				Target = 1,
+				Reward = { IncomeMinutes = 5, MinCash = 300, Gems = 2 },
+			},
+			{
+				Id = "DailyCraft",
+				Text = "Start a craft",
+				Stat = "Crafts",
+				Target = 1,
+				Reward = { IncomeMinutes = 10, MinCash = 600, Gems = 3 },
+			},
+			{
+				Id = "DailyDiscover",
+				Text = "Discover new units",
+				Stat = "Discoveries",
+				Target = 2,
+				Reward = { IncomeMinutes = 7, MinCash = 450 },
+			},
+		},
+		-- Pool for the one weekly. Bigger asks, bigger bundles.
+		Weekly = {
+			{
+				Id = "WeekMerge",
+				Text = "Merge units this week",
+				Stat = "Merges",
+				Target = 400,
+				Reward = { IncomeMinutes = 45, MinCash = 5000, Gems = 15 },
+			},
+			{
+				Id = "WeekCraft",
+				Text = "Collect finished crafts",
+				Stat = "CraftsCollected",
+				Target = 3,
+				Reward = { IncomeMinutes = 60, MinCash = 8000, Gems = 25 },
+			},
+			{
+				Id = "WeekDiscover",
+				Text = "Discover new units this week",
+				Stat = "Discoveries",
+				Target = 10,
+				Reward = { IncomeMinutes = 50, MinCash = 6000, Gems = 20 },
+			},
+			{
+				Id = "WeekUpgrade",
+				Text = "Buy upgrades this week",
+				Stat = "Upgrades",
+				Target = 25,
+				Reward = { IncomeMinutes = 40, MinCash = 4000, Gems = 12 },
+			},
+		},
+	},
+
 	Leaderboard = {
 		Size = 25,
 		RefreshSeconds = 60,
+		-- How many of those the board in the hub shows. Fewer than the panel,
+		-- because it's read from across the map rather than scrolled.
+		BoardRows = 8,
 	},
 
 	AutosaveSeconds = 120,

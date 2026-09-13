@@ -18,10 +18,13 @@ end
 -- the test in one place is what lets the rest of the game treat them as units.
 
 function Economy.isSparkle(index: number): boolean
-	return index > Config.MaxTier
+	return index > Config.MaxTier and index <= Config.VariantBase
 end
 
 function Economy.sparkleAt(index: number): Types.SparkleDef?
+	if not Economy.isSparkle(index) then
+		return nil
+	end
 	return Config.Sparkles[index - Config.MaxTier]
 end
 
@@ -47,6 +50,61 @@ end
 
 function Economy.hasSparkle(data: Types.PlayerData, id: string): boolean
 	return (data.Sparkles[id] or 0) > 0
+end
+
+-- Variants ---------------------------------------------------------------
+-- A variant is the same unit worth more: the merge ladder repeated past the
+-- sparkles, one block per variant. Config stamps `Tier` and `Variant` onto
+-- every entry when it builds the list, so reading either back is a lookup
+-- rather than arithmetic on the index -- and the arithmetic that is left, going
+-- the other way, lives here and nowhere else.
+
+-- Which variant an index is, or 0 for an ordinary unit or a sparkle.
+function Economy.variantOf(index: number): number
+	local unit = Config.Units[index]
+	return if unit then unit.Variant or 0 else 0
+end
+
+function Economy.variantAt(index: number)
+	return Config.Variants[Economy.variantOf(index)]
+end
+
+-- The rung on the merge ladder an index sits on, the same for a unit and every
+-- variant of it. 0 for a sparkle, which sits off the end of the ladder.
+function Economy.ladderTier(index: number): number
+	local unit = Config.Units[index]
+	return if unit then unit.Tier or 0 else 0
+end
+
+-- The other direction: the index of a tier in a given variant. Variant 0 is the
+-- ordinary ladder, where the index and the tier are the same number.
+function Economy.variantIndex(tier: number, variant: number): number
+	-- A variant the current Balance doesn't have falls back to the ordinary
+	-- unit, rather than pointing past the end of the list. That happens when a
+	-- theme trims the variant ladder under a save that used it.
+	if variant <= 0 or not Config.Variants[variant] then
+		return tier
+	end
+	return Config.VariantBase + (variant - 1) * Config.MaxTier + tier
+end
+
+-- What a variant multiplies income and sale value by. 1 for ordinary units.
+function Economy.variantIncome(index: number): number
+	local variant = Economy.variantAt(index)
+	return if variant then variant.Income else 1
+end
+
+-- Whether two of this index can still become something. False at the top of
+-- the ladder and for sparkles, which is what stops either being merged away.
+function Economy.canMerge(index: number): boolean
+	local tier = Economy.ladderTier(index)
+	return tier > 0 and tier < Config.MaxTier
+end
+
+-- What two of them make. Variant blocks are copies of the ladder in order, so
+-- the next index up is the next tier in the same variant.
+function Economy.mergeResult(index: number): number
+	return index + 1
 end
 
 -- Upgrades ---------------------------------------------------------------
@@ -156,12 +214,12 @@ end
 
 -- Takes any unit index. A sparkle earns like an ordinary unit a few tiers above
 -- the top of its band, which puts it above anything else a craft can produce.
-function Economy.tierIncome(tier: number): number
-	local sparkle = Economy.sparkleAt(tier)
-	if sparkle then
-		tier = sparkle.Band[2] + Balance.Craft.SparkleIncomeTiers
-	end
-	return Balance.Income.Base * Balance.Income.TierGrowth ^ (tier - 1)
+-- A variant earns its own multiple of the tier it copies, which is what makes
+-- one worth keeping rather than merging away at the first opportunity.
+function Economy.tierIncome(index: number): number
+	local sparkle = Economy.sparkleAt(index)
+	local tier = if sparkle then sparkle.Band[2] + Balance.Craft.SparkleIncomeTiers else Economy.ladderTier(index)
+	return Balance.Income.Base * Balance.Income.TierGrowth ^ (tier - 1) * Economy.variantIncome(index)
 end
 
 function Economy.rebirthMultiplier(rebirths: number): number
@@ -262,6 +320,45 @@ function Economy.dropTierChances(data: Types.PlayerData, bias: number?): { numbe
 	return chances
 end
 
+-- How likely a drop is to come up as variant `position`, before anything else
+-- has been rolled. Luck lifts every variant by the same (1 + bias) it puts on
+-- the tier pyramid, so a charm buys better drops twice over.
+--
+-- `bias` overrides the player's own, so the garden board can quote what buying
+-- a charm would do rather than what is happening now.
+function Economy.variantChance(position: number, data: Types.PlayerData, bias: number?): number
+	local variant = Config.Variants[position]
+	if not variant then
+		return 0
+	end
+	return math.min(variant.Chance * (1 + (bias or Economy.luckBias(data))), 1)
+end
+
+-- The chance a drop is a variant of any kind. What the board quotes, and what
+-- Luck's second half is really buying.
+function Economy.variantDropChance(data: Types.PlayerData, bias: number?): number
+	local total = 0
+	for position in Config.Variants do
+		total += Economy.variantChance(position, data, bias)
+	end
+	return math.min(total, 1)
+end
+
+-- Rolled independently of the tier, so a variant is as likely on a low rung as
+-- a high one: the prize is the variant, not the pairing. 0 is an ordinary unit,
+-- which is what most drops are.
+function Economy.randomVariant(data: Types.PlayerData, bias: number?): number
+	local roll = math.random()
+	local cumulative = 0
+	for position in Config.Variants do
+		cumulative += Economy.variantChance(position, data, bias)
+		if roll < cumulative then
+			return position
+		end
+	end
+	return 0
+end
+
 function Economy.randomDropTier(data: Types.PlayerData): number
 	local bottom, top = Economy.dropTierRange(data)
 	local roll = math.random()
@@ -273,6 +370,11 @@ function Economy.randomDropTier(data: Types.PlayerData): number
 	end
 	-- Only reachable through floating-point drift on the last rung.
 	return top
+end
+
+-- A whole drop: a tier from the pyramid, then a variant over the top of it.
+function Economy.randomDropIndex(data: Types.PlayerData): number
+	return Economy.variantIndex(Economy.randomDropTier(data), Economy.randomVariant(data))
 end
 
 -- The chance a drop rolls the very top tier, which is what Luck is really
@@ -287,8 +389,9 @@ end
 -- The base price of a tier, before the inflation from units already bought.
 -- Both the buy button and the bin are priced off this, so the two can't drift
 -- into a loop where binning a bought unit turns a profit.
-function Economy.unitValue(tier: number): number
-	return Balance.BuyUnit.BaseCost * Balance.Income.TierGrowth ^ (tier - 1)
+function Economy.unitValue(index: number): number
+	local tier = Economy.ladderTier(index)
+	return Balance.BuyUnit.BaseCost * Balance.Income.TierGrowth ^ (tier - 1) * Economy.variantIncome(index)
 end
 
 function Economy.binValue(tier: number): number
@@ -302,12 +405,17 @@ function Economy.carriedIsStranded(data: Types.PlayerData): boolean
 	if data.Carried == 0 then
 		return false
 	end
+	-- A sparkle is never stranded: it can't be merged in the first place, and
+	-- the bin won't take it either.
+	local tier = Economy.ladderTier(data.Carried)
 	local bottom = Economy.dropTierRange(data)
-	if data.Carried >= bottom then
+	if tier == 0 or tier >= bottom then
 		return false
 	end
-	for _, tier in data.Items do
-		if tier == data.Carried then
+	-- Matched on the whole index, not the rung: an ordinary tier 3 is no use to
+	-- a golden one, and drops can still bring another of either.
+	for _, index in data.Items do
+		if index == data.Carried then
 			return false
 		end
 	end
@@ -323,6 +431,33 @@ end
 
 function Economy.rebirthCost(rebirths: number): number
 	return math.floor(Balance.Rebirth.BaseCost * Balance.Rebirth.Growth ^ rebirths)
+end
+
+-- The rung the garden has to reach before the next rebirth is allowed. Capped
+-- below the top of the ladder, so however many rebirths deep a player gets,
+-- the requirement stays something a garden can actually hold.
+function Economy.rebirthTier(rebirths: number): number
+	local rebirth = Balance.Rebirth
+	return math.min(rebirth.BaseTier + rebirths * rebirth.TierPerRebirth, Config.MaxTier - 2)
+end
+
+-- The best rung the player has to hand: what's lying in the garden and what
+-- they're carrying. A variant counts as the rung it copies, and a sparkle as
+-- nothing, since it was never merged for.
+function Economy.bestOwnedTier(data: Types.PlayerData): number
+	local best = Economy.ladderTier(data.Carried)
+	for _, index in data.Items do
+		best = math.max(best, Economy.ladderTier(index))
+	end
+	return best
+end
+
+function Economy.rebirthTierMet(data: Types.PlayerData): boolean
+	return Economy.bestOwnedTier(data) >= Economy.rebirthTier(data.Rebirths)
+end
+
+function Economy.canRebirth(data: Types.PlayerData): boolean
+	return data.Cash >= Economy.rebirthCost(data.Rebirths) and Economy.rebirthTierMet(data)
 end
 
 -- Daily rewards ----------------------------------------------------------
@@ -342,6 +477,91 @@ function Economy.dailyStatus(data: Types.PlayerData, now: number): (boolean, num
 	local continues = daily.LastClaimDay == today - 1
 	local streak = if continues then daily.Streak % #Balance.DailyRewards + 1 else 1
 	return true, streak
+end
+
+-- Quests -----------------------------------------------------------------
+-- Three a day and one a week, each a tally of a verb the game already counts.
+-- Everything here is pure: which quests a player gets is a function of their
+-- id and the day, so the same three come back on a rejoin without the set
+-- being stored anywhere, and the server and the panel agree without talking.
+
+export type QuestDef = {
+	Id: string,
+	Text: string,
+	Stat: string,
+	Target: number,
+	Reward: Types.Reward,
+}
+
+-- Balance is a plain table, so its quest entries infer a shape narrower than
+-- QuestDef (a reward without Gems isn't the same inferred type as one with).
+-- Pinned here once rather than cast at every use.
+local DAILY_POOL: { QuestDef } = Balance.Quests.Daily :: any
+local WEEKLY_POOL: { QuestDef } = Balance.Quests.Weekly :: any
+
+local questById: { [string]: QuestDef } = {}
+for _, quest in DAILY_POOL do
+	questById[quest.Id] = quest
+end
+for _, quest in WEEKLY_POOL do
+	questById[quest.Id] = quest
+end
+
+function Economy.currentWeek(now: number): number
+	return Economy.currentDay(now) // 7
+end
+
+function Economy.questById(id: string): QuestDef?
+	return questById[id]
+end
+
+-- A small deterministic generator, seeded per player per day. Roblox's Random
+-- would do, but this is pure Luau arithmetic, which means the quest roll can be
+-- tested outside Studio like everything else in this file.
+local function nextSeed(seed: number): number
+	return (seed * 1103515245 + 12345) % 2147483648
+end
+
+-- Picks `count` distinct quests out of a pool, by shuffling it. Seeded, so it
+-- returns the same set every time it's asked for the same seed -- which is what
+-- stops the day's quests reshuffling every time a player rejoins.
+function Economy.pickQuests(seed: number, count: number, weekly: boolean): { QuestDef }
+	local pool: { QuestDef } = if weekly then WEEKLY_POOL else DAILY_POOL
+	local order = table.clone(pool)
+	local state = nextSeed(math.abs(math.floor(seed)) % 2147483648)
+	-- Fisher-Yates from the back, so every arrangement is equally likely.
+	for index = #order, 2, -1 do
+		state = nextSeed(state)
+		local swap = state % index + 1
+		order[index], order[swap] = order[swap], order[index]
+	end
+
+	local picked = {}
+	for index = 1, math.min(count, #order) do
+		picked[index] = order[index]
+	end
+	return picked
+end
+
+-- How far along a quest is, and what it needs. Progress is measured from the
+-- counter's value when the quest was handed out, and clamped, so a tally that
+-- was already high doesn't hand over a finished quest.
+function Economy.questProgress(data: Types.PlayerData, slot: Types.QuestSlot): (number, number)
+	local quest = questById[slot.Id]
+	if not quest then
+		return 0, 1
+	end
+	local done = (data.Stats[quest.Stat] or 0) - slot.Base
+	return math.clamp(done, 0, quest.Target), quest.Target
+end
+
+function Economy.questComplete(data: Types.PlayerData, slot: Types.QuestSlot): boolean
+	local done, target = Economy.questProgress(data, slot)
+	return done >= target
+end
+
+function Economy.questClaimable(data: Types.PlayerData, slot: Types.QuestSlot): boolean
+	return not slot.Claimed and Economy.questComplete(data, slot)
 end
 
 -- Prize wheel -------------------------------------------------------------
@@ -409,10 +629,25 @@ end
 -- measured from this: which sparkle is in play, and what comes out instead.
 local function highestInput(inputs: { number }): number
 	local highest = 0
-	for _, tier in inputs do
-		highest = math.max(highest, tier)
+	for _, index in inputs do
+		highest = math.max(highest, Economy.ladderTier(index))
 	end
 	return highest
+end
+
+-- What the variants in a load are worth to it. Every variant input multiplies
+-- the ceiling on the sparkle chance, so feeding a rare one in is worth
+-- something even to a machine already filled with the band's top tier -- which
+-- is the whole point of letting variants in here.
+function Economy.craftBoost(inputs: { number }): number
+	local boost = 1
+	for _, index in inputs do
+		local variant = Economy.variantAt(index)
+		if variant then
+			boost *= variant.CraftBoost
+		end
+	end
+	return boost
 end
 
 -- Which sparkle a load is playing for: the one whose band holds the best unit
@@ -439,15 +674,37 @@ function Economy.craftProgress(inputs: { number }, sparkle: Types.SparkleDef): n
 	local bottom, top = sparkle.Band[1], sparkle.Band[2]
 	local best = craft.Slots * craft.TierWeight ^ (top - bottom)
 	local total = 0
-	for _, tier in inputs do
-		total += craft.TierWeight ^ (tier - bottom)
+	for _, index in inputs do
+		total += craft.TierWeight ^ (Economy.ladderTier(index) - bottom)
 	end
 	return math.clamp(total / best, 0, 1)
 end
 
+-- The best odds this load could reach, variants included. Raising the ceiling
+-- rather than the chance is what makes a variant worth feeding to a machine
+-- that's already full of the band's top tier.
+--
+-- The boost closes a share of the gap between this sparkle's own ceiling and
+-- the hard cap, rather than multiplying the ceiling outright. Multiplying looks
+-- simpler and behaves badly: the bottom band's ceiling is already 0.5, so a
+-- single Golden would hit the cap on its own, and after that a Rainbow and a
+-- full machine of Rainbows would all be worth exactly the same. Closing the gap
+-- keeps every rung of the variant ladder distinguishable, keeps stacking worth
+-- something, and approaches the cap without ever reaching it -- because a
+-- sparkle you're guaranteed isn't a sparkle.
+function Economy.craftCeiling(inputs: { number }, sparkle: Types.SparkleDef): number
+	local craft = Balance.Craft
+	local base = sparkle.MaxChance or craft.MaxChance
+	local boost = Economy.craftBoost(inputs)
+	if boost <= 1 or base >= craft.HardCap then
+		return base
+	end
+	return base + (craft.HardCap - base) * (1 - 1 / boost)
+end
+
 function Economy.craftSparkleChance(inputs: { number }, sparkle: Types.SparkleDef): number
 	local craft = Balance.Craft
-	local ceiling = sparkle.MaxChance or craft.MaxChance
+	local ceiling = Economy.craftCeiling(inputs, sparkle)
 	local progress = Economy.craftProgress(inputs, sparkle)
 	return math.min(craft.MinChance + (ceiling - craft.MinChance) * progress ^ craft.Curve, ceiling)
 end

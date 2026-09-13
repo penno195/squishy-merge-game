@@ -3,6 +3,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local ActionService = require(script.Parent.ActionService)
 local Config = require(ReplicatedStorage.Shared.Config)
 local DataService = require(script.Parent.DataService)
 local Economy = require(ReplicatedStorage.Shared.Economy)
@@ -37,6 +38,7 @@ local function buyUpgrade(player: Player, id: any)
 	data.Cash -= cost
 	data.Upgrades[id] = level + 1
 	StateService.markDirty(player)
+	ActionService.fire(player, "Upgraded", { Value = level + 1, CashSpent = cost, Fields = { Upgrade = id } })
 end
 
 -- The timed earning boost, paid for in gems. Buying again while one is running
@@ -62,6 +64,7 @@ local function buyBoost(player: Player)
 		)}.`,
 		"Reward"
 	)
+	ActionService.fire(player, "BoostBought", { Value = Economy.boostSeconds(), GemsSpent = cost })
 end
 
 -- Luck, on the same terms as the boost: gems, timed, and buying again while
@@ -86,6 +89,7 @@ local function buyLuck(player: Player)
 		`Lucky charm active! {chance}% of drops are top tier for {Format.time(data.LuckEndsAt - now)}.`,
 		"Reward"
 	)
+	ActionService.fire(player, "LuckBought", { Value = Economy.luckSeconds(), GemsSpent = cost })
 end
 
 local function rebirth(player: Player)
@@ -98,6 +102,17 @@ local function rebirth(player: Player)
 		StateService.notify(
 			player,
 			`You need {Format.number(cost)} {Theme.Text.Currency} to {Theme.Text.Rebirth}!`,
+			"Error"
+		)
+		return
+	end
+	-- The other half of the gate: the garden has to have climbed, not just
+	-- banked. Checked after cash so the message names the thing still missing.
+	local requiredTier = Economy.rebirthTier(data.Rebirths)
+	if not Economy.rebirthTierMet(data) then
+		StateService.notify(
+			player,
+			`You also need a {Config.Units[requiredTier].Name} to {Theme.Text.Rebirth}. Keep merging!`,
 			"Error"
 		)
 		return
@@ -124,6 +139,11 @@ local function rebirth(player: Player)
 		`{Theme.Text.Rebirth} complete! You now earn x{multiplier} {Theme.Text.Currency}, plus {Config.Balance.Gems.PerRebirth} Gems.`,
 		"Rebirth"
 	)
+	ActionService.fire(player, "Rebirthed", {
+		Value = data.Rebirths,
+		CashSpent = cost,
+		Gems = Config.Balance.Gems.PerRebirth,
+	})
 end
 
 function ShopService.init()

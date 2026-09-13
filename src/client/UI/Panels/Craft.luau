@@ -108,7 +108,7 @@ local function oddsRow(order: number, parent: Instance): Row
 end
 
 function Craft.create(parent: Instance)
-	local panel = Components.panel(Theme.Text.Machine, UDim2.fromOffset(440, 648), parent)
+	local panel = Components.panel(Theme.Text.Machine, UDim2.fromOffset(440, 676), parent)
 
 	local slotRow: Frame = Components.new("Frame", {
 		BackgroundTransparency = 1,
@@ -156,9 +156,22 @@ function Craft.create(parent: Instance)
 		rows[index] = oddsRow(index, oddsList)
 	end
 
-	local resultLabel = Components.label({
+	-- Hidden until a variant is actually in the machine, so an ordinary load
+	-- doesn't carry a line explaining something that isn't happening.
+	local boostLabel = Components.label({
 		Text = "",
 		Position = UDim2.fromOffset(4, 366),
+		Size = UDim2.new(1, -8, 0, 26),
+		TextColor3 = Palette.Positive,
+		TextWrapped = true,
+		MaxTextSize = 17,
+		Visible = false,
+		Parent = panel.Content,
+	})
+
+	local resultLabel = Components.label({
+		Text = "",
+		Position = UDim2.fromOffset(4, 394),
 		Size = UDim2.new(1, -8, 0, 30),
 		TextColor3 = Palette.Accent,
 		TextWrapped = true,
@@ -174,7 +187,7 @@ function Craft.create(parent: Instance)
 
 	local startButton = Components.button({
 		Text = "",
-		Position = UDim2.fromOffset(0, 402),
+		Position = UDim2.fromOffset(0, 430),
 		Size = UDim2.new(1, 0, 0, 66),
 		BackgroundColor3 = Palette.Positive,
 		Parent = panel.Content,
@@ -185,7 +198,7 @@ function Craft.create(parent: Instance)
 
 	local secondButton = Components.button({
 		Text = "",
-		Position = UDim2.fromOffset(0, 476),
+		Position = UDim2.fromOffset(0, 504),
 		Size = UDim2.new(1, 0, 0, 54),
 		BackgroundColor3 = Palette.Secondary,
 		Parent = panel.Content,
@@ -195,8 +208,8 @@ function Craft.create(parent: Instance)
 	end)
 
 	local hintLabel = Components.label({
-		Text = `Feed it up to {Economy.craftSlots()} {Theme.Text.UnitPlural}. Better ones, and more of them, mean better odds.`,
-		Position = UDim2.fromOffset(4, 538),
+		Text = `Feed it up to {Economy.craftSlots()} {Theme.Text.UnitPlural}. Better ones, and more of them, mean better odds — and a variant raises the ceiling on them.`,
+		Position = UDim2.fromOffset(4, 566),
 		Size = UDim2.new(1, -8, 0, 24),
 		TextColor3 = Palette.TextMuted,
 		TextWrapped = true,
@@ -225,7 +238,7 @@ function Craft.create(parent: Instance)
 			local unit = if tier then Config.Units[tier] else nil
 			slot.Swatch.BackgroundColor3 = if unit then unit.Color else Palette.Background
 			slot.Name.Text = if unit then unit.Name else "Empty"
-			slot.Level.Text = if tier then `Lv. {tier}` else ""
+			slot.Level.Text = if tier then `Lv. {Economy.ladderTier(tier)}` else ""
 		end
 
 		-- What's stopping the player loading it, said on the button itself.
@@ -246,6 +259,12 @@ function Craft.create(parent: Instance)
 		end
 		addButton.setText(addText)
 		addButton.setEnabled(addEnabled)
+
+		-- Said out loud, because a variant raising the ceiling is invisible
+		-- otherwise: the odds move, but nothing says why they moved.
+		local boost = Economy.craftBoost(inputs)
+		boostLabel.Visible = boost > 1
+		boostLabel.Text = `Variant boost: better odds, up to x{string.format("%.2g", boost)} the usual ceiling`
 
 		local outcomes = Economy.craftOutcomes(inputs)
 		for index, row in rows do

@@ -76,7 +76,8 @@ end
 -- What makes a sparkle look like one: the body lit from inside, a glow around
 -- it and a slow drift of glitter. Applied on top of whatever the model already
 -- is, so it works the same on a procedural blob and on a theme's own model.
-local function addSparkleShine(model: Model, color: Color3)
+-- Variants that ask for it get the same treatment in their own colour.
+local function addShine(model: Model, color: Color3)
 	local body = model:FindFirstChild("Body")
 	if body and body:IsA("BasePart") then
 		body.Material = Enum.Material.Neon
@@ -219,17 +220,17 @@ function UnitVisuals.build(tier: number): Model
 			end
 		end
 	else
-		model = buildBlob(tier, def.Color)
+		model = buildBlob(def.Tier or tier, def.Color)
 	end
 
-	if def.Sparkle then
-		addSparkleShine(model, def.Color)
+	if def.Sparkle or def.Shine then
+		addShine(model, def.Color)
 	end
 
 	setBottomPivot(model)
 	model.Name = def.Name
 	model:SetAttribute("Tier", tier)
-	addLabel(model, def.Name, tier, def.Sparkle)
+	addLabel(model, def.Name, def.Tier or tier, def.Sparkle)
 	CollectionService:AddTag(model, UnitVisuals.Tag)
 	return model
 end

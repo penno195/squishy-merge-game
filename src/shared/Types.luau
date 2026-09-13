@@ -12,6 +12,44 @@ export type UnitDef = {
 	-- Set by Config on the units it appends for the theme's sparkles, so the
 	-- visuals know to build a glowing one. Themes don't set this.
 	Sparkle: boolean?,
+	-- Also set by Config, not by themes. `Tier` is the rung on the merge ladder
+	-- this entry sits on -- the same for a unit and every variant of it, and
+	-- absent on a sparkle, which sits off the end of the ladder. `Variant` is
+	-- the position in Balance.Variants, absent on an ordinary unit. Between
+	-- them, anything holding a unit index knows what it's looking at without
+	-- doing arithmetic on the index.
+	Tier: number?,
+	Variant: number?,
+	Shine: boolean?,
+}
+
+-- One rung of the variant ladder in Balance.Variants: the mechanics half,
+-- shared by every theme. The look of it is VariantDef below, which a theme
+-- supplies and which is keyed by this Id.
+export type VariantRung = {
+	Id: string,
+	-- Chance a drop rolls this variant, before Luck tilts it.
+	Chance: number,
+	-- What it multiplies income and sale value by.
+	Income: number,
+	-- What it multiplies the ceiling on a craft's sparkle chance by, when one
+	-- is fed into the machine.
+	CraftBoost: number,
+}
+
+-- How a theme dresses one of the variants in Balance.Variants. Every field is
+-- optional: a variant the theme says nothing about still drops, named after its
+-- Id and tinted toward white, so variants work in a skin nobody has styled yet.
+export type VariantDef = {
+	-- Goes in front of the unit's own name: "Golden Gummy Bear".
+	Prefix: string?,
+	-- Blended over the unit's own colour, so a variant reads as the same unit
+	-- rather than a different one. `Tint` is how much of it to mix in.
+	Color: Color3?,
+	Tint: number?,
+	-- Lit from inside with a drift of glitter, the way sparkles are. Worth
+	-- saving for the rarest one or two: on everything it stops meaning much.
+	Shine: boolean?,
 }
 
 -- A limited-edition unit, made at the crafting station and never dropped or
@@ -125,6 +163,10 @@ export type Theme = {
 	-- The crafting station's prizes, lowest band first. A theme with none still
 	-- gets a working machine: it just trades units up a few tiers.
 	Sparkles: { SparkleDef }?,
+	-- How this skin dresses the variants in Balance.Variants, keyed by their
+	-- Ids. Anything left out falls back to a default, so this table is optional
+	-- in whole and in part.
+	Variants: { [string]: VariantDef }?,
 	-- Scenery, keyed by the zone Ids in Balance.PropZones. Each slot in a zone
 	-- picks one of that zone's entries at random. A zone the theme says nothing
 	-- about is left bare, and a theme with no Props at all dresses no scenery.
@@ -144,6 +186,26 @@ export type DailyState = {
 export type CraftState = {
 	Inputs: { number },
 	EndsAt: number,
+}
+
+-- One quest as it was handed out. `Base` is where its counter stood at the
+-- time, so progress is the counter now minus that -- which means a quest can
+-- be measured off a tally that was already running without ever crediting the
+-- player for work they did before it was set.
+export type QuestSlot = {
+	Id: string,
+	Base: number,
+	Claimed: boolean,
+	Weekly: boolean,
+}
+
+export type QuestState = {
+	-- The day the dailies were handed out, and the week the weekly was. Both
+	-- are the boundaries Economy.currentDay/currentWeek return.
+	Day: number,
+	Week: number,
+	-- Dailies and the weekly in one list, so the panel renders one thing.
+	Active: { QuestSlot },
 }
 
 export type PlayerData = {
@@ -174,6 +236,23 @@ export type PlayerData = {
 	-- How many of each sparkle the player has ever made, keyed by SparkleDef.Id.
 	-- The collection record: what's in the garden can change, this can't.
 	Sparkles: { [string]: number },
+	-- Every unit index the player has ever held, keyed by tostring(index).
+	-- `HighestTier` is the merge ladder alone; this covers what sits off it,
+	-- which is what the index needs now that variants exist. Keys are strings
+	-- because a map with number keys does not survive a round trip through a
+	-- DataStore -- it comes back keyed by strings whatever it went in as.
+	Discovered: { [string]: boolean },
+	-- Lifetime tallies of the verbs, keyed by the ActionService action that
+	-- counts toward them. Written by StatsService and read by anything that
+	-- asks "how many times has this player ever...".
+	Stats: { [string]: number },
+	-- Seconds played across every session.
+	Playtime: number,
+	-- Redeemable codes already used, keyed by the code in upper case.
+	Codes: { [string]: boolean },
+	-- How far through the tutorial the player got. 0 is "hasn't started".
+	Tutorial: number,
+	Quests: QuestState,
 }
 
 -- A bundle of rewards (daily rewards, dev products). Cash is "minutes of the

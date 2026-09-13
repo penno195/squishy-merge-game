@@ -37,7 +37,14 @@ local balance: typeof(Balance) = if theme.Balance then deepMerge(Balance, theme.
 -- ladder, which is what stops a sparkle ever being merged into one.
 local maxTier = #theme.Units
 local sparkles: { Types.SparkleDef } = theme.Sparkles or {}
-local units: { Types.UnitDef } = table.clone(theme.Units)
+-- Copied rather than referenced: Config stamps `Tier` onto each entry, and the
+-- theme's own table shouldn't change under it.
+local units: { Types.UnitDef } = {}
+for tier, unit in theme.Units do
+	local entry = table.clone(unit)
+	entry.Tier = tier
+	units[tier] = entry
+end
 
 for position, sparkle in sparkles do
 	local bottom, top = sparkle.Band[1], sparkle.Band[2]
@@ -54,14 +61,66 @@ for position, sparkle in sparkles do
 	}
 end
 
+-- Variants use the same trick again, one rung further out. Each one appends a
+-- whole copy of the merge ladder past the sparkles, so a variant unit is just
+-- another index: it drops, merges, earns, is carried and is sold through code
+-- that has never heard of variants. Because a block is a copy of the ladder in
+-- order, merging is still "the next index up", which keeps a merge inside the
+-- variant it started in without anything having to check.
+--
+-- Blocks are laid out ordinary units, then sparkles, then one block per variant:
+--   1 .. MaxTier                            the merge ladder
+--   MaxTier + 1 .. VariantBase              the sparkles
+--   VariantBase + (v - 1) * MaxTier + tier  variant v of that tier
+local variantDefs = balance.Variants :: { Types.VariantRung }
+local themeVariants = theme.Variants or {}
+local variantBase = maxTier + #sparkles
+
+-- A variant the theme hasn't styled is tinted toward white and named after its
+-- Id, so it reads as "the shiny one" rather than as a missing asset.
+local DEFAULT_TINT = 0.45
+local DEFAULT_VARIANT_COLOR = Color3.new(1, 1, 1)
+
+local variantChanceTotal = 0
+for position, variant in variantDefs do
+	variantChanceTotal += variant.Chance
+	local styling: Types.VariantDef = themeVariants[variant.Id] or {}
+	local prefix = styling.Prefix or variant.Id
+	local color = styling.Color or DEFAULT_VARIANT_COLOR
+	local tint = styling.Tint or DEFAULT_TINT
+	local base = variantBase + (position - 1) * maxTier
+
+	for tier = 1, maxTier do
+		local unit = theme.Units[tier]
+		units[base + tier] = {
+			Name = `{prefix} {unit.Name}`,
+			Color = unit.Color:Lerp(color, tint),
+			Model = unit.Model,
+			Scale = unit.Scale,
+			Tier = tier,
+			Variant = position,
+			Shine = styling.Shine,
+		}
+	end
+end
+assert(
+	variantChanceTotal < 1,
+	`Balance.Variants chances add up to {variantChanceTotal}; they have to leave room for an ordinary unit`
+)
+
 return {
 	Settings = Settings,
 	Theme = theme,
 	Balance = balance,
 	-- The merge ladder, indexed by tier.
 	MaxTier = maxTier,
-	-- The ladder with the sparkles appended. Index anything by unit here.
+	-- The ladder, with the sparkles and then the variant blocks appended.
+	-- Index anything by unit here.
 	Units = units,
 	-- Sparkle at position n is unit index MaxTier + n.
 	Sparkles = sparkles,
+	-- The variant ladder from Balance, and where its blocks start. Economy does
+	-- the arithmetic; nothing else should need to.
+	Variants = variantDefs,
+	VariantBase = variantBase,
 }

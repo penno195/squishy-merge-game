@@ -216,6 +216,15 @@ local theme: Types.Theme = {
 	-- Crafting prizes: one per band of three tiers, all the way up the ladder.
 	-- Each is rarer than the last and worth more to keep -- the ceiling on the
 	-- odds comes down as the bands climb, and the permanent bonus goes up.
+	-- How this skin dresses the variants in Balance.Variants. A tint over the
+	-- unit's own colour rather than a colour of its own, so a Golden Mochi still
+	-- reads as a Mochi; only the rarest gets the glow, or it stops meaning much.
+	Variants = {
+		Shiny = { Prefix = "Shiny", Color = Color3.fromRGB(190, 240, 255), Tint = 0.4 },
+		Golden = { Prefix = "Golden", Color = Color3.fromRGB(255, 205, 70), Tint = 0.62 },
+		Rainbow = { Prefix = "Rainbow", Color = Color3.fromRGB(255, 130, 240), Tint = 0.7, Shine = true },
+	},
+
 	Sparkles = {
 		{
 			Id = "RedSparkle",

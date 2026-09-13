@@ -78,15 +78,33 @@ function Index.create(parent: Instance)
 				made += 1
 			end
 		end
-		progress.Text = if #Config.Sparkles > 0
-			then `Discovered {data.HighestTier} / {Config.MaxTier}  ·  {Theme.Text.SparklePlural} {made} / {#Config.Sparkles}`
-			else `Discovered {data.HighestTier} / {Config.MaxTier}`
+		local variantsFound = 0
+		local variantsTotal = #Config.Variants * Config.MaxTier
+		for index = Config.VariantBase + 1, Config.VariantBase + variantsTotal do
+			if data.Discovered[tostring(index)] then
+				variantsFound += 1
+			end
+		end
 
-		for tier, cell in cells do
-			local unit = Config.Units[tier]
-			local sparkle = Economy.sparkleAt(tier)
+		local parts = { `Discovered {data.HighestTier} / {Config.MaxTier}` }
+		if #Config.Sparkles > 0 then
+			table.insert(parts, `{Theme.Text.SparklePlural} {made} / {#Config.Sparkles}`)
+		end
+		if variantsTotal > 0 then
+			table.insert(parts, `Variants {variantsFound} / {variantsTotal}`)
+		end
+		progress.Text = table.concat(parts, "  ·  ")
+
+		for index, cell in cells do
+			local unit = Config.Units[index]
+			local sparkle = Economy.sparkleAt(index)
 			local count = if sparkle then data.Sparkles[sparkle.Id] or 0 else 0
-			local discovered = if sparkle then count > 0 else tier <= data.HighestTier
+			-- The ladder is remembered as a high-water mark and the rest one by
+			-- one, because everything off the ladder can be found out of order.
+			local discovered = if sparkle
+				then count > 0
+				elseif Economy.variantOf(index) > 0 then data.Discovered[tostring(index)] == true
+				else index <= data.HighestTier
 
 			cell.Swatch.BackgroundColor3 = if discovered then unit.Color else Palette.Background
 			cell.Name.Text = if discovered then unit.Name else "???"
@@ -97,7 +115,7 @@ function Index.create(parent: Instance)
 				-- so that's what the card leads with.
 				cell.Income.Text = `+{math.floor(sparkle.Bonus * 100)}% forever  ·  x{count}`
 			else
-				cell.Income.Text = `{Format.number(Economy.tierIncome(tier))} {Theme.Text.Currency}/s`
+				cell.Income.Text = `{Format.number(Economy.tierIncome(index))} {Theme.Text.Currency}/s`
 			end
 			cell.Income.TextColor3 = if sparkle and discovered then Palette.Accent else Palette.TextMuted
 		end

@@ -5,8 +5,10 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
+local ActionService = require(script.Parent.ActionService)
 local Config = require(ReplicatedStorage.Shared.Config)
 local DataService = require(script.Parent.DataService)
+local Economy = require(ReplicatedStorage.Shared.Economy)
 local GardenService = require(script.Parent.GardenService)
 local Net = require(ReplicatedStorage.Shared.Net)
 local StateService = require(script.Parent.StateService)
@@ -45,23 +47,43 @@ local function syncData(player: Player)
 	StateService.markDirty(player)
 end
 
--- Sparkles sit above the ladder and are never "discovered": they're crafted,
--- announced by CraftService, and counted in their own collection.
-local function noteDiscovery(player: Player, tier: number)
+-- Sparkles sit above the ladder and are never "discovered" here: they're
+-- crafted, announced by CraftService, and counted in their own collection.
+--
+-- Two records come out of this. `HighestTier` is progress along the merge
+-- ladder, and paying gems for it is what makes climbing feel like something;
+-- `Discovered` is every index the player has ever held, which is what the
+-- collection index reads now that a tier can turn up in several variants.
+-- A first variant is announced but not paid for: there are as many of those as
+-- there are rungs times variants, and gems are meant to be a trickle.
+local function noteDiscovery(player: Player, index: number)
 	local data = DataService.get(player)
-	if data and tier <= Config.MaxTier and tier > data.HighestTier then
-		data.HighestTier = tier
+	if not data then
+		return
+	end
+	local key = tostring(index)
+	local first = not data.Discovered[key]
+	data.Discovered[key] = true
+
+	if index <= Config.MaxTier and index > data.HighestTier then
+		data.HighestTier = index
 		-- Gems are granted here rather than through RewardService, which
 		-- requires this module and so can't be required back.
 		local gems = Balance.Gems.PerDiscovery
 		data.Gems += gems
-		StateService.markDirty(player)
 		StateService.notify(
 			player,
-			`New {Theme.Text.Unit} discovered: {Theme.Units[tier].Name}!  +{gems} Gems`,
+			`New {Theme.Text.Unit} discovered: {Config.Units[index].Name}!  +{gems} Gems`,
 			"Discovery"
 		)
+		ActionService.fire(player, "Discovered", { Value = index, Gems = gems })
+	elseif first and Economy.variantOf(index) > 0 then
+		StateService.notify(player, `A {Config.Units[index].Name}! You've never seen one of those.`, "Discovery")
+		ActionService.fire(player, "Discovered", { Value = index })
+	elseif not first then
+		return
 	end
+	StateService.markDirty(player)
 end
 
 -- Prefer a spot that isn't on top of another item.
@@ -224,17 +246,20 @@ end
 -- ground, to be picked up again. Returns the item it left behind.
 function ItemService.mergeWith(player: Player, item: Item): Item?
 	local data = DataService.get(player)
-	if not data or data.Carried ~= item.tier or item.tier >= Config.MaxTier then
+	-- Matched on the whole index, so a merge needs the same tier *and* the same
+	-- variant: an ordinary one won't pair with a golden.
+	if not data or data.Carried ~= item.tier or not Economy.canMerge(item.tier) then
 		return nil
 	end
 	local pivot = item.model:GetPivot()
-	local tier = item.tier + 1
+	local tier = Economy.mergeResult(item.tier)
 
 	removeItem(player, item)
 	clearCarried(player)
 	data.Carried = 0
 	local created = ItemService.dropItem(player, tier, pivot, false)
 	Net.event("MergeEffect"):FireAllClients(pivot.Position, tier)
+	ActionService.fire(player, "Merged", { Value = tier })
 	return created
 end
 
@@ -287,15 +312,16 @@ function ItemService.autoMerge(player: Player): boolean
 	end
 	local firstByTier: { [number]: Item } = {}
 	for _, item in list do
-		if item.tier < Config.MaxTier and item.model:GetAttribute("Landed") then
+		if Economy.canMerge(item.tier) and item.model:GetAttribute("Landed") then
 			local first = firstByTier[item.tier]
 			if first then
 				local pivot = first.model:GetPivot()
-				local tier = item.tier + 1
+				local tier = Economy.mergeResult(item.tier)
 				removeItem(player, first)
 				removeItem(player, item)
 				ItemService.dropItem(player, tier, pivot, false)
 				Net.event("MergeEffect"):FireAllClients(pivot.Position, tier)
+				ActionService.fire(player, "Merged", { Value = tier, Fields = { Auto = "yes" } })
 				return true
 			end
 			firstByTier[item.tier] = item

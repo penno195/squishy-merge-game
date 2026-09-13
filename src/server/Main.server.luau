@@ -8,6 +8,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 
 local Services = script.Parent.Services
 
+local AnalyticsService = require(Services.AnalyticsService)
 local CraftService = require(Services.CraftService)
 local DailyService = require(Services.DailyService)
 local DataService = require(Services.DataService)
@@ -19,12 +20,17 @@ local LeaderboardService = require(Services.LeaderboardService)
 local PassService = require(Services.PassService)
 local PlinthService = require(Services.PlinthService)
 local ProductService = require(Services.ProductService)
+local QuestService = require(Services.QuestService)
 local PropService = require(Services.PropService)
 local ShopService = require(Services.ShopService)
+local StatsService = require(Services.StatsService)
 local StateService = require(Services.StateService)
 local WheelService = require(Services.WheelService)
 
 StateService.init()
+-- Before anything that fires an action, so nothing early is missed.
+AnalyticsService.init()
+StatsService.init()
 GardenService.init()
 -- After GardenService: these hang off the world it builds.
 HubService.init()
@@ -37,6 +43,7 @@ DailyService.init()
 ProductService.init()
 LeaderboardService.init()
 WheelService.init()
+QuestService.init()
 -- After HubService: it needs to know where the machine was built.
 CraftService.init()
 
@@ -62,11 +69,15 @@ DataService.onLoaded(function(player, data)
 	GameplayService.addPlayer(player)
 	LeaderboardService.addPlayer(player)
 	CraftService.addPlayer(player)
+	QuestService.refresh(player)
+	AnalyticsService.addPlayer(player)
 	StateService.markDirty(player)
 end)
 
 DataService.onReleasing(function(player, data)
 	data.LastOnline = os.time()
+	-- First, while the profile is still readable: it reports the session totals.
+	AnalyticsService.removePlayer(player)
 	GameplayService.removePlayer(player)
 	LeaderboardService.removePlayer(player)
 	ItemService.clear(player)

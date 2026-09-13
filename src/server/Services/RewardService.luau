@@ -45,11 +45,23 @@ function RewardService.grantCash(player: Player, amount: number)
 	StateService.markDirty(player)
 end
 
--- Grants a reward bundle and returns a description like "1.2K Goo + a Mochi".
-function RewardService.grant(player: Player, reward: Types.Reward): string
+-- What a bundle actually handed over. The description is for the player; this
+-- is for anything that has to act on the amounts -- analytics, and later the
+-- quests that count them.
+export type Granted = {
+	Cash: number,
+	Gems: number,
+	-- The unit index of a bonus unit, when one fitted in the garden.
+	Tier: number?,
+}
+
+-- Grants a reward bundle and returns a description like "1.2K Goo + a Mochi",
+-- alongside what was handed over.
+function RewardService.grant(player: Player, reward: Types.Reward): (string, Granted)
+	local granted: Granted = { Cash = 0, Gems = 0 }
 	local data = DataService.get(player)
 	if not data then
-		return ""
+		return "", granted
 	end
 	local parts = {}
 
@@ -57,27 +69,31 @@ function RewardService.grant(player: Player, reward: Types.Reward): string
 		local amount =
 			Economy.incomeReward(RewardService.incomePerSecond(player), reward.IncomeMinutes or 0, reward.MinCash or 0)
 		RewardService.grantCash(player, amount)
+		granted.Cash += amount
 		table.insert(parts, `{Format.number(amount)} {Theme.Text.Currency}`)
 	end
 
 	if reward.Gems then
 		RewardService.grantGems(player, reward.Gems)
+		granted.Gems += reward.Gems
 		table.insert(parts, `{reward.Gems} Gems`)
 	end
 
 	if reward.UnitTierBonus then
 		local tier = math.min(Economy.dropTier(data) + reward.UnitTierBonus, Config.MaxTier)
 		if Economy.hasRoom(data) and ItemService.dropItem(player, tier, nil, true) then
-			table.insert(parts, `a {Theme.Units[tier].Name}`)
+			granted.Tier = tier
+			table.insert(parts, `a {Config.Units[tier].Name}`)
 		else
 			local multiplier = Economy.cashMultiplier(data, PassService.cashMultiplier(player))
 			local amount = math.floor(Economy.tierIncome(tier) * multiplier * FULL_GARDEN_SECONDS)
 			RewardService.grantCash(player, amount)
+			granted.Cash += amount
 			table.insert(parts, `{Format.number(amount)} {Theme.Text.Currency} (garden full)`)
 		end
 	end
 
-	return table.concat(parts, " + ")
+	return table.concat(parts, " + "), granted
 end
 
 return RewardService

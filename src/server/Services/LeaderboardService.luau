@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local DataService = require(script.Parent.DataService)
 local Format = require(ReplicatedStorage.Shared.Format)
+local HubService = require(script.Parent.HubService)
 local Net = require(ReplicatedStorage.Shared.Net)
 
 local Theme = Config.Theme
@@ -16,10 +17,14 @@ local LeaderboardBalance = Config.Balance.Leaderboard
 
 -- PlayerData fields ranked on global boards.
 local BOARDS = { "TotalEarned", "Rebirths" }
+-- The board standing in the hub ranks one of them and badges the other. Both
+-- are still stored and still shown in full in the panel.
+local BOARD_STAT = "TotalEarned"
+local BADGE_STAT = "Rebirths"
 -- OrderedDataStore values must be integers.
 local MAX_STORED_VALUE = 2 ^ 53
 
-type Entry = { Name: string, Value: number }
+type Entry = { Name: string, Value: number, UserId: number }
 
 local LeaderboardService = {}
 
@@ -37,6 +42,38 @@ local function getName(userId: number): string
 	local resolved = if ok then name else "Unknown"
 	nameCache[userId] = resolved
 	return resolved
+end
+
+-- Pushes the latest rankings onto the board standing in the hub. Separate from
+-- the broadcast, so it can also run at startup before the first refresh has had
+-- anything to rank.
+--
+-- The badge is read off the other board rather than from live data, so it only
+-- appears for players who rank on both. The two correlate closely enough that
+-- that's almost always, and a missing badge reads as "no rebirths yet" rather
+-- than as a bug.
+local function refreshBoard()
+	local badges: { [number]: number } = {}
+	local badgeEntries: { Entry } = latest[BADGE_STAT] or {}
+	for _, entry in badgeEntries do
+		badges[entry.UserId] = entry.Value
+	end
+
+	local rows: { { Name: string, Value: string, Badge: string } } = {}
+	local rowLimit = Config.Balance.Leaderboard.BoardRows
+	local ranked: { Entry } = latest[BOARD_STAT] or {}
+	for rank, entry in ranked do
+		if rank > rowLimit then
+			break
+		end
+		local rebirths = badges[entry.UserId] or 0
+		table.insert(rows, {
+			Name = entry.Name,
+			Value = Format.number(entry.Value),
+			Badge = if rebirths > 0 then `⭐{rebirths}` else "",
+		})
+	end
+	HubService.setLeaderboard(BOARD_STAT, rows)
 end
 
 local function refresh()
@@ -57,7 +94,7 @@ local function refresh()
 			for _, item in pages:GetCurrentPage() do
 				local userId = tonumber(item.key)
 				if userId then
-					table.insert(entries, { Name = getName(userId), Value = item.value })
+					table.insert(entries, { Name = getName(userId), Value = item.value, UserId = userId })
 				end
 			end
 			latest[stat] = entries
@@ -65,6 +102,7 @@ local function refresh()
 	end
 
 	Net.event("Leaderboard"):FireAllClients(latest)
+	refreshBoard()
 end
 
 function LeaderboardService.addPlayer(player: Player)
@@ -91,6 +129,9 @@ function LeaderboardService.init()
 	Net.event("Ready").OnServerEvent:Connect(function(player)
 		Net.event("Leaderboard"):FireClient(player, latest)
 	end)
+
+	-- Says "no one yet" until the first refresh lands, rather than sitting blank.
+	refreshBoard()
 
 	for _, stat in BOARDS do
 		-- Fails in unpublished places; boards just stay empty there.

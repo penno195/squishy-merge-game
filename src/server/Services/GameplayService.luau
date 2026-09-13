@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
+local ActionService = require(script.Parent.ActionService)
 local Config = require(ReplicatedStorage.Shared.Config)
 local DataService = require(script.Parent.DataService)
 local Economy = require(ReplicatedStorage.Shared.Economy)
@@ -123,10 +124,12 @@ local function tick(player: Player, playerTimers: Timers, now: number)
 
 	-- A full garden leaves the drop "due", so one falls as soon as there's room.
 	if now >= playerTimers.nextDrop and Economy.hasRoom(data) then
-		if ItemService.dropItem(player, Economy.randomDropTier(data), nil, true) then
+		local tier = Economy.randomDropIndex(data)
+		if ItemService.dropItem(player, tier, nil, true) then
 			local wait = Economy.randomDropInterval(data, PassService.spawnMultiplier(player))
 			playerTimers.nextDrop = now + wait
 			playerTimers.dropInterval = wait
+			ActionService.fire(player, "Dropped", { Value = tier, Fields = { Source = "Sky" } })
 		end
 	end
 
@@ -238,9 +241,10 @@ function GameplayService.init()
 			RewardService.grantCash(player, amount)
 			StateService.notify(
 				player,
-				`{Theme.Units[tier].Name} sold for {Format.number(amount)} {Theme.Text.Currency}.`,
+				`{Config.Units[tier].Name} sold for {Format.number(amount)} {Theme.Text.Currency}.`,
 				"Reward"
 			)
+			ActionService.fire(player, "Sold", { Value = tier, Cash = amount })
 		end
 		playerTimers.sellPrompt = false
 		Net.event("SellPrompt"):FireClient(player)
@@ -259,7 +263,9 @@ function GameplayService.init()
 		else
 			data.Cash -= cost
 			data.UnitsBought += 1
-			ItemService.dropItem(player, Economy.dropTier(data), nil, true)
+			local tier = Economy.dropTier(data)
+			ItemService.dropItem(player, tier, nil, true)
+			ActionService.fire(player, "Dropped", { Value = tier, CashSpent = cost, Fields = { Source = "Bought" } })
 		end
 	end)
 

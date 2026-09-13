@@ -5,6 +5,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local ActionService = require(script.Parent.ActionService)
 local Config = require(ReplicatedStorage.Shared.Config)
 local DataService = require(script.Parent.DataService)
 local Economy = require(ReplicatedStorage.Shared.Economy)
@@ -43,8 +44,14 @@ local function spin(player: Player)
 
 	local index = Economy.rollPrize()
 	local prize = Wheel.Prizes[index]
-	local description = RewardService.grant(player, prize.Reward)
+	local description, granted = RewardService.grant(player, prize.Reward)
 	StateService.markDirty(player)
+	ActionService.fire(player, "WheelSpun", {
+		Value = index,
+		Cash = granted.Cash,
+		Gems = granted.Gems,
+		Fields = { Prize = prize.Label },
+	})
 	-- The client animates the wheel to this segment and then announces it, so
 	-- no toast here: it would spoil the result before the wheel stops.
 	Net.event("SpinResult"):FireClient(player, index, description)
@@ -63,6 +70,7 @@ local function buySpin(player: Player)
 	data.Gems -= cost
 	data.Spins += 1
 	StateService.markDirty(player)
+	ActionService.fire(player, "SpinBought", { Value = data.Spins, GemsSpent = cost })
 end
 
 function WheelService.init()

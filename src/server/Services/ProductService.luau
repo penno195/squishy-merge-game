@@ -7,6 +7,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local ActionService = require(script.Parent.ActionService)
 local Config = require(ReplicatedStorage.Shared.Config)
 local DataService = require(script.Parent.DataService)
 local RewardService = require(script.Parent.RewardService)
@@ -39,8 +40,16 @@ local function grantAndSave(player: Player, profile: any, receipt: { [string]: a
 		while #data.PurchaseIds > MAX_STORED_RECEIPTS do
 			table.remove(data.PurchaseIds, 1)
 		end
-		local description = RewardService.grant(player, reward)
+		local description, granted = RewardService.grant(player, reward)
 		StateService.notify(player, `Thanks! You received {description}.`, "Reward")
+		ActionService.fire(player, "ProductPurchased", {
+			Value = receipt.CurrencySpent,
+			Cash = granted.Cash,
+			Gems = granted.Gems,
+			Robux = receipt.CurrencySpent,
+			Sku = name,
+			Fields = { Product = name },
+		})
 	end
 
 	local function isSaved(): boolean

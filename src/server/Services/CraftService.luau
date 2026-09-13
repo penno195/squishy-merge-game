@@ -11,6 +11,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local ActionService = require(script.Parent.ActionService)
 local Config = require(ReplicatedStorage.Shared.Config)
 local DataService = require(script.Parent.DataService)
 local Economy = require(ReplicatedStorage.Shared.Economy)
@@ -115,6 +116,10 @@ local function start(player: Player)
 		`{Theme.Text.Machine} started -- back in {Format.time(Economy.craftSeconds())}.`,
 		"Reward"
 	)
+	ActionService.fire(player, "CraftStarted", {
+		Value = #data.Craft.Inputs,
+		Fields = { Best = tostring(Economy.craftSparkleIndex(data.Craft.Inputs)) },
+	})
 end
 
 local function skip(player: Player)
@@ -134,6 +139,7 @@ local function skip(player: Player)
 	data.Gems -= cost
 	data.Craft.EndsAt = now
 	StateService.markDirty(player)
+	ActionService.fire(player, "CraftSkipped", { Value = cost, GemsSpent = cost })
 end
 
 local function collect(player: Player)
@@ -175,6 +181,10 @@ local function collect(player: Player)
 	end
 	StateService.markDirty(player)
 	Net.event("CraftResult"):FireClient(player, index, sparkle ~= nil)
+	ActionService.fire(player, "CraftCollected", {
+		Value = index,
+		Fields = { Made = Config.Units[index].Name, Sparkle = if sparkle then "yes" else "no" },
+	})
 end
 
 -- Tells a player their craft is done once, whether it finished while they were

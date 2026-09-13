@@ -18,6 +18,7 @@ local EVENTS = {
 	"BuySpin",
 	"Rebirth",
 	"ClaimDaily",
+	"ClaimQuest",
 	-- The crafting station in the hub.
 	"CraftAdd",
 	"CraftTakeBack",

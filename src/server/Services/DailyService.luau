@@ -4,6 +4,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local ActionService = require(script.Parent.ActionService)
 local Config = require(ReplicatedStorage.Shared.Config)
 local DataService = require(script.Parent.DataService)
 local Economy = require(ReplicatedStorage.Shared.Economy)
@@ -30,6 +31,7 @@ function DailyService.applyOffline(player: Player, data: Types.PlayerData)
 			`While you were away for {Format.time(away)}, your {Theme.Text.UnitPlural} made {Format.number(amount)} {Theme.Text.Currency}!`,
 			"Offline"
 		)
+		ActionService.fire(player, "OfflineEarned", { Value = away, Cash = amount })
 	end
 end
 
@@ -47,9 +49,10 @@ function DailyService.init()
 		end
 		data.Daily.Streak = streak
 		data.Daily.LastClaimDay = Economy.currentDay(now)
-		local description = RewardService.grant(player, Config.Balance.DailyRewards[streak])
+		local description, granted = RewardService.grant(player, Config.Balance.DailyRewards[streak])
 		StateService.notify(player, `Day {streak} reward: {description}!`, "Reward")
 		StateService.markDirty(player)
+		ActionService.fire(player, "DailyClaimed", { Value = streak, Cash = granted.Cash, Gems = granted.Gems })
 	end)
 end
 
