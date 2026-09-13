@@ -64,6 +64,30 @@ local function buyBoost(player: Player)
 	)
 end
 
+-- Luck, on the same terms as the boost: gems, timed, and buying again while
+-- one is running extends it rather than throwing the rest away.
+local function buyLuck(player: Player)
+	local data = DataService.get(player)
+	if not data then
+		return
+	end
+	local cost = Economy.luckCost()
+	if data.Gems < cost then
+		StateService.notify(player, `You need {cost} Gems for a lucky charm!`, "Error")
+		return
+	end
+	data.Gems -= cost
+	local now = os.time()
+	data.LuckEndsAt = math.max(data.LuckEndsAt, now) + Economy.luckSeconds()
+	StateService.markDirty(player)
+	local chance = math.floor(Economy.topTierChance(data) * 100 + 0.5)
+	StateService.notify(
+		player,
+		`Lucky charm active! {chance}% of drops are top tier for {Format.time(data.LuckEndsAt - now)}.`,
+		"Reward"
+	)
+end
+
 local function rebirth(player: Player)
 	local data = DataService.get(player)
 	if not data then
@@ -80,10 +104,13 @@ local function rebirth(player: Player)
 	end
 
 	data.Rebirths += 1
-	-- Gems and any running boost survive a rebirth: they're premium, not progress.
+	-- Gems, anything still running on a gem clock and the sparkles survive a
+	-- rebirth: they're premium or limited edition, not progress. So does
+	-- whatever is in the crafting station, which is a clock rather than
+	-- something owned.
 	data.Gems += Config.Balance.Gems.PerRebirth
 	data.Cash = Config.Balance.StartingCash
-	data.Items = Economy.startingItems()
+	data.Items = Economy.itemsAfterRebirth(data.Items)
 	data.Carried = 0
 	data.Upgrades = {}
 	data.UnitsBought = 0
@@ -102,6 +129,7 @@ end
 function ShopService.init()
 	Net.event("BuyUpgrade").OnServerEvent:Connect(buyUpgrade)
 	Net.event("BuyBoost").OnServerEvent:Connect(buyBoost)
+	Net.event("BuyLuck").OnServerEvent:Connect(buyLuck)
 	Net.event("Rebirth").OnServerEvent:Connect(rebirth)
 end
 

@@ -30,9 +30,38 @@ end
 
 local balance: typeof(Balance) = if theme.Balance then deepMerge(Balance, theme.Balance) :: any else Balance
 
+-- Sparkles are units too: they are carried, lie in the garden and earn, and the
+-- only things they can't do are drop and merge. So they live on the end of one
+-- unit list, at indices above the merge ladder, and everything that works on a
+-- tier works on them without knowing they exist. `MaxTier` stays the top of the
+-- ladder, which is what stops a sparkle ever being merged into one.
+local maxTier = #theme.Units
+local sparkles: { Types.SparkleDef } = theme.Sparkles or {}
+local units: { Types.UnitDef } = table.clone(theme.Units)
+
+for position, sparkle in sparkles do
+	local bottom, top = sparkle.Band[1], sparkle.Band[2]
+	assert(
+		bottom and top and bottom >= 1 and top >= bottom and top <= maxTier,
+		`Theme "{theme.Id}" sparkle "{sparkle.Id}" needs a Band inside 1..{maxTier}`
+	)
+	units[maxTier + position] = {
+		Name = sparkle.Name,
+		Color = sparkle.Color,
+		Model = sparkle.Model,
+		Scale = sparkle.Scale,
+		Sparkle = true,
+	}
+end
+
 return {
 	Settings = Settings,
 	Theme = theme,
 	Balance = balance,
-	MaxTier = #theme.Units,
+	-- The merge ladder, indexed by tier.
+	MaxTier = maxTier,
+	-- The ladder with the sparkles appended. Index anything by unit here.
+	Units = units,
+	-- Sparkle at position n is unit index MaxTier + n.
+	Sparkles = sparkles,
 }

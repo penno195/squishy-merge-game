@@ -6,16 +6,22 @@ export type Settings = {
 	Theme: string,
 	DataStoreName: string,
 	LeaderboardPrefix: string,
+	StudioGems: number,
 	GamePasses: { [string]: number },
 	Products: { [string]: number },
 }
 
 local settings: Settings = {
-	Theme = "CandyLand",
+	Theme = "Squishies",
 
 	-- Changing this starts every player fresh. Keep it stable once the game is live.
 	DataStoreName = "PlayerData_v1",
 	LeaderboardPrefix = "Leaderboard_v1",
+
+	-- Tops every player up to this many Gems on join **in Studio only**, so the
+	-- gem-priced things can be tried before any have been earned. A live server
+	-- ignores it entirely. Set to 0 to test the real drip instead.
+	StudioGems = 1000,
 
 	-- Asset IDs are unique to each Roblox experience, so every reskin needs its own.
 	-- 0 means "not set up yet": the matching shop button is hidden.

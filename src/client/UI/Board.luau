@@ -54,11 +54,9 @@ function Board.start()
 			existing:Destroy()
 		end
 
-		local surface: SurfaceGui = Components.new("SurfaceGui", {
+		local surface: SurfaceGui = Components.surface({
 			Name = SURFACE_NAME,
-			Face = Enum.NormalId.Front,
 			PixelsPerStud = 40,
-			LightInfluence = 0,
 			MaxDistance = 140,
 			Active = true,
 			Parent = board,

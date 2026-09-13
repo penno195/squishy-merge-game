@@ -17,7 +17,10 @@ local Workspace = game:GetService("Workspace")
 
 local Components = require(script.Parent.Parent.UI.Components)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Economy = require(ReplicatedStorage.Shared.Economy)
 local Net = require(ReplicatedStorage.Shared.Net)
+local State = require(script.Parent.Parent.State)
+local Types = require(ReplicatedStorage.Shared.Types)
 local WheelFace = require(script.Parent.Parent.UI.WheelFace)
 
 local Wheel = Config.Balance.Wheel
@@ -34,6 +37,7 @@ local listeners: { (index: number, description: string) -> () } = {}
 local spinning = false
 -- Degrees, kept across spins so the wheel carries on from where it stopped.
 local angle = 0
+local latest: { [string]: any }? = nil
 
 local function requestSpin()
 	if spinning then
@@ -42,10 +46,34 @@ local function requestSpin()
 	Net.event("Spin"):FireServer()
 end
 
+-- Whether the hub button should answer a press: a spin to spend, and nothing
+-- already turning.
+function WheelController.spinReady(): boolean
+	local snapshot = latest
+	if not snapshot or spinning then
+		return false
+	end
+	local data: Types.PlayerData = snapshot.Data
+	return (snapshot.SpinsAvailable or Economy.spinsAvailable(data, os.time())) > 0
+end
+
+-- Every drawn face is driven from here rather than by whoever built it. The
+-- wheel out in the hub has no panel watching state on its behalf, so when the
+-- panel owned this the hub's own button was switched off at the start of the
+-- first spin and never switched back on -- which looked exactly like bought
+-- spins not counting.
+local function refreshFaces()
+	local ready = WheelController.spinReady()
+	for _, face in faces do
+		face.setSpinEnabled(ready)
+	end
+end
+
 -- Panels register the face they draw so it turns with the rest.
 function WheelController.register(face: WheelFace.Face)
 	table.insert(faces, face)
 	face.setRotation(angle)
+	face.setSpinEnabled(WheelController.spinReady())
 end
 
 function WheelController.requestSpin()
@@ -72,11 +100,11 @@ local function mountWorldFace()
 		return false
 	end
 
-	local surface: SurfaceGui = Components.new("SurfaceGui", {
+	local surface: SurfaceGui = Components.surface({
 		Name = SURFACE_NAME,
-		Face = Enum.NormalId.Front,
-		PixelsPerStud = 50,
-		LightInfluence = 0,
+		-- The wheel in the hub is about 10 studs across, so the face needs the
+		-- pixels to keep eight segment labels legible on it.
+		PixelsPerStud = 90,
 		MaxDistance = 130,
 		Active = true,
 		Parent = plate,
@@ -109,9 +137,7 @@ local function spinTo(index: number, description: string)
 	angle = angle - from + target + TURNS * 360
 
 	spinning = true
-	for _, face in faces do
-		face.setSpinEnabled(false)
-	end
+	refreshFaces()
 
 	local driver = Instance.new("NumberValue")
 	driver.Value = from
@@ -125,6 +151,7 @@ local function spinTo(index: number, description: string)
 	tween.Completed:Connect(function()
 		driver:Destroy()
 		spinning = false
+		refreshFaces()
 		announce(index, description)
 	end)
 	tween:Play()
@@ -132,6 +159,11 @@ end
 
 function WheelController.start()
 	Net.event("SpinResult").OnClientEvent:Connect(spinTo)
+
+	State.onChange(function(snapshot)
+		latest = snapshot
+		refreshFaces()
+	end)
 
 	-- The hub replicates some time after the client starts, so keep looking
 	-- until it's there. Characters respawning don't affect it.

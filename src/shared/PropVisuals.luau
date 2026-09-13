@@ -164,6 +164,131 @@ local function buildStack(model: Model, base: CFrame, def: Types.PropDef, height
 	end
 end
 
+-- Units are built from meshed balls rather than Ball parts so they can be
+-- squashed, and a giant squishy has to match them or it reads as a different
+-- kind of object standing in the same world.
+local function makeBall(name: string, size: Vector3, cframe: CFrame, color: Color3, parent: Instance): Part
+	local part = makePart(name, size, cframe, color, Enum.PartType.Block, parent)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = part
+	return part
+end
+
+-- Eyes, shines and blush on the front, which is the side facing the middle of
+-- the map. A giant prop with a face reads as one of the things the game is
+-- about; the same prop without one reads as furniture.
+--
+-- `spread` is half the gap between the eyes, `front` how far the face is from
+-- the body's centre, and `lift` where the eyes sit above it.
+local function addFace(model: Model, centre: CFrame, spread: number, front: number, eyeSize: number, lift: number)
+	for _, side in { -1, 1 } do
+		local eye = centre * CFrame.new(side * spread, lift, -front)
+		makePart("Eye", Vector3.one * eyeSize, eye, Color3.fromRGB(35, 25, 45), Enum.PartType.Ball, model)
+		makePart(
+			"Shine",
+			Vector3.one * eyeSize * 0.34,
+			eye * CFrame.new(eyeSize * 0.18, eyeSize * 0.2, -eyeSize * 0.3),
+			Color3.new(1, 1, 1),
+			Enum.PartType.Ball,
+			model
+		)
+		-- A disc laid flat against the face: a cylinder's axis is its local X,
+		-- so the quarter turn points it at the viewer.
+		makePart(
+			"Blush",
+			Vector3.new(eyeSize * 0.3, eyeSize * 1.25, eyeSize * 1.25),
+			centre * CFrame.new(side * spread * 1.9, lift - eyeSize * 1.15, -front) * CFrame.Angles(0, math.pi / 2, 0),
+			Color3.fromRGB(255, 150, 180),
+			Enum.PartType.Cylinder,
+			model
+		)
+	end
+end
+
+-- A giant version of the thing the player spends all day merging: a squashed
+-- ball with a face, wider than it is tall so it looks soft.
+local function buildBlob(model: Model, base: CFrame, def: Types.PropDef, height: number, accent: Color3)
+	local width = height * 1.18
+	local centre = base * CFrame.new(0, height / 2, 0)
+	makeBall("Body", Vector3.new(width, height, width * 0.94), centre, def.Color, model)
+	-- A pale highlight over the crown, which is what stops a big flat colour
+	-- reading as a balloon.
+	makeBall(
+		"Sheen",
+		Vector3.new(width * 0.5, height * 0.3, width * 0.34),
+		centre * CFrame.new(-width * 0.16, height * 0.3, -width * 0.28),
+		def.Color:Lerp(accent, 0.55),
+		model
+	)
+	addFace(model, centre, width * 0.19, width * 0.47, width * 0.11, height * 0.09)
+end
+
+-- A stick of butter with the wrapper still half on. The squishy shop staple,
+-- and a shape nothing else in the vocabulary covers.
+local function buildButter(model: Model, base: CFrame, def: Types.PropDef, height: number, accent: Color3)
+	local width = height * 1.55
+	local depth = height * 0.82
+	local centre = base * CFrame.new(0, height / 2, 0)
+
+	makePart("Stick", Vector3.new(width, height, depth), centre, def.Color, Enum.PartType.Block, model)
+	-- The paper, folded over one end and standing a shade proud of the butter.
+	makePart(
+		"Wrapper",
+		Vector3.new(width * 0.44, height * 1.05, depth * 1.05),
+		centre * CFrame.new(-width * 0.28, 0, 0),
+		accent,
+		Enum.PartType.Block,
+		model
+	)
+	-- A pat cut off the open end, sitting on top.
+	makePart(
+		"Pat",
+		Vector3.new(width * 0.24, height * 0.18, depth * 0.62),
+		centre * CFrame.new(width * 0.28, height * 0.59, 0),
+		def.Color:Lerp(Color3.new(1, 1, 1), 0.15),
+		Enum.PartType.Block,
+		model
+	)
+	addFace(model, centre, width * 0.13, depth * 0.5, height * 0.15, height * 0.08)
+end
+
+-- A ring of balls stood on its edge, iced over the top half the way one is
+-- dipped, with sprinkles scattered across the icing.
+local function buildDonut(model: Model, base: CFrame, def: Types.PropDef, height: number, accent: Color3)
+	local tube = height * 0.17
+	local ring = height / 2 - tube
+	local centre = base * CFrame.new(0, ring + tube, 0)
+	local segments = 20
+
+	for index = 1, segments do
+		local theta = (index - 0.5) / segments * math.pi * 2
+		local point = Vector3.new(math.cos(theta) * ring, math.sin(theta) * ring, 0)
+		local iced = math.sin(theta) > -0.15
+		makePart(
+			`Ring{index}`,
+			Vector3.one * tube * 2,
+			centre * CFrame.new(point),
+			if iced then accent else def.Color,
+			Enum.PartType.Ball,
+			model
+		)
+	end
+
+	for index = 1, 9 do
+		local theta = (index / 10) * math.pi * 0.9 + math.pi * 0.05
+		local point = Vector3.new(math.cos(theta) * ring, math.sin(theta) * ring, 0)
+		makePart(
+			`Sprinkle{index}`,
+			Vector3.new(tube * 0.5, tube * 0.16, tube * 0.16),
+			centre * CFrame.new(point) * CFrame.new(0, tube * 0.55, -tube * 0.5) * CFrame.Angles(0, 0, theta),
+			if index % 2 == 0 then Color3.new(1, 1, 1) else def.Color,
+			Enum.PartType.Block,
+			model
+		)
+	end
+end
+
 local function buildSphere(model: Model, base: CFrame, def: Types.PropDef, height: number, _accent: Color3)
 	local radius = height / 2
 	makePart("Ball", Vector3.one * radius * 2, base * CFrame.new(0, radius, 0), def.Color, Enum.PartType.Ball, model)
@@ -175,6 +300,9 @@ local SHAPES: { [string]: Builder } = {
 	Cone = buildCone,
 	Stack = buildStack,
 	Sphere = buildSphere,
+	Blob = buildBlob,
+	Butter = buildButter,
+	Donut = buildDonut,
 }
 
 local function findThemeModel(name: string?): Model?

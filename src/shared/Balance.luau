@@ -13,12 +13,16 @@ return {
 	Hub = {
 		-- Space between neighbouring gardens. Raising this pushes every garden
 		-- further out, which is the main knob for how open the arena feels.
-		PlotGap = 40,
+		-- With six gardens the plot radius works out at 48 + this.
+		PlotGap = 72,
 		-- Keeps the gardens clear of the hub even with only a couple of them.
 		Clearance = 60,
 		-- The moving walkway, as a fraction of the distance out to the gardens.
-		-- Far enough out to be a short hop from each gate.
-		RingFraction = 0.56,
+		-- Deliberately well inside them: the ring of open ground between the
+		-- walkway and the garden fences is where the arena gets its room to
+		-- breathe, and where most of the scenery stands. Stepping off the
+		-- walkway onto a path is the start of the walk home, not the end of it.
+		RingFraction = 0.36,
 		RingWidth = 12,
 		-- How fast the walkway carries players, in studs per second. Roughly
 		-- doubles walking speed without making it hard to step off.
@@ -40,12 +44,31 @@ return {
 	-- between gardens rather than in front of them. `Jitter` is studs of random
 	-- in-and-out, applied along the radius only: nudging them sideways too would
 	-- eventually drop one across a path.
+	--
+	-- A prop's `Height` is not its footprint: the shapes vary from a Cane at
+	-- 0.3 times its height across to a Butter at 1.55, so the rings are sized
+	-- for the widest thing a theme might stand in them.
+	--
+	-- Every ring has to clear the walkway on the way in and the gardens on the
+	-- way out, and a prop's own width counts against both. `HubEdge` sat at
+	-- 0.62 for a while, which put it on top of the walkway once that moved.
 	PropZones = {
-		{ Id = "HubEdge", Count = 12, Radius = 0.68, Offset = 0.5, Jitter = 4 },
-		{ Id = "BetweenGardens", Count = 6, Radius = 1, Offset = 0.5, Jitter = 6 },
+		-- A ring hugging the open side of the walkway, at a size you walk past.
+		{ Id = "HubEdge", Count = 12, Radius = 0.55, Offset = 0.5, Jitter = 3 },
+		-- Out in the middle of the open ground, between the walkway and the
+		-- gardens. Offset half a slot so nothing lands across a garden path.
+		{ Id = "Approach", Count = 12, Radius = 0.7, Offset = 0.5, Jitter = 4 },
+		-- Was level with the gardens, which only worked while every prop was a
+		-- narrow cone. The plinths then widened each garden's reach from 24
+		-- studs to 28 and the ring started cutting into them, so it sits out
+		-- past them now: 54 studs from a garden's centre, 26 clear of its
+		-- plinths before the prop's own width is counted.
+		{ Id = "BetweenGardens", Count = 6, Radius = 1.15, Offset = 0.5, Jitter = 5 },
 		-- Far enough out that even the inward end of its jitter clears the back
-		-- of the gardens, which reach 1.23 of the plot radius.
-		{ Id = "Outer", Count = 24, Radius = 1.5, Offset = 0, Jitter = 14 },
+		-- of the gardens, which reach 1.23 of the plot radius -- with enough
+		-- room left over for the prop's own depth, which is what the old jitter
+		-- of 14 didn't allow for once the shapes got wide.
+		{ Id = "Outer", Count = 24, Radius = 1.45, Offset = 0, Jitter = 10 },
 	},
 
 	Garden = {
@@ -123,14 +146,22 @@ return {
 		Growth = 1.04,
 	},
 
-	-- PerLevel is what each level adds: a cash multiplier for Income, and roll
-	-- bias for Luck. The rest keep it at 0 so every entry has the same shape.
+	-- PerLevel is what each level adds: a cash multiplier for Income. The rest
+	-- keep it at 0 so every entry has the same shape.
 	-- Order matters: this is the order the garden board shows them in.
+	--
+	-- Drop Tier is the ladder's pacing knob, and its Growth has to be read
+	-- against Income.TierGrowth: the cost rises by `Growth` per level while the
+	-- income that pays for it rises by `TierGrowth`, so what the player feels is
+	-- the ratio between them. At 2.8 against 2.5 each level costs about 12% more
+	-- playtime than the last -- roughly five minutes of income at the bottom of
+	-- the ladder and eighty at the top. (It was 6, which is 2.4x more playtime
+	-- per level: by level 8 that was already a ninety-hour upgrade, and over a
+	-- thirty-rung ladder it diverges into the absurd.)
 	Upgrades = {
-		{ Id = "SpawnTier", Name = "Drop Tier", BaseCost = 1000, Growth = 6, MaxLevel = 8, PerLevel = 0 },
+		{ Id = "SpawnTier", Name = "Drop Tier", BaseCost = 1000, Growth = 2.8, MaxLevel = 24, PerLevel = 0 },
 		{ Id = "SpawnSpeed", Name = "Drop Speed", BaseCost = 100, Growth = 1.6, MaxLevel = 20, PerLevel = 0 },
 		{ Id = "GardenSpace", Name = "Max Items", BaseCost = 250, Growth = 8, MaxLevel = 5, PerLevel = 0 },
-		{ Id = "Luck", Name = "Increase Luck", BaseCost = 400, Growth = 1.9, MaxLevel = 12, PerLevel = 0.35 },
 		{ Id = "Income", Name = "Income Boost", BaseCost = 200, Growth = 1.45, MaxLevel = 50, PerLevel = 0.25 },
 	},
 
@@ -139,6 +170,20 @@ return {
 		Multiplier = 5,
 		Seconds = 300,
 		GemCost = 25,
+	},
+
+	-- Luck, the other thing gems buy. It tilts the drop pyramid upward while
+	-- it runs: every rung is multiplied by (1 + Bias) more than the one below
+	-- it, which takes the top of the drop window from about 5% of drops to
+	-- about 43% without ever making a tier impossible.
+	--
+	-- Cheaper than the boost and twice as long, because what it buys is
+	-- indirect -- better drops to merge, rather than cash in hand -- and
+	-- because ten minutes is long enough to actually watch the mix change.
+	Luck = {
+		Bias = 2,
+		Seconds = 600,
+		GemCost = 10,
 	},
 
 	-- Gems are the premium currency: a slow drip from playing, or bought with
@@ -208,6 +253,47 @@ return {
 			-- Annotated because the entries differ in shape, and Luau would
 			-- otherwise infer the whole array from the first one.
 		} :: { Types.WheelPrize },
+	},
+
+	-- The crafting station standing in the middle of the hub. Feed it ordinary
+	-- units, wait, and it makes something back -- usually a few tiers up, and
+	-- sometimes one of the theme's sparkles.
+	--
+	-- The odds are built from what went in. Each input counts for
+	-- `TierWeight ^ (tier - the bottom of the band being played for)`, so one
+	-- unit from the top of a three-tier band is worth four from the bottom of
+	-- it. Filling every slot with the band's top tier is the only way to reach
+	-- the ceiling, and the ceiling is deliberately a coin flip: a sparkle you
+	-- are more likely than not to get isn't a sparkle.
+	Craft = {
+		Slots = 4,
+		-- How close a player has to be to feed the machine. Also the range its
+		-- prompt answers from.
+		Radius = 16,
+		-- Long enough to bridge two sittings without writing off an evening.
+		-- See the README for why this is 4 hours and not 6.
+		Seconds = 4 * 3600,
+		-- Gems to finish one early, per hour still left on the clock.
+		SkipGemsPerHour = 8,
+		TierWeight = 2,
+		-- The odds at an empty-ish machine and at a full one. A theme's sparkle
+		-- can lower its own ceiling; nothing raises it.
+		MinChance = 0.02,
+		MaxChance = 0.5,
+		-- Above 1, so a nearly-full machine is worth far more than a half-full
+		-- one and there's a reason to wait for the fourth unit.
+		Curve = 1.4,
+		-- A sparkle earns like an ordinary unit this many tiers above the top of
+		-- its band -- one better than the best a craft can otherwise produce.
+		SparkleIncomeTiers = 4,
+		-- What comes out when the sparkle doesn't: an ordinary unit this many
+		-- tiers above the best one fed in. `Share` splits whatever the sparkle
+		-- left behind. Both are capped at the top of the ladder, and collapse
+		-- into one outcome when the cap catches them.
+		Consolation = {
+			{ Tiers = 3, Share = 0.6 },
+			{ Tiers = 1, Share = 0.4 },
+		},
 	},
 
 	Leaderboard = {

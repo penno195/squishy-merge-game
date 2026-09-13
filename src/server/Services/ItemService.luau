@@ -45,9 +45,11 @@ local function syncData(player: Player)
 	StateService.markDirty(player)
 end
 
+-- Sparkles sit above the ladder and are never "discovered": they're crafted,
+-- announced by CraftService, and counted in their own collection.
 local function noteDiscovery(player: Player, tier: number)
 	local data = DataService.get(player)
-	if data and tier > data.HighestTier then
+	if data and tier <= Config.MaxTier and tier > data.HighestTier then
 		data.HighestTier = tier
 		-- Gems are granted here rather than through RewardService, which
 		-- requires this module and so can't be required back.
@@ -261,10 +263,11 @@ function ItemService.dropCarried(player: Player): Item?
 	return ItemService.dropItem(player, tier, rest, false)
 end
 
--- Throws away whatever the player is carrying, returning its tier so the
--- caller can pay for it. Paying happens there rather than here because
--- RewardService requires this module and so can't be required back.
-function ItemService.binCarried(player: Player): number?
+-- Takes whatever the player is carrying out of the world and returns its unit
+-- index, for the caller to pay for (the bin) or put somewhere (the crafting
+-- station). Paying happens there rather than here because RewardService
+-- requires this module and so can't be required back.
+function ItemService.takeCarried(player: Player): number?
 	local data = DataService.get(player)
 	if not data or data.Carried == 0 then
 		return nil

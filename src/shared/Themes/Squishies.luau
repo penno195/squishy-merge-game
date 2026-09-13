@@ -13,6 +13,9 @@ local theme: Types.Theme = {
 		UnitPlural = "Squishies",
 		Rebirth = "Rebirth",
 		Bin = "Compost Heap",
+		Machine = "Sparkle Machine",
+		Sparkle = "Sparkle",
+		SparklePlural = "Sparkles",
 	},
 
 	Icons = {
@@ -24,6 +27,7 @@ local theme: Types.Theme = {
 		GardenSpace = "📦",
 		Luck = "🍀",
 		Income = "💰",
+		Craft = "✨",
 	},
 
 	Font = Font.fromEnum(Enum.Font.FredokaOne),
@@ -58,38 +62,121 @@ local theme: Types.Theme = {
 	Sounds = {},
 
 	-- Scenery, keyed by the zones in Balance.PropZones. Nothing here is required:
-	-- a theme that omits `Props` simply gets a bare map.
+	-- a theme that omits `Props` simply gets a bare map. Giant versions of the
+	-- toys the game is made of -- butter sticks, blobs and donuts -- so the
+	-- skyline is obviously part of the same world as the things in the gardens.
 	Props = {
+		-- Ornament scale, in front of the gardens: these are things you walk
+		-- past on the way in, so nothing here is taller than a couple of
+		-- players. A Butter is 1.55 times as wide as it is tall, so 7 high is
+		-- already 11 studs across.
 		HubEdge = {
 			{
-				Shape = "Cone",
-				Height = 24,
-				Color = Color3.fromRGB(120, 200, 255),
+				Shape = "Butter",
+				Height = 7,
+				Color = Color3.fromRGB(255, 226, 150),
+				Accent = Color3.fromRGB(255, 252, 240),
+			},
+			{
+				Shape = "Blob",
+				Height = 8,
+				Color = Color3.fromRGB(255, 160, 190),
 				Accent = Color3.fromRGB(255, 255, 255),
 			},
 			{
-				Shape = "Stack",
-				Height = 18,
-				Color = Color3.fromRGB(255, 150, 190),
-				Accent = Color3.fromRGB(255, 220, 90),
+				Shape = "Blob",
+				Height = 7,
+				Color = Color3.fromRGB(150, 220, 255),
+				Accent = Color3.fromRGB(255, 255, 255),
+			},
+			{
+				Shape = "Donut",
+				Height = 8,
+				Color = Color3.fromRGB(235, 195, 145),
+				Accent = Color3.fromRGB(255, 140, 200),
 			},
 		},
+		-- Out in the open ground between the walkway and the gardens, at the
+		-- size of a thing you'd stop and look at on the way home.
+		Approach = {
+			{
+				Shape = "Blob",
+				Height = 12,
+				Color = Color3.fromRGB(255, 200, 120),
+				Accent = Color3.fromRGB(255, 255, 255),
+			},
+			{
+				Shape = "Butter",
+				Height = 10,
+				Color = Color3.fromRGB(255, 226, 150),
+				Accent = Color3.fromRGB(255, 252, 240),
+			},
+			{
+				Shape = "Donut",
+				Height = 12,
+				Color = Color3.fromRGB(235, 195, 145),
+				Accent = Color3.fromRGB(160, 230, 255),
+			},
+			{
+				Shape = "Stack",
+				Height = 11,
+				Color = Color3.fromRGB(255, 245, 250),
+				Accent = Color3.fromRGB(190, 160, 255),
+			},
+		},
+		-- The landmarks in the gaps between gardens. Big enough to see over the
+		-- fences from the hub, small enough to leave the plinths either side of
+		-- them in clear view.
 		BetweenGardens = {
 			{
-				Shape = "Cone",
-				Height = 28,
-				Color = Color3.fromRGB(150, 220, 160),
-				Accent = Color3.fromRGB(235, 245, 255),
+				Shape = "Butter",
+				Height = 18,
+				Color = Color3.fromRGB(255, 222, 130),
+				Accent = Color3.fromRGB(255, 250, 235),
+			},
+			{
+				Shape = "Blob",
+				Height = 20,
+				Color = Color3.fromRGB(190, 160, 255),
+				Accent = Color3.fromRGB(255, 255, 255),
+			},
+			{
+				Shape = "Blob",
+				Height = 19,
+				Color = Color3.fromRGB(140, 230, 150),
+				Accent = Color3.fromRGB(255, 255, 255),
 			},
 		},
+		-- The skyline out past the gardens, where only the silhouette carries
+		-- and nothing is in anyone's way. Capped at about 26 studs across so
+		-- neighbours in the ring don't grow into each other: 24 slots out there
+		-- is 34 studs of arc each.
 		Outer = {
 			{
-				Shape = "Cone",
-				Height = 30,
-				Color = Color3.fromRGB(190, 160, 255),
-				Accent = Color3.fromRGB(235, 245, 255),
+				Shape = "Donut",
+				Height = 26,
+				Color = Color3.fromRGB(235, 195, 145),
+				Accent = Color3.fromRGB(150, 225, 255),
 			},
-			{ Shape = "Sphere", Height = 16, Color = Color3.fromRGB(150, 220, 255) },
+			{
+				Shape = "Blob",
+				Height = 22,
+				Color = Color3.fromRGB(255, 180, 210),
+				Accent = Color3.fromRGB(255, 255, 255),
+			},
+			{
+				Shape = "Butter",
+				Height = 16,
+				Color = Color3.fromRGB(255, 230, 160),
+				Accent = Color3.fromRGB(255, 252, 240),
+			},
+			{
+				Shape = "Stack",
+				Height = 24,
+				Color = Color3.fromRGB(255, 245, 250),
+				Accent = Color3.fromRGB(255, 170, 200),
+			},
+			{ Shape = "Sphere", Height = 14, Color = Color3.fromRGB(180, 245, 225) },
 		},
 	},
 
@@ -109,6 +196,107 @@ local theme: Types.Theme = {
 		{ Name = "Moon Mochi", Color = Color3.fromRGB(255, 235, 140) },
 		{ Name = "Star Jelly", Color = Color3.fromRGB(120, 140, 255) },
 		{ Name = "Cosmic Squish", Color = Color3.fromRGB(170, 80, 255) },
+		{ Name = "Nebula Slime", Color = Color3.fromRGB(120, 90, 220) },
+		{ Name = "Comet Kitten", Color = Color3.fromRGB(190, 225, 255) },
+		{ Name = "Aurora Axolotl", Color = Color3.fromRGB(110, 255, 210) },
+		{ Name = "Meteor Mallow", Color = Color3.fromRGB(255, 140, 80) },
+		{ Name = "Galaxy Gummy", Color = Color3.fromRGB(90, 60, 180) },
+		{ Name = "Quasar Quokka", Color = Color3.fromRGB(255, 105, 245) },
+		{ Name = "Eclipse Owl", Color = Color3.fromRGB(70, 60, 100) },
+		{ Name = "Pulsar Panda", Color = Color3.fromRGB(235, 245, 255) },
+		{ Name = "Supernova Seal", Color = Color3.fromRGB(255, 200, 120) },
+		{ Name = "Black Hole Blob", Color = Color3.fromRGB(35, 25, 55) },
+		{ Name = "Stardust Sphinx", Color = Color3.fromRGB(215, 195, 255) },
+		{ Name = "Celestial Whale", Color = Color3.fromRGB(95, 150, 255) },
+		{ Name = "Infinity Jelly", Color = Color3.fromRGB(150, 255, 245) },
+		{ Name = "Eternal Squish", Color = Color3.fromRGB(255, 235, 170) },
+		{ Name = "Squish Singularity", Color = Color3.fromRGB(255, 255, 255) },
+	},
+
+	-- Crafting prizes: one per band of three tiers, all the way up the ladder.
+	-- Each is rarer than the last and worth more to keep -- the ceiling on the
+	-- odds comes down as the bands climb, and the permanent bonus goes up.
+	Sparkles = {
+		{
+			Id = "RedSparkle",
+			Name = "Red Sparkle",
+			Color = Color3.fromRGB(255, 80, 95),
+			Band = { 1, 3 },
+			Bonus = 0.1,
+			MaxChance = 0.5,
+		},
+		{
+			Id = "AmberSparkle",
+			Name = "Amber Sparkle",
+			Color = Color3.fromRGB(255, 170, 60),
+			Band = { 4, 6 },
+			Bonus = 0.12,
+			MaxChance = 0.48,
+		},
+		{
+			Id = "GoldSparkle",
+			Name = "Gold Sparkle",
+			Color = Color3.fromRGB(255, 215, 90),
+			Band = { 7, 9 },
+			Bonus = 0.15,
+			MaxChance = 0.45,
+		},
+		{
+			Id = "GreenSparkle",
+			Name = "Green Sparkle",
+			Color = Color3.fromRGB(110, 240, 140),
+			Band = { 10, 12 },
+			Bonus = 0.18,
+			MaxChance = 0.42,
+		},
+		{
+			Id = "TealSparkle",
+			Name = "Teal Sparkle",
+			Color = Color3.fromRGB(90, 235, 220),
+			Band = { 13, 15 },
+			Bonus = 0.22,
+			MaxChance = 0.4,
+		},
+		{
+			Id = "BlueSparkle",
+			Name = "Blue Sparkle",
+			Color = Color3.fromRGB(105, 170, 255),
+			Band = { 16, 18 },
+			Bonus = 0.26,
+			MaxChance = 0.38,
+		},
+		{
+			Id = "IndigoSparkle",
+			Name = "Indigo Sparkle",
+			Color = Color3.fromRGB(120, 110, 255),
+			Band = { 19, 21 },
+			Bonus = 0.3,
+			MaxChance = 0.36,
+		},
+		{
+			Id = "VioletSparkle",
+			Name = "Violet Sparkle",
+			Color = Color3.fromRGB(200, 110, 255),
+			Band = { 22, 24 },
+			Bonus = 0.35,
+			MaxChance = 0.34,
+		},
+		{
+			Id = "RoseSparkle",
+			Name = "Rose Sparkle",
+			Color = Color3.fromRGB(255, 120, 190),
+			Band = { 25, 27 },
+			Bonus = 0.42,
+			MaxChance = 0.32,
+		},
+		{
+			Id = "PrismSparkle",
+			Name = "Prism Sparkle",
+			Color = Color3.fromRGB(255, 255, 255),
+			Band = { 28, 30 },
+			Bonus = 0.5,
+			MaxChance = 0.3,
+		},
 	},
 }
 

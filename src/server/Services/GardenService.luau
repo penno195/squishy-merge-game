@@ -19,6 +19,17 @@ local POST_SPACING = 6
 local POST_SIZE = 0.6
 -- How much of the board's backing plate shows around the screen.
 local BOARD_EDGE = 0.9
+-- The name board riding above the upgrade screen. Tall enough to read from the
+-- far side of the map, which is the whole reason it's separate from the screen
+-- below it rather than a line across the top of it.
+local NAME_BOARD_HEIGHT = 7
+local NAME_BOARD_GAP = 0.9
+-- The signpost out front, by the gate. Set back from the gate's own width so
+-- nobody walks into it on the way in.
+local SIGN_POST_HEIGHT = 6
+local SIGN_PLAQUE_WIDTH = 11
+local SIGN_PLAQUE_HEIGHT = 2.8
+local SIGN_PLAQUE_EDGE = 0.35
 -- The bin sits in the front-left corner, tucked behind the item drop zone so
 -- nothing ever lands on it and players only reach it on purpose.
 local BIN_INSET = 3
@@ -34,7 +45,14 @@ local binPositions: { [Model]: Vector3 } = {}
 local worldFolder: Folder? = nil
 local owners: { [Player]: Model } = {}
 local itemFolders: { [Model]: Folder } = {}
-local signLabels: { [Model]: TextLabel } = {}
+-- The two places a garden says whose it is: the board over the back fence and
+-- the signpost by the gate.
+type Nameplate = {
+	Board: TextLabel,
+	Gate: TextLabel,
+}
+
+local nameplates: { [Model]: Nameplate } = {}
 local characterConnections: { [Player]: RBXScriptConnection } = {}
 
 local function makePart(
@@ -170,6 +188,121 @@ local function buildUpgradeBoard(plot: Model, origin: CFrame)
 	end
 end
 
+-- Text painted straight onto a part's front face. Built here on the server
+-- rather than by the owner's client the way the upgrade screen is, because the
+-- point of a name plate is that everybody else can read it.
+--
+-- SizingMode matters: left at its default a SurfaceGui stretches a fixed 800x600
+-- canvas over whatever shape the face is, so a wide board would squash the text.
+local function buildPlate(part: BasePart, pixelsPerStud: number, maxDistance: number): TextLabel
+	local surface = Instance.new("SurfaceGui")
+	surface.Name = "NamePlate"
+	surface.Face = Enum.NormalId.Front
+	surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	surface.PixelsPerStud = pixelsPerStud
+	surface.LightInfluence = 0
+	surface.MaxDistance = maxDistance
+	surface.Parent = part
+
+	local label = Instance.new("TextLabel")
+	label.Name = "Name"
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.new(1, -8, 1, -6)
+	label.Position = UDim2.fromOffset(4, 3)
+	label.FontFace = Theme.Font
+	label.TextScaled = true
+	label.TextColor3 = Theme.Palette.Text
+	label.Text = ""
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = 3
+	stroke.Color = Theme.Palette.Background
+	stroke.Parent = label
+	label.Parent = surface
+	return label
+end
+
+-- A board of its own, riding above the upgrade screen. Same frame-and-inset
+-- build as the screen below it, so the two read as one structure.
+local function buildNameBoard(plot: Model, origin: CFrame): TextLabel
+	local width = Garden.Width
+	local bottom = FLOOR_HEIGHT + Garden.FenceHeight - 1 + Garden.BoardHeight + NAME_BOARD_GAP
+	local centreY = bottom + NAME_BOARD_HEIGHT / 2
+	local backZ = Garden.Depth / 2
+
+	local frame = makePart(
+		"NameFrame",
+		Vector3.new(width, NAME_BOARD_HEIGHT, 0.4),
+		origin * CFrame.new(0, centreY, backZ - 0.1),
+		Theme.World.Border,
+		Enum.Material.SmoothPlastic,
+		plot
+	)
+	frame.CanCollide = false
+
+	local screen = makePart(
+		"NameBoard",
+		Vector3.new(width - BOARD_EDGE * 2, NAME_BOARD_HEIGHT - BOARD_EDGE * 2, 0.6),
+		origin * CFrame.new(0, centreY, backZ - 0.5),
+		Theme.Palette.Background,
+		Enum.Material.SmoothPlastic,
+		plot
+	)
+	screen.CanCollide = false
+
+	-- Far enough to carry right across the map: finding your own garden from
+	-- wherever you happen to be standing is what this board is for.
+	return buildPlate(screen, 24, 420)
+end
+
+-- A post and plaque outside the gate, at the height you read a street sign.
+local function buildGateSign(plot: Model, origin: CFrame): TextLabel
+	local x = Garden.GateWidth / 2 + 6
+	local z = -(Garden.Depth / 2 + 1.5)
+
+	makePart(
+		"SignPost",
+		Vector3.new(0.7, SIGN_POST_HEIGHT, 0.7),
+		origin * CFrame.new(x, FLOOR_HEIGHT + SIGN_POST_HEIGHT / 2, z),
+		Theme.World.Fence,
+		Theme.World.FenceMaterial,
+		plot
+	)
+
+	local plaqueY = FLOOR_HEIGHT + SIGN_POST_HEIGHT + SIGN_PLAQUE_HEIGHT / 2 - 0.4
+	local frame = makePart(
+		"SignFrame",
+		Vector3.new(SIGN_PLAQUE_WIDTH, SIGN_PLAQUE_HEIGHT, 0.35),
+		origin * CFrame.new(x, plaqueY, z),
+		Theme.World.Border,
+		Enum.Material.SmoothPlastic,
+		plot
+	)
+	frame.CanCollide = false
+
+	local plate = makePart(
+		"SignPlate",
+		Vector3.new(SIGN_PLAQUE_WIDTH - SIGN_PLAQUE_EDGE * 2, SIGN_PLAQUE_HEIGHT - SIGN_PLAQUE_EDGE * 2, 0.5),
+		origin * CFrame.new(x, plaqueY, z - 0.2),
+		Theme.Palette.Background,
+		Enum.Material.SmoothPlastic,
+		plot
+	)
+	plate.CanCollide = false
+
+	return buildPlate(plate, 60, 170)
+end
+
+-- Both plates at once, so a garden can never be half-labelled.
+local function setOwnerName(plot: Model, display: string?)
+	local plate = nameplates[plot]
+	if not plate then
+		return
+	end
+	plate.Board.Text = if display then `{display}'s Garden` else "Empty Garden"
+	-- Just the name on the small one: it's read in passing, at a glance.
+	plate.Gate.Text = display or "Empty"
+end
+
 -- Where the bin stands, in the garden's own space.
 local function binOffset(): Vector3
 	return Vector3.new(-(Garden.Width / 2 - BIN_INSET), 0, -(Garden.Depth / 2 - BIN_INSET))
@@ -230,41 +363,6 @@ local function buildBin(plot: Model, origin: CFrame)
 	)
 end
 
-local function buildSign(plot: Model, origin: CFrame): TextLabel
-	local anchor = makePart(
-		"SignAnchor",
-		Vector3.one,
-		-- Clear of the upgrade board standing over the back wall.
-		origin * CFrame.new(0, FLOOR_HEIGHT + Garden.FenceHeight + Garden.BoardHeight + 4, Garden.Depth / 2),
-		Color3.new(),
-		Enum.Material.SmoothPlastic,
-		plot
-	)
-	anchor.Transparency = 1
-	anchor.CanCollide = false
-	anchor.CanQuery = false
-
-	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.fromScale(24, 4)
-	billboard.MaxDistance = 300
-	billboard.LightInfluence = 0
-	billboard.Parent = anchor
-
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Size = UDim2.fromScale(1, 1)
-	label.FontFace = Theme.Font
-	label.TextScaled = true
-	label.TextColor3 = Theme.Palette.Text
-	label.Text = "Empty Garden"
-	local stroke = Instance.new("UIStroke")
-	stroke.Thickness = 3
-	stroke.Color = Theme.Palette.Background
-	stroke.Parent = label
-	label.Parent = billboard
-	return label
-end
-
 local function buildGarden(index: number, origin: CFrame, parent: Instance): Model
 	local plot = Instance.new("Model")
 	plot.Name = `Garden{index}`
@@ -300,7 +398,11 @@ local function buildGarden(index: number, origin: CFrame, parent: Instance): Mod
 	items.Parent = plot
 	itemFolders[plot] = items
 
-	signLabels[plot] = buildSign(plot, origin)
+	nameplates[plot] = {
+		Board = buildNameBoard(plot, origin),
+		Gate = buildGateSign(plot, origin),
+	}
+	setOwnerName(plot, nil)
 	plot.Parent = parent
 	return plot
 end
@@ -329,7 +431,13 @@ function GardenService.init()
 	world.Name = "World"
 
 	local radius = GardenService.plotRadius()
-	local groundSize = (radius + Garden.Depth) * 2 + 60
+	-- Sized from the outermost thing that will stand on it. Taking the gardens
+	-- alone left the far prop ring hanging over the edge once the arena grew.
+	local reach = radius + Garden.Depth
+	for _, zone in Balance.PropZones do
+		reach = math.max(reach, radius * zone.Radius + zone.Jitter)
+	end
+	local groundSize = (reach + 40) * 2
 	makePart(
 		"Ground",
 		Vector3.new(groundSize, 2, groundSize),
@@ -376,7 +484,7 @@ function GardenService.assign(player: Player): Model?
 			owners[player] = plot
 			plot:SetAttribute("OwnerUserId", player.UserId)
 			player:SetAttribute("PlotIndex", plot:GetAttribute("PlotIndex"))
-			signLabels[plot].Text = `{player.DisplayName}'s Garden`
+			setOwnerName(plot, player.DisplayName)
 			characterConnections[player] = player.CharacterAdded:Connect(function(character)
 				sendHome(player, character)
 			end)
@@ -402,11 +510,16 @@ function GardenService.release(player: Player)
 	end
 	plot:SetAttribute("OwnerUserId", 0)
 	itemFolders[plot]:ClearAllChildren()
-	signLabels[plot].Text = "Empty Garden"
+	setOwnerName(plot, nil)
 end
 
 function GardenService.getPlot(player: Player): Model?
 	return owners[player]
+end
+
+-- Every garden in the world, in the order they were built around the hub.
+function GardenService.plots(): { Model }
+	return plots
 end
 
 function GardenService.itemsFolder(player: Player): Folder?

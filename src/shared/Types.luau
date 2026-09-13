@@ -9,6 +9,28 @@ export type UnitDef = {
 	-- found, a procedural squishy blob in `Color` is built instead.
 	Model: string?,
 	Scale: number?,
+	-- Set by Config on the units it appends for the theme's sparkles, so the
+	-- visuals know to build a glowing one. Themes don't set this.
+	Sparkle: boolean?,
+}
+
+-- A limited-edition unit, made at the crafting station and never dropped or
+-- merged. `Band` is the range of ordinary tiers that can be fed in to play for
+-- it: feeding the top of that band, and filling every slot, is what takes the
+-- odds up to `MaxChance`.
+export type SparkleDef = {
+	Id: string,
+	Name: string,
+	Color: Color3,
+	Model: string?,
+	Scale: number?,
+	Band: { number },
+	-- Permanent share added to the player's cash multiplier while this one is
+	-- lying in their garden. 0.1 is "+10% of everything, forever".
+	Bonus: number,
+	-- Best odds this one can ever be crafted at. Later bands set this lower, so
+	-- the deeper sparkles stay rarer. Defaults to Balance.Craft.MaxChance.
+	MaxChance: number?,
 }
 
 -- A piece of scenery. Same deal as UnitDef: a theme can point at a real model,
@@ -50,6 +72,10 @@ export type Theme = {
 		UnitPlural: string,
 		Rebirth: string,
 		Bin: string,
+		-- The crafting station in the hub, and what it makes.
+		Machine: string,
+		Sparkle: string,
+		SparklePlural: string,
 	},
 	-- Short glyphs (emoji work) shown beside stats and on upgrade tiles.
 	Icons: {
@@ -61,6 +87,7 @@ export type Theme = {
 		GardenSpace: string?,
 		Luck: string?,
 		Income: string?,
+		Craft: string?,
 	},
 	Font: Font,
 	-- Optional artwork. Anything left unset is drawn from the palette instead,
@@ -95,6 +122,9 @@ export type Theme = {
 	},
 	-- Index = tier. Tier 1 spawns first; merging two tier N units makes tier N + 1.
 	Units: { UnitDef },
+	-- The crafting station's prizes, lowest band first. A theme with none still
+	-- gets a working machine: it just trades units up a few tiers.
+	Sparkles: { SparkleDef }?,
 	-- Scenery, keyed by the zone Ids in Balance.PropZones. Each slot in a zone
 	-- picks one of that zone's entries at random. A zone the theme says nothing
 	-- about is left bare, and a theme with no Props at all dresses no scenery.
@@ -108,13 +138,22 @@ export type DailyState = {
 	LastClaimDay: number,
 }
 
+-- What's loaded into the crafting station. Inputs sit there until the craft is
+-- started, and are locked in once it is. EndsAt is os.time(), not game time, so
+-- a craft runs down while the player is away -- which is the whole point of it.
+export type CraftState = {
+	Inputs: { number },
+	EndsAt: number,
+}
+
 export type PlayerData = {
 	Cash: number,
 	-- Premium currency, spent only on the timed earning boost.
 	Gems: number,
-	-- os.time() the earning boost runs out; 0 when it has never been bought.
-	-- Real time, so a boost doesn't pause while the player is away.
+	-- os.time() the earning boost and the luck charm run out; 0 when they have
+	-- never been bought. Real time, so neither pauses while the player is away.
 	BoostEndsAt: number,
+	LuckEndsAt: number,
 	-- Tiers of the items lying in the garden. These earn income; order is not meaningful.
 	Items: { number },
 	-- Tier the player is carrying, or 0 for empty-handed. Carried items don't earn.
@@ -131,6 +170,10 @@ export type PlayerData = {
 	LastFreeSpinDay: number,
 	-- Recent developer product receipt IDs, so a retried receipt is never granted twice.
 	PurchaseIds: { string },
+	Craft: CraftState,
+	-- How many of each sparkle the player has ever made, keyed by SparkleDef.Id.
+	-- The collection record: what's in the garden can change, this can't.
+	Sparkles: { [string]: number },
 }
 
 -- A bundle of rewards (daily rewards, dev products). Cash is "minutes of the

@@ -60,7 +60,7 @@ local function animate(now: number)
 end
 
 local function playMergeEffect(position: Vector3, tier: number)
-	local def = Config.Theme.Units[tier]
+	local def = Config.Units[tier]
 	local origin = Instance.new("Part")
 	origin.Anchored = true
 	origin.CanCollide = false

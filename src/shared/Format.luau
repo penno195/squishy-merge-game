@@ -29,16 +29,24 @@ function Format.number(value: number): string
 	return text .. SUFFIXES[group + 1]
 end
 
--- The smaller unit is dropped when it's zero, so a round five minutes reads
--- "5m" rather than "5m 0s".
+-- Down to the second, largest unit first. A trailing unit that's zero is
+-- dropped, so a round five minutes reads "5m" rather than "5m 0s" and a four
+-- hour craft reads "4h" -- which keeps the labels that quote a duration tidy
+-- while every running clock still visibly ticks.
+--
+-- Minutes are kept once hours are showing even when they're zero, because
+-- "3h 12s" reads at a glance as three hours and twelve minutes.
 function Format.time(seconds: number): string
 	seconds = math.max(0, math.floor(seconds))
 	local hours = seconds // 3600
 	local minutes = (seconds % 3600) // 60
+	local rest = seconds % 60
 	if hours > 0 then
+		if rest > 0 then
+			return `{hours}h {minutes}m {rest}s`
+		end
 		return if minutes > 0 then `{hours}h {minutes}m` else `{hours}h`
 	elseif minutes > 0 then
-		local rest = seconds % 60
 		return if rest > 0 then `{minutes}m {rest}s` else `{minutes}m`
 	end
 	return `{seconds}s`

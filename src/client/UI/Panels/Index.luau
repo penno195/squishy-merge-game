@@ -1,5 +1,7 @@
 --!strict
 -- Collection index: every unit in the theme, with undiscovered ones hidden.
+-- The sparkles sit on the end of the same list, since they're units too -- but
+-- they're only ever found by crafting one, so they're counted separately.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -38,7 +40,7 @@ function Index.create(parent: Instance)
 	})
 
 	local cells = {}
-	for tier, unit in Theme.Units do
+	for tier, unit in Config.Units do
 		local card = Components.card({ LayoutOrder = tier, Parent = grid })
 		local swatch = Components.new("Frame", {
 			BackgroundColor3 = unit.Color,
@@ -70,14 +72,34 @@ function Index.create(parent: Instance)
 
 	local function update(snapshot: { [string]: any })
 		local data: Types.PlayerData = snapshot.Data
-		progress.Text = `Discovered {data.HighestTier} / {Config.MaxTier}`
+		local made = 0
+		for _, sparkle in Config.Sparkles do
+			if (data.Sparkles[sparkle.Id] or 0) > 0 then
+				made += 1
+			end
+		end
+		progress.Text = if #Config.Sparkles > 0
+			then `Discovered {data.HighestTier} / {Config.MaxTier}  ·  {Theme.Text.SparklePlural} {made} / {#Config.Sparkles}`
+			else `Discovered {data.HighestTier} / {Config.MaxTier}`
+
 		for tier, cell in cells do
-			local discovered = tier <= data.HighestTier
-			cell.Swatch.BackgroundColor3 = if discovered then Theme.Units[tier].Color else Palette.Background
-			cell.Name.Text = if discovered then Theme.Units[tier].Name else "???"
-			cell.Income.Text = if discovered
-				then `{Format.number(Economy.tierIncome(tier))} {Theme.Text.Currency}/s`
-				else ""
+			local unit = Config.Units[tier]
+			local sparkle = Economy.sparkleAt(tier)
+			local count = if sparkle then data.Sparkles[sparkle.Id] or 0 else 0
+			local discovered = if sparkle then count > 0 else tier <= data.HighestTier
+
+			cell.Swatch.BackgroundColor3 = if discovered then unit.Color else Palette.Background
+			cell.Name.Text = if discovered then unit.Name else "???"
+			if not discovered then
+				cell.Income.Text = ""
+			elseif sparkle then
+				-- What a sparkle is really worth is the permanent cut it adds,
+				-- so that's what the card leads with.
+				cell.Income.Text = `+{math.floor(sparkle.Bonus * 100)}% forever  ·  x{count}`
+			else
+				cell.Income.Text = `{Format.number(Economy.tierIncome(tier))} {Theme.Text.Currency}/s`
+			end
+			cell.Income.TextColor3 = if sparkle and discovered then Palette.Accent else Palette.TextMuted
 		end
 	end
 

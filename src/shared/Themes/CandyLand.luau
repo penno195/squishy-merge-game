@@ -14,6 +14,9 @@ local theme: Types.Theme = {
 		UnitPlural = "Candies",
 		Rebirth = "Rebirth",
 		Bin = "Wrapper Bin",
+		Machine = "Candy Mixer",
+		Sparkle = "Sparkle",
+		SparklePlural = "Sparkles",
 	},
 
 	Icons = {
@@ -25,6 +28,7 @@ local theme: Types.Theme = {
 		GardenSpace = "🧁",
 		Luck = "🍀",
 		Income = "💰",
+		Craft = "✨",
 	},
 
 	Font = Font.fromEnum(Enum.Font.FredokaOne),
@@ -82,6 +86,27 @@ local theme: Types.Theme = {
 				Accent = Color3.fromRGB(255, 250, 250),
 			},
 		},
+		-- Out in the open ground between the walkway and the gardens.
+		Approach = {
+			{
+				Shape = "Cone",
+				Height = 16,
+				Color = Color3.fromRGB(150, 230, 165),
+				Accent = Color3.fromRGB(255, 250, 250),
+			},
+			{
+				Shape = "Lollipop",
+				Height = 18,
+				Color = Color3.fromRGB(255, 185, 100),
+				Accent = Color3.fromRGB(255, 250, 250),
+			},
+			{
+				Shape = "Stack",
+				Height = 14,
+				Color = Color3.fromRGB(255, 235, 245),
+				Accent = Color3.fromRGB(250, 90, 110),
+			},
+		},
 		-- Filling the wedges between neighbouring gardens.
 		BetweenGardens = {
 			{
@@ -137,6 +162,106 @@ local theme: Types.Theme = {
 		{ Name = "Rock Candy Crown", Color = Color3.fromRGB(160, 200, 255) },
 		{ Name = "Sherbet Star", Color = Color3.fromRGB(255, 225, 120) },
 		{ Name = "Cosmic Gobstopper", Color = Color3.fromRGB(175, 90, 255) },
+		{ Name = "Candy Floss Cloud", Color = Color3.fromRGB(255, 200, 235) },
+		{ Name = "Fudge Fox", Color = Color3.fromRGB(170, 105, 65) },
+		{ Name = "Praline Panda", Color = Color3.fromRGB(240, 215, 180) },
+		{ Name = "Nougat Knight", Color = Color3.fromRGB(235, 225, 195) },
+		{ Name = "Macaron Moth", Color = Color3.fromRGB(255, 175, 210) },
+		{ Name = "Honeycomb Hart", Color = Color3.fromRGB(255, 200, 70) },
+		{ Name = "Sherbet Serpent", Color = Color3.fromRGB(150, 255, 215) },
+		{ Name = "Brittle Basilisk", Color = Color3.fromRGB(215, 150, 70) },
+		{ Name = "Truffle Titan", Color = Color3.fromRGB(95, 60, 50) },
+		{ Name = "Gobstopper Golem", Color = Color3.fromRGB(150, 175, 255) },
+		{ Name = "Sugarplum Seraph", Color = Color3.fromRGB(220, 150, 255) },
+		{ Name = "Candy Crown Dragon", Color = Color3.fromRGB(255, 90, 140) },
+		{ Name = "Eternal Eclair", Color = Color3.fromRGB(255, 230, 190) },
+		{ Name = "Infinity Icing", Color = Color3.fromRGB(235, 250, 255) },
+		{ Name = "Confection Singularity", Color = Color3.fromRGB(255, 255, 255) },
+	},
+
+	-- What the mixer makes: one per band of three tiers, all the way up the
+	-- ladder. Each is rarer and worth more to keep than the last.
+	Sparkles = {
+		{
+			Id = "CherrySparkle",
+			Name = "Cherry Sparkle",
+			Color = Color3.fromRGB(255, 70, 110),
+			Band = { 1, 3 },
+			Bonus = 0.1,
+			MaxChance = 0.5,
+		},
+		{
+			Id = "ToffeeSparkle",
+			Name = "Toffee Sparkle",
+			Color = Color3.fromRGB(255, 175, 70),
+			Band = { 4, 6 },
+			Bonus = 0.12,
+			MaxChance = 0.48,
+		},
+		{
+			Id = "HoneySparkle",
+			Name = "Honey Sparkle",
+			Color = Color3.fromRGB(255, 210, 95),
+			Band = { 7, 9 },
+			Bonus = 0.15,
+			MaxChance = 0.45,
+		},
+		{
+			Id = "AppleSparkle",
+			Name = "Apple Sparkle",
+			Color = Color3.fromRGB(140, 240, 150),
+			Band = { 10, 12 },
+			Bonus = 0.18,
+			MaxChance = 0.42,
+		},
+		{
+			Id = "MintSparkle",
+			Name = "Mint Sparkle",
+			Color = Color3.fromRGB(150, 250, 215),
+			Band = { 13, 15 },
+			Bonus = 0.22,
+			MaxChance = 0.4,
+		},
+		{
+			Id = "BlueberrySparkle",
+			Name = "Blueberry Sparkle",
+			Color = Color3.fromRGB(120, 165, 255),
+			Band = { 16, 18 },
+			Bonus = 0.26,
+			MaxChance = 0.38,
+		},
+		{
+			Id = "GrapeSparkle",
+			Name = "Grape Sparkle",
+			Color = Color3.fromRGB(155, 110, 250),
+			Band = { 19, 21 },
+			Bonus = 0.3,
+			MaxChance = 0.36,
+		},
+		{
+			Id = "PlumSparkle",
+			Name = "Plum Sparkle",
+			Color = Color3.fromRGB(190, 90, 190),
+			Band = { 22, 24 },
+			Bonus = 0.35,
+			MaxChance = 0.34,
+		},
+		{
+			Id = "BubblegumSparkle",
+			Name = "Bubblegum Sparkle",
+			Color = Color3.fromRGB(255, 130, 200),
+			Band = { 25, 27 },
+			Bonus = 0.42,
+			MaxChance = 0.32,
+		},
+		{
+			Id = "RainbowSparkle",
+			Name = "Rainbow Sparkle",
+			Color = Color3.fromRGB(255, 255, 255),
+			Band = { 28, 30 },
+			Bonus = 0.5,
+			MaxChance = 0.3,
+		},
 	},
 }
 

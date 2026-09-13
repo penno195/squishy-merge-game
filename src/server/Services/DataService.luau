@@ -18,6 +18,7 @@ local TEMPLATE: PlayerData = {
 	Cash = Config.Balance.StartingCash,
 	Gems = 0,
 	BoostEndsAt = 0,
+	LuckEndsAt = 0,
 	Items = Economy.startingItems(),
 	Carried = 0,
 	Upgrades = {},
@@ -30,6 +31,8 @@ local TEMPLATE: PlayerData = {
 	Spins = 0,
 	LastFreeSpinDay = -1,
 	PurchaseIds = {},
+	Craft = { Inputs = {}, EndsAt = 0 },
+	Sparkles = {},
 }
 
 local DataService = {}
@@ -61,13 +64,20 @@ local function migrateLegacy(data: PlayerData)
 	end
 end
 
--- The theme can change between versions (fewer tiers), so fit saved data to it.
+-- The theme can change between versions (fewer tiers, fewer sparkles), so fit
+-- saved data to it. Items are clamped to the whole unit list rather than the
+-- merge ladder, since the sparkles live on the end of it.
 local function fitToConfig(data: PlayerData)
+	local maxUnit = #Config.Units
 	for index, tier in data.Items do
-		data.Items[index] = math.clamp(tier, 1, Config.MaxTier)
+		data.Items[index] = math.clamp(tier, 1, maxUnit)
 	end
-	data.Carried = math.clamp(data.Carried, 0, Config.MaxTier)
+	data.Carried = math.clamp(data.Carried, 0, maxUnit)
 	data.HighestTier = math.clamp(data.HighestTier, 1, Config.MaxTier)
+	-- Only ordinary units are ever loaded into the machine.
+	for index, tier in data.Craft.Inputs do
+		data.Craft.Inputs[index] = math.clamp(tier, 1, Config.MaxTier)
+	end
 end
 
 local function runCallbacks(callbacks: { Callback }, player: Player, data: PlayerData)

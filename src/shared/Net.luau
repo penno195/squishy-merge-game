@@ -13,10 +13,17 @@ local EVENTS = {
 	"BuyUnit",
 	"BuyUpgrade",
 	"BuyBoost",
+	"BuyLuck",
 	"Spin",
 	"BuySpin",
 	"Rebirth",
 	"ClaimDaily",
+	-- The crafting station in the hub.
+	"CraftAdd",
+	"CraftTakeBack",
+	"CraftStart",
+	"CraftSkip",
+	"CraftCollect",
 	-- Fired once the client's UI is listening, so nothing sent at join is lost.
 	"Ready",
 	-- Server -> client
@@ -25,6 +32,7 @@ local EVENTS = {
 	"MergeEffect",
 	"SpinResult",
 	"SellPrompt",
+	"CraftResult",
 	"Leaderboard",
 }
 

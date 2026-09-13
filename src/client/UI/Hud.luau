@@ -25,6 +25,7 @@ local Sound = require(script.Parent.Sound)
 local State = require(script.Parent.Parent.State)
 local Types = require(ReplicatedStorage.Shared.Types)
 
+local CraftPanel = require(script.Parent.Panels.Craft)
 local DailyPanel = require(script.Parent.Panels.Daily)
 local IndexPanel = require(script.Parent.Panels.Index)
 local LeaderboardPanel = require(script.Parent.Panels.Leaderboard)
@@ -53,11 +54,17 @@ local MENU_ICONS: { [string]: string } = {
 	Shop = "🛒",
 	Daily = "🎁",
 	Wheel = "🎡",
+	Craft = "⚗️",
 	Ranks = "🏆",
 	Index = "📖",
 }
--- The name the wheel's own ProximityPrompt out in the hub opens.
 local WHEEL_PANEL = "Wheel"
+local CRAFT_PANEL = "Craft"
+-- Which panel each of the hub's own ProximityPrompts opens.
+local PROMPT_PANELS: { [string]: string } = {
+	SpinPrompt = WHEEL_PANEL,
+	CraftPrompt = CRAFT_PANEL,
+}
 
 local Hud = {}
 
@@ -135,6 +142,14 @@ function Hud.start()
 	boostPill.Instance.Parent = stats
 	boostPill.setVisible(false)
 
+	local luckPill = Components.pill({
+		Size = UDim2.fromOffset(250, 46),
+		LayoutOrder = 4,
+		BackgroundColor3 = Palette.Positive,
+	}, Theme.Icons.Luck or "", Palette.Background)
+	luckPill.Instance.Parent = stats
+	luckPill.setVisible(false)
+
 	local function statLine(order: number, color: Color3): TextLabel
 		return Components.label({
 			Text = "",
@@ -147,8 +162,8 @@ function Hud.start()
 			Parent = stats,
 		})
 	end
-	local incomeLabel = statLine(4, Palette.Positive)
-	local detailLabel = statLine(5, Palette.TextMuted)
+	local incomeLabel = statLine(5, Palette.Positive)
+	local detailLabel = statLine(6, Palette.TextMuted)
 
 	-- Panels and the menu that opens them --------------------------------
 	local panels = {
@@ -157,6 +172,7 @@ function Hud.start()
 		{ Name = Theme.Text.Rebirth, Icon = "🔁", Panel = RebirthPanel.create(screen) },
 		{ Name = "Daily", Icon = MENU_ICONS.Daily, Panel = DailyPanel.create(screen) },
 		{ Name = WHEEL_PANEL, Icon = MENU_ICONS.Wheel, Panel = WheelPanel.create(screen) },
+		{ Name = CRAFT_PANEL, Icon = MENU_ICONS.Craft, Panel = CraftPanel.create(screen) },
 		{ Name = "Ranks", Icon = MENU_ICONS.Ranks, Panel = LeaderboardPanel.create(screen) },
 		{ Name = "Index", Icon = MENU_ICONS.Index, Panel = IndexPanel.create(screen) },
 	}
@@ -191,13 +207,15 @@ function Hud.start()
 		button.Instance.Parent = menu
 	end
 
-	-- Walking up to the wheel in the hub opens the same panel as the menu.
+	-- Walking up to the wheel or the crafting station opens the same panel the
+	-- menu does.
 	ProximityPromptService.PromptTriggered:Connect(function(prompt)
-		if prompt.Name ~= "SpinPrompt" then
+		local wanted = PROMPT_PANELS[prompt.Name]
+		if not wanted then
 			return
 		end
 		for _, entry in panels do
-			entry.Panel.setOpen(entry.Name == WHEEL_PANEL)
+			entry.Panel.setOpen(entry.Name == wanted)
 		end
 	end)
 
@@ -261,7 +279,7 @@ function Hud.start()
 			confirm.close()
 			return
 		end
-		confirm.ask(`Sell your {Theme.Units[tier].Name}?`, `+{Format.number(amount)} {Theme.Text.Currency}`, function()
+		confirm.ask(`Sell your {Config.Units[tier].Name}?`, `+{Format.number(amount)} {Theme.Text.Currency}`, function()
 			Sound.play(Theme.Sounds.Purchase)
 			Net.event("SellCarried"):FireServer()
 		end)
@@ -273,6 +291,7 @@ function Hud.start()
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 16),
 		Size = UDim2.fromOffset(420, 200),
+		ZIndex = Components.Layer.Toast,
 		Parent = screen,
 	})
 	Components.listLayout({ Padding = UDim.new(0, 6) }).Parent = toasts
@@ -317,7 +336,21 @@ function Hud.start()
 				data.Rebirths
 			)}`
 
-		carryLabel.Text = if data.Carried > 0 then `Carrying {Theme.Units[data.Carried].Name}` else "Carrying nothing"
+		-- What you're holding, what it would sell for, and -- when it's a tier
+		-- that can no longer find a partner -- that the bin is now its only use.
+		if data.Carried == 0 then
+			carryLabel.Text = "Carrying nothing"
+		elseif Economy.isSparkle(data.Carried) then
+			carryLabel.Text = `Carrying {Config.Units[data.Carried].Name} ✨`
+		else
+			local line = `Carrying {Config.Units[data.Carried].Name}  ·  sells for {Format.number(
+				Economy.binValue(data.Carried)
+			)} {Theme.Text.Currency}`
+			if Economy.carriedIsStranded(data) then
+				line ..= `\nNothing left to merge it with`
+			end
+			carryLabel.Text = line
+		end
 
 		local cost = Economy.buyUnitCost(data)
 		buyButton.setText(`Buy {Theme.Text.Unit} — {Format.number(cost)}`)
@@ -343,6 +376,12 @@ function Hud.start()
 		boostPill.setVisible(boostLeft > 0)
 		if boostLeft > 0 then
 			boostPill.setText(`x{Config.Balance.Boost.Multiplier}  {Format.time(boostLeft)}`)
+		end
+
+		local luckLeft = Economy.luckRemaining(data)
+		luckPill.setVisible(luckLeft > 0)
+		if luckLeft > 0 then
+			luckPill.setText(`Lucky  {Format.time(luckLeft)}`)
 		end
 
 		if not Economy.hasRoom(data) then

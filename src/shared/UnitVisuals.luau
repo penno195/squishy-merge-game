@@ -11,6 +11,9 @@ local Config = require(script.Parent.Config)
 
 local Theme = Config.Theme
 
+-- Roblox ships this one, so a sparkle glitters without the theme owning any art.
+local SPARKLE_TEXTURE = "rbxasset://textures/particles/sparkles_main.dds"
+
 local UnitVisuals = {}
 
 UnitVisuals.Tag = "MergeUnit"
@@ -70,6 +73,42 @@ local function buildBlob(tier: number, color: Color3): Model
 	return model
 end
 
+-- What makes a sparkle look like one: the body lit from inside, a glow around
+-- it and a slow drift of glitter. Applied on top of whatever the model already
+-- is, so it works the same on a procedural blob and on a theme's own model.
+local function addSparkleShine(model: Model, color: Color3)
+	local body = model:FindFirstChild("Body")
+	if body and body:IsA("BasePart") then
+		body.Material = Enum.Material.Neon
+	end
+
+	local adornee = UnitVisuals.primaryPart(model)
+	if not adornee then
+		return
+	end
+	local _, size = model:GetBoundingBox()
+
+	local light = Instance.new("PointLight")
+	light.Color = color
+	light.Brightness = 2
+	light.Range = math.max(size.Y * 3, 8)
+	light.Parent = adornee
+
+	local glitter = Instance.new("ParticleEmitter")
+	glitter.Texture = SPARKLE_TEXTURE
+	glitter.Color = ColorSequence.new(color, Color3.new(1, 1, 1))
+	glitter.LightEmission = 1
+	glitter.Size = NumberSequence.new(size.Y * 0.22, 0)
+	glitter.Transparency = NumberSequence.new(0.1, 1)
+	glitter.Lifetime = NumberRange.new(0.7, 1.3)
+	glitter.Rate = 9
+	glitter.Speed = NumberRange.new(0.6, 1.6)
+	glitter.SpreadAngle = Vector2.new(180, 180)
+	glitter.Rotation = NumberRange.new(0, 360)
+	glitter.RotSpeed = NumberRange.new(-60, 60)
+	glitter.Parent = adornee
+end
+
 -- Pivot at the bottom centre, so placing an item rests it on the ground
 -- instead of burying it to the waist. Model.WorldPivot is ignored once a
 -- PrimaryPart exists, so the offset has to go on the part itself.
@@ -84,7 +123,7 @@ local function setBottomPivot(model: Model)
 	end
 end
 
-local function addLabel(model: Model, name: string, tier: number)
+local function addLabel(model: Model, name: string, tier: number, sparkle: boolean?)
 	local adornee = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
 	if not adornee then
 		return
@@ -116,7 +155,14 @@ local function addLabel(model: Model, name: string, tier: number)
 		label.Parent = billboard
 	end
 	makeText(name, Theme.Palette.Text, UDim2.fromScale(0, 0), UDim2.fromScale(1, 0.6))
-	makeText(`Lv. {tier}`, Theme.Palette.Accent, UDim2.fromScale(0, 0.6), UDim2.fromScale(1, 0.4))
+	-- A sparkle has no tier to speak of: it sits off the end of the ladder and
+	-- can't be merged, so it's labelled by what it is instead.
+	makeText(
+		if sparkle then Theme.Text.Sparkle else `Lv. {tier}`,
+		Theme.Palette.Accent,
+		UDim2.fromScale(0, 0.6),
+		UDim2.fromScale(1, 0.4)
+	)
 
 	billboard.Parent = adornee
 end
@@ -153,8 +199,10 @@ function UnitVisuals.attachTo(model: Model, target: BasePart, offset: CFrame)
 	model:SetAttribute("Carried", true)
 end
 
+-- Takes any unit index: a tier on the merge ladder, or one of the theme's
+-- sparkles on the end of it.
 function UnitVisuals.build(tier: number): Model
-	local def = Theme.Units[tier]
+	local def = Config.Units[tier]
 	local template = findThemeModel(def.Model)
 
 	local model: Model
@@ -174,10 +222,14 @@ function UnitVisuals.build(tier: number): Model
 		model = buildBlob(tier, def.Color)
 	end
 
+	if def.Sparkle then
+		addSparkleShine(model, def.Color)
+	end
+
 	setBottomPivot(model)
 	model.Name = def.Name
 	model:SetAttribute("Tier", tier)
-	addLabel(model, def.Name, tier)
+	addLabel(model, def.Name, tier, def.Sparkle)
 	CollectionService:AddTag(model, UnitVisuals.Tag)
 	return model
 end

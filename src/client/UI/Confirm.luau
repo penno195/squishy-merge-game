@@ -6,9 +6,8 @@ local Components = require(script.Parent.Components)
 
 local Palette = Components.Palette
 
--- Panels are built at the default ZIndex, so anything above that wins. With
--- Sibling behaviour the whole subtree comes with it.
-local LAYER = 10
+-- Above the panels, so it can ask about whatever is already open behind it.
+local LAYER = Components.Layer.Dialog
 
 local Confirm = {}
 
@@ -56,12 +55,14 @@ function Confirm.create(parent: Instance): Dialog
 		root.Visible = false
 	end
 
+	-- Modal, so the cursor is free to answer the question. See Components.panel.
 	local yes = Components.button({
 		Text = "Yes",
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.fromScale(0, 1),
 		Size = UDim2.new(0.48, 0, 0, 64),
 		BackgroundColor3 = Palette.Positive,
+		Modal = true,
 		Parent = root,
 	}, function()
 		local callback = answer

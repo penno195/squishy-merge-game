@@ -87,7 +87,11 @@ local function checkPickup(player: Player, playerTimers: Timers)
 	if bin then
 		local delta = bin - root.Position
 		local onBin = Vector2.new(delta.X, delta.Z).Magnitude <= Config.Balance.Bin.Radius
-		if onBin and not playerTimers.onBin and data.Carried > 0 then
+		if onBin and not playerTimers.onBin and Economy.isSparkle(data.Carried) then
+			-- Limited editions, with no way to make that one back: the bin
+			-- says no rather than asking.
+			StateService.notify(player, `{Theme.Text.SparklePlural} can't be sold.`, "Error")
+		elseif onBin and not playerTimers.onBin and data.Carried > 0 then
 			-- Ask rather than sell. Selling is destructive and irreversible, and
 			-- the bin sits where a player might wander while carrying something
 			-- they meant to keep.
@@ -223,8 +227,12 @@ function GameplayService.init()
 			StateService.notify(player, `Stand at the {Theme.Text.Bin} to sell.`, "Error")
 			return
 		end
+		if Economy.isSparkle(data.Carried) then
+			StateService.notify(player, `{Theme.Text.SparklePlural} can't be sold.`, "Error")
+			return
+		end
 
-		local tier = ItemService.binCarried(player)
+		local tier = ItemService.takeCarried(player)
 		if tier then
 			local amount = Economy.binValue(tier)
 			RewardService.grantCash(player, amount)

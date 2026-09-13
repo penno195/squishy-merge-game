@@ -138,32 +138,40 @@ function WheelFace.create(props: { [string]: any }, onSpin: () -> ()): Face
 		end
 	end
 
-	-- Labels read outward along their wedge, the way a real wheel's do. A wedge
-	-- is long and narrow, so radial text fits names like "Bonus Unit" that
-	-- would crowd their neighbours laid across the arc. Whichever segment wins
-	-- is named again under the wheel, so it needn't be upright up top.
+	-- Labels read along their wedge, the way a real wheel's do. A wedge is long
+	-- and narrow, so radial text fits names like "Bonus Unit" that would crowd
+	-- their neighbours laid across the arc.
+	--
+	-- Past the halfway point, reading outward would put every word upside down,
+	-- so those segments are turned to read inward instead. That's what the
+	-- printed wheels do, and it's the difference between a wheel you can read
+	-- at a glance and one you tilt your head at.
 	for index, prize in Prizes do
 		local degrees = (index - 1) * segmentAngle
 		local angle = math.rad(degrees)
+		local flipped = degrees > 180
 		local holder: Frame = Components.new("Frame", {
 			Name = `Label{index}`,
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5 + math.sin(angle) * LABEL_RADIUS, 0.5 - math.cos(angle) * LABEL_RADIUS),
 			-- Width runs along the radius once rotated, height across the arc.
 			Size = UDim2.fromScale(0.32, 0.115),
-			Rotation = degrees - 90,
+			Rotation = if flipped then degrees + 90 else degrees - 90,
 			BackgroundTransparency = 1,
 			Parent = spinner,
 		})
+		-- A flipped holder is upside down, so its two lines swap places to keep
+		-- the name above the odds on screen either way.
 		Components.label({
 			Text = prize.Label,
+			Position = UDim2.fromScale(0, if flipped then 0.4 else 0),
 			Size = UDim2.fromScale(1, 0.6),
 			Stroke = 3,
 			Parent = holder,
 		})
 		Components.label({
 			Text = `{string.format("%.0f", Economy.prizeChance(index) * 100)}%`,
-			Position = UDim2.fromScale(0, 0.62),
+			Position = UDim2.fromScale(0, if flipped then 0.04 else 0.62),
 			Size = UDim2.fromScale(1, 0.34),
 			TextColor3 = Palette.Text,
 			Stroke = 3,

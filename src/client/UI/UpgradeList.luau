@@ -17,8 +17,36 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Palette = Components.Palette
 local Theme = Config.Theme
 
--- The gem-bought earning boost isn't an upgrade, but it sits alongside them.
+-- The two gem-bought timed effects. Neither is an upgrade -- no levels, no
+-- cash, nothing to max out -- but both sit alongside them on the board and in
+-- the panel, so they're described here in the same shape.
 local BOOST_ID = "Boost"
+local LUCK_ID = "Luck"
+
+type Timed = {
+	Name: string,
+	Icon: string,
+	Remote: string,
+	cost: () -> number,
+	remaining: (Types.PlayerData) -> number,
+}
+
+local TIMED: { [string]: Timed } = {
+	[BOOST_ID] = {
+		Name = "Earning Boost",
+		Icon = "Boost",
+		Remote = "BuyBoost",
+		cost = Economy.boostCost,
+		remaining = Economy.boostRemaining,
+	},
+	[LUCK_ID] = {
+		Name = "Lucky Charm",
+		Icon = "Luck",
+		Remote = "BuyLuck",
+		cost = Economy.luckCost,
+		remaining = Economy.luckRemaining,
+	},
+}
 
 local UpgradeList = {}
 
@@ -37,15 +65,16 @@ local function icon(id: string): string
 end
 
 local function entryFor(id: string): Entry
-	if id == BOOST_ID then
-		return { Id = BOOST_ID, Name = "Earning Boost", Icon = icon("Boost") }
+	local timed = TIMED[id]
+	if timed then
+		return { Id = id, Name = timed.Name, Icon = icon(timed.Icon) }
 	end
 	return { Id = id, Name = Economy.getUpgrade(id).Name, Icon = icon(id) }
 end
 
 -- What the garden board shows, in this order. Everything else lives in the
 -- Upgrades panel, which lists the lot.
-UpgradeList.BoardIds = { "SpawnTier", "SpawnSpeed", "GardenSpace", BOOST_ID, "Luck" }
+UpgradeList.BoardIds = { "SpawnTier", "SpawnSpeed", "GardenSpace", BOOST_ID, LUCK_ID }
 
 function UpgradeList.allIds(): { string }
 	local ids = {}
@@ -53,6 +82,7 @@ function UpgradeList.allIds(): { string }
 		table.insert(ids, upgrade.Id)
 	end
 	table.insert(ids, BOOST_ID)
+	table.insert(ids, LUCK_ID)
 	return ids
 end
 
@@ -63,13 +93,20 @@ local function describe(id: string, data: Types.PlayerData, passes: { [string]: 
 		local interval = Economy.dropInterval(data, passMultiplier)
 		return `A {Theme.Text.Unit} drops about every {string.format("%.1f", interval)}s`
 	elseif id == "SpawnTier" then
-		return `Drops up to {Theme.Units[Economy.dropTier(data)].Name}`
+		return `Drops up to {Config.Units[Economy.dropTier(data)].Name}`
 	elseif id == "GardenSpace" then
 		return `Garden holds {Economy.gardenCapacity(data)} {Theme.Text.UnitPlural}`
-	elseif id == "Luck" then
+	elseif id == LUCK_ID then
 		local _, top = Economy.dropTierRange(data)
-		local chance = math.floor(Economy.topTierChance(data) * 100 + 0.5)
-		return `{chance}% of drops are {Theme.Units[top].Name}`
+		local remaining = Economy.luckRemaining(data)
+		if remaining > 0 then
+			local chance = math.floor(Economy.topTierChance(data) * 100 + 0.5)
+			return `Active — {Format.time(remaining)} left, {chance}% {Config.Units[top].Name}`
+		end
+		-- Idle, the tile quotes what buying one would do rather than the odds
+		-- the player already has, which are the base weights.
+		local lucky = math.floor(Economy.topTierChance(data, Config.Balance.Luck.Bias) * 100 + 0.5)
+		return `{lucky}% of drops {Config.Units[top].Name} for {Format.time(Economy.luckSeconds())}`
 	elseif id == "Income" then
 		local upgrade = Economy.getUpgrade("Income")
 		local multiplier = 1 + Economy.upgradeLevel(data, "Income") * upgrade.PerLevel
@@ -85,10 +122,12 @@ local function describe(id: string, data: Types.PlayerData, passes: { [string]: 
 	return ""
 end
 
--- The line above the button: an upgrade's level, or the boost's state.
+-- The line above the button: an upgrade's level, or whether the timed thing is
+-- running.
 local function statusOf(id: string, data: Types.PlayerData): string
-	if id == BOOST_ID then
-		return if Economy.boostActive(data) then "RUNNING" else "Ready"
+	local timed = TIMED[id]
+	if timed then
+		return if timed.remaining(data) > 0 then "RUNNING" else "Ready"
 	end
 	return `Level {Economy.upgradeLevel(data, id)} / {Economy.upgradeMaxLevel(id)}`
 end
@@ -101,8 +140,9 @@ type Row = {
 
 local function buy(id: string)
 	Sound.play(Theme.Sounds.Purchase)
-	if id == BOOST_ID then
-		Net.event("BuyBoost"):FireServer()
+	local timed = TIMED[id]
+	if timed then
+		Net.event(timed.Remote):FireServer()
 	else
 		Net.event("BuyUpgrade"):FireServer(id)
 	end
@@ -117,8 +157,9 @@ local function makeUpdater(rows: { [string]: Row }): ({ [string]: any }) -> ()
 			row.Status.Text = statusOf(id, data)
 			row.Detail.Text = describe(id, data, passes)
 
-			if id == BOOST_ID then
-				local cost = Economy.boostCost()
+			local timed = TIMED[id]
+			if timed then
+				local cost = timed.cost()
 				row.Button.setText(`{cost} Gems`)
 				row.Button.setEnabled(data.Gems >= cost)
 			else
@@ -136,8 +177,8 @@ local function makeUpdater(rows: { [string]: Row }): ({ [string]: any }) -> ()
 	end
 end
 
--- The boost counts down between snapshots, so re-render once a second.
-local function keepBoostLive(host: Instance, update: ({ [string]: any }) -> (), latest: () -> { [string]: any }?)
+-- The timed effects count down between snapshots, so re-render once a second.
+local function keepTimersLive(host: Instance, update: ({ [string]: any }) -> (), latest: () -> { [string]: any }?)
 	local elapsed = 0
 	local connection: RBXScriptConnection
 	connection = RunService.Heartbeat:Connect(function(delta)
@@ -176,12 +217,12 @@ function UpgradeList.tiles(parent: Instance, ids: { string }): List
 
 	for order, id in ids do
 		local entry = entryFor(id)
-		local isBoost = id == BOOST_ID
+		local isTimed = TIMED[id] ~= nil
 		local card = Components.card({
 			-- Each tile gives up its share of the gaps between them.
 			Size = UDim2.new(width, -12, 1, 0),
 			LayoutOrder = order,
-			BackgroundColor3 = if isBoost then Palette.Secondary else Palette.Surface,
+			BackgroundColor3 = if isTimed then Palette.Secondary else Palette.Surface,
 			Parent = strip,
 		})
 		Components.padding(14).Parent = card
@@ -220,13 +261,13 @@ function UpgradeList.tiles(parent: Instance, ids: { string }): List
 			Text = "",
 			Size = UDim2.fromScale(1, 0.26),
 			Position = UDim2.fromScale(0, 0.74),
-			BackgroundColor3 = if isBoost then Palette.Accent else Palette.Positive,
-			TextColor3 = if isBoost then Palette.Background else Palette.Text,
+			BackgroundColor3 = if isTimed then Palette.Accent else Palette.Positive,
+			TextColor3 = if isTimed then Palette.Background else Palette.Text,
 			Parent = card,
 		}, function()
 			buy(id)
 		end)
-		button.setIcon(if isBoost then icon("Gems") else icon("Currency"))
+		button.setIcon(if isTimed then icon("Gems") else icon("Currency"))
 
 		rows[id] = { Status = status, Detail = detail, Button = button }
 	end
@@ -237,7 +278,7 @@ function UpgradeList.tiles(parent: Instance, ids: { string }): List
 		latest = snapshot
 		update(snapshot)
 	end
-	keepBoostLive(strip, update, function()
+	keepTimersLive(strip, update, function()
 		return latest
 	end)
 	return { update = wrapped }
@@ -252,11 +293,11 @@ function UpgradeList.rows(parent: Instance, ids: { string }): List
 
 	for order, id in ids do
 		local entry = entryFor(id)
-		local isBoost = id == BOOST_ID
+		local isTimed = TIMED[id] ~= nil
 		local card = Components.card({
 			Size = UDim2.new(1, -12, 0, 88),
 			LayoutOrder = order,
-			BackgroundColor3 = if isBoost then Palette.Secondary else Palette.Surface,
+			BackgroundColor3 = if isTimed then Palette.Secondary else Palette.Surface,
 			Parent = list,
 		})
 
@@ -297,13 +338,13 @@ function UpgradeList.rows(parent: Instance, ids: { string }): List
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.new(1, -12, 0.5, 0),
 			Size = UDim2.fromOffset(168, 58),
-			BackgroundColor3 = if isBoost then Palette.Accent else Palette.Positive,
-			TextColor3 = if isBoost then Palette.Background else Palette.Text,
+			BackgroundColor3 = if isTimed then Palette.Accent else Palette.Positive,
+			TextColor3 = if isTimed then Palette.Background else Palette.Text,
 			Parent = card,
 		}, function()
 			buy(id)
 		end)
-		button.setIcon(if isBoost then icon("Gems") else icon("Currency"))
+		button.setIcon(if isTimed then icon("Gems") else icon("Currency"))
 
 		rows[id] = { Status = status, Detail = detail, Button = button }
 	end
@@ -314,7 +355,7 @@ function UpgradeList.rows(parent: Instance, ids: { string }): List
 		latest = snapshot
 		update(snapshot)
 	end
-	keepBoostLive(list, update, function()
+	keepTimersLive(list, update, function()
 		return latest
 	end)
 	return { update = wrapped }

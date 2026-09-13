@@ -49,6 +49,21 @@ Components.Palette = Palette
 Components.Font = Theme.Font
 Components.Radius = RADIUS
 
+-- What sits in front of what. The HUD is built at the default ZIndex, and with
+-- Sibling behaviour a frame's whole subtree travels with it, so setting one
+-- number on a panel's root lifts everything inside it. Without this the order
+-- is decided by which was created first, which put the buy button in front of
+-- every panel that opens over it.
+Components.Layer = {
+	Hud = 1,
+	Panel = 5,
+	-- Above the panels: a toast about what just happened is worth reading even
+	-- while something is open.
+	Toast = 8,
+	-- Above everything, because it's asking a question about what's behind it.
+	Dialog = 10,
+}
+
 function Components.new(className: string, props: { [string]: any }, children: { Instance }?): any
 	local instance = Instance.new(className)
 	for key, value in props do
@@ -393,6 +408,29 @@ function Components.pill(props: { [string]: any }, icon: string, color: Color3?)
 	}
 end
 
+-- A SurfaceGui that draws true.
+--
+-- SizingMode is the whole point of this existing. A SurfaceGui defaults to
+-- FixedSize with an 800x600 canvas, which is then stretched over the part's
+-- face whatever shape that face is -- so PixelsPerStud is quietly ignored and
+-- everything drawn on it is scaled differently across than down. On the wheel
+-- that turned a circle into an ellipse 0.875 as wide as it was tall; on the
+-- garden board, whose face is 2.85:1, it stretched everything 2.14x across.
+--
+-- With PixelsPerStud the canvas takes the face's own proportions and a square
+-- face gets a square canvas, which is what every drawing here assumes.
+function Components.surface(props: { [string]: any }): SurfaceGui
+	local merged: { [string]: any } = {
+		SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud,
+		Face = Enum.NormalId.Front,
+		LightInfluence = 0,
+	}
+	for key, value in props do
+		merged[key] = value
+	end
+	return Components.new("SurfaceGui", merged)
+end
+
 function Components.scroller(props: { [string]: any }): ScrollingFrame
 	local merged: { [string]: any } = {
 		BackgroundTransparency = 1,
@@ -426,6 +464,7 @@ function Components.panel(title: string, size: UDim2, parent: Instance): Panel
 		Size = size,
 		BackgroundColor3 = Palette.Background,
 		Visible = false,
+		ZIndex = Components.Layer.Panel,
 		Parent = parent,
 	})
 	Components.padding(14).Parent = root
@@ -443,12 +482,19 @@ function Components.panel(title: string, size: UDim2, parent: Instance): Panel
 		MaxTextSize = 34,
 		Parent = header,
 	})
+	-- Modal on the close button is what keeps the cursor usable: while a Modal
+	-- button is on screen Roblox unlocks the mouse, and the close button is
+	-- visible for exactly as long as the panel is. Without it, a panel opened
+	-- while the camera has the mouse captured leaves the cursor pinned and the
+	-- panel unclickable. It goes on the face rather than the wrapper because
+	-- Modal is a GuiButton property, which is where `button` routes it.
 	local close = Components.button({
 		Text = "X",
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.fromScale(1, 0),
 		Size = UDim2.fromOffset(44, 44),
 		BackgroundColor3 = Palette.Negative,
+		Modal = true,
 		Parent = header,
 	}, function()
 		root.Visible = false

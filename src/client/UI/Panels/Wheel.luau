@@ -24,7 +24,9 @@ local WHEEL_SIZE = 330
 local Wheel = {}
 
 function Wheel.create(parent: Instance)
-	local panel = Components.panel("Prize Wheel", UDim2.fromOffset(430, 610), parent)
+	-- Tall enough for the hint under the buttons: the content runs to 552, and
+	-- the panel owes it that plus the title bar and its own padding.
+	local panel = Components.panel("Prize Wheel", UDim2.fromOffset(430, 640), parent)
 
 	local face = WheelFace.create({
 		Name = "Dial",
@@ -99,7 +101,6 @@ function Wheel.create(parent: Instance)
 		spinButton.setEnabled(ready)
 		-- The count rides on the button, so it's read at the moment of pressing.
 		spinButton.setBadge(if spins > 0 then `x{spins}` else nil)
-		face.setSpinEnabled(ready)
 
 		local cost = Economy.spinCost()
 		buyButton.setText(`Buy a spin — {cost}`)
