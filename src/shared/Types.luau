@@ -214,6 +214,21 @@ export type QuestState = {
 	Active: { QuestSlot },
 }
 
+-- The weekly leaderboard race. The board ranks what a player earned *this*
+-- week, which is TotalEarned now minus where it stood when their week turned
+-- over -- so the race resets without anything being wiped.
+export type WeeklyState = {
+	-- The week `Base` was captured for, as Economy.currentWeek returns it. A
+	-- week other than the current one means `Base` is stale and earnings this
+	-- week are nothing yet.
+	Week: number,
+	Base: number,
+	-- The last week whose prize was collected. Kept so a prize is paid once,
+	-- and kept separately from `Week` because a prize is claimed during the
+	-- week *after* the one it was won in.
+	PaidWeek: number,
+}
+
 export type PlayerData = {
 	Cash: number,
 	-- Premium currency, spent only on the timed earning boost.
@@ -259,6 +274,7 @@ export type PlayerData = {
 	-- How far through the tutorial the player got. 0 is "hasn't started".
 	Tutorial: number,
 	Quests: QuestState,
+	Weekly: WeeklyState,
 }
 
 -- A bundle of rewards (daily rewards, dev products). Cash is "minutes of the

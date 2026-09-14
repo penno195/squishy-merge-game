@@ -20,6 +20,7 @@ local EVENTS = {
 	"ClaimDaily",
 	"ClaimQuest",
 	"ClaimPlaytime",
+	"ClaimPrize",
 	-- The crafting station in the hub.
 	"CraftAdd",
 	"CraftTakeBack",

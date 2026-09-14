@@ -564,6 +564,47 @@ function Economy.questClaimable(data: Types.PlayerData, slot: Types.QuestSlot): 
 	return not slot.Claimed and Economy.questComplete(data, slot)
 end
 
+-- The weekly leaderboard race --------------------------------------------
+-- The global boards rank lifetime totals, which is right for a hall of fame and
+-- wrong for a prize: whoever has played longest sits at the top of them forever,
+-- so paying out on one would reward seniority rather than the week. The weekly
+-- board ranks what a player earned since their week turned over instead, which
+-- everyone starts level on every Monday.
+
+-- What this player has earned this week. A `Base` captured for another week is
+-- stale, and reads as nothing earned yet rather than as a windfall -- rolling
+-- it over is the server's job, and this has to be right before it happens.
+function Economy.weeklyEarned(data: Types.PlayerData, now: number): number
+	local weekly = data.Weekly
+	if weekly.Week ~= Economy.currentWeek(now) then
+		return 0
+	end
+	-- TotalEarned only ever climbs (a rebirth doesn't reset it), so the
+	-- difference can't go negative unless a save has been edited underneath us.
+	return math.max(data.TotalEarned - weekly.Base, 0)
+end
+
+local PRIZES: { number } = Balance.Leaderboard.Prizes
+
+-- How many places pay. Below this the board is still worth being on; it just
+-- doesn't hand over gems.
+function Economy.prizePlaces(): number
+	return #PRIZES
+end
+
+-- Gems for finishing in that place, or 0 for a place that doesn't pay -- which
+-- includes rank 0, the "didn't place at all" a lookup returns.
+function Economy.leaderboardPrize(rank: number): number
+	return PRIZES[rank] or 0
+end
+
+-- Whether last week's prize is still owed. A prize is claimed during the week
+-- after the one it was won in, so the week being claimed for is always behind
+-- the current one.
+function Economy.prizeUnclaimed(data: Types.PlayerData, week: number): boolean
+	return week >= 0 and data.Weekly.PaidWeek < week
+end
+
 -- Playtime rewards --------------------------------------------------------
 -- A ladder of claims through one session. Unlike quests, nothing here is
 -- measured off the save: the ladder is how long the player has been in *this*

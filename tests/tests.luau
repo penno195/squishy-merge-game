@@ -419,6 +419,65 @@ for index = 2, #rungs do
 	check("the ladder climbs", rungs[index].Minutes > rungs[index - 1].Minutes, `rung {index}`)
 end
 
+-- The weekly leaderboard race. The board resets by being keyed on the week, so
+-- what's tested here is the arithmetic that decides what a player has earned
+-- since theirs turned over, and who is owed what for the week before.
+local WEEK = 86400 * 7
+local raceData = {
+	Upgrades = {},
+	Items = {},
+	Carried = 0,
+	LuckEndsAt = 0,
+	Rebirths = 0,
+	Sparkles = {},
+	Discovered = {},
+	Stats = {},
+	TotalEarned = 5000,
+	Weekly = { Week = Economy.currentWeek(WEEK * 3), Base = 1000, PaidWeek = -1 },
+}
+
+check("earnings are counted from the base", Economy.weeklyEarned(raceData, WEEK * 3) == 4000)
+
+-- A base captured for another week is stale. Reading it as earnings would put
+-- the whole of last week on top of this week's board.
+check("a stale base earns nothing yet", Economy.weeklyEarned(raceData, WEEK * 4) == 0)
+check("a base from the future earns nothing yet", Economy.weeklyEarned(raceData, WEEK * 2) == 0)
+
+raceData.Weekly.Base = 9000
+check("earnings never go negative", Economy.weeklyEarned(raceData, WEEK * 3) == 0)
+raceData.Weekly.Base = 5000
+check("having earned nothing is zero, not nil", Economy.weeklyEarned(raceData, WEEK * 3) == 0)
+
+-- Prizes pay down the places and stop.
+local places = Economy.prizePlaces()
+check("some places pay", places > 0)
+for rank = 1, places do
+	check("a paying place pays", Economy.leaderboardPrize(rank) > 0, `rank {rank}`)
+end
+for rank = 2, places do
+	check(
+		"a lower place never pays more",
+		Economy.leaderboardPrize(rank) <= Economy.leaderboardPrize(rank - 1),
+		`rank {rank}`
+	)
+end
+check("first place pays the most", Economy.leaderboardPrize(1) > Economy.leaderboardPrize(places))
+check("a place off the end pays nothing", Economy.leaderboardPrize(places + 1) == 0)
+-- Rank 0 is what a lookup returns for a player who wasn't on the board at all,
+-- so it has to be safe rather than an error.
+check("not placing pays nothing", Economy.leaderboardPrize(0) == 0)
+
+-- A prize is claimed during the week after the one it was won in, so the week
+-- being claimed for is always behind the current one.
+raceData.Weekly.PaidWeek = -1
+check("an uncollected prize is owed", Economy.prizeUnclaimed(raceData, 5))
+raceData.Weekly.PaidWeek = 5
+check("a collected prize is not owed again", not Economy.prizeUnclaimed(raceData, 5))
+check("the next week's prize is owed", Economy.prizeUnclaimed(raceData, 6))
+check("an older week is not owed", not Economy.prizeUnclaimed(raceData, 4))
+-- Before any standings have been read the week is -1, which is nobody's week.
+check("no standings means nothing owed", not Economy.prizeUnclaimed(raceData, -1))
+
 print(`{checks - failures} / {checks} checks passed`)
 if failures > 0 then
 	error(`{failures} checks failed`)

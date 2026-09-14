@@ -65,6 +65,9 @@ four and a half minutes in. A published server always runs it at 1.
   metric, if it ever wants ranking properly, belongs on a second board standing
   beside this one. `Leaderboard.BoardRows` sets how many places it shows; the
   panel still lists the full top 25.
+- The panel carries a third board the hub's doesn't: **this week's race**, which
+  ranks what each player has earned since their week turned over, and pays out.
+  See below.
 - A prize wheel stands beside the crafting station, a little taller than the
   players queuing at it. Everyone gets one free spin a day and can buy more
   with gems; prizes are cash, gems and bonus units. Walk up to it or use the
@@ -123,6 +126,32 @@ four and a half minutes in. A published server always runs it at 1.
   `Balance.Playtime.Rungs` is the whole thing, and a rung coming up announces
   itself. `data.Playtime` still keeps the lifetime total for anything that wants
   to ask how long someone has played; the ladder isn't counting that.
+
+## The weekly race
+
+The two boards that have always been there rank lifetime totals, which is right
+for a hall of fame and wrong for a prize: whoever has played longest sits on top
+of them forever, so paying out on one would reward seniority rather than the
+week. The race is a third board that everyone starts level on every Monday.
+
+- It ranks **earned this week** — `TotalEarned` now, minus where it stood when
+  that player's week turned over. Nothing is wiped to reset it.
+- Last week's top finishers win Gems, listed by place in
+  `Balance.Leaderboard.Prizes`. The list's own length is how many places pay, so
+  shortening it makes the prize rarer.
+- A prize is **claimed, not granted**: it's waiting at the top of the Ranks
+  panel when the winner next logs in. Someone who won while they were offline
+  should be told they won, and a line of Gems appearing in the corner isn't
+  being told.
+- A prize has to be collected during the week after the one it was won in. Miss
+  a week entirely and it's gone — the board it was won on stops being the one
+  the game is paying out against.
+
+The whole reset is a naming trick: each week's board is its own
+OrderedDataStore, named `<LeaderboardPrefix>_Weekly_<week number>`. So there's
+nothing to clear, last week's standings are still readable while this week's
+race is already running, and rolling over costs a rename. Old weeks' stores are
+simply never read again.
 
 ## The crafting station
 

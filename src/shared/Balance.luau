@@ -454,6 +454,11 @@ return {
 
 	Leaderboard = {
 		Size = 25,
+		-- Gems paid to last week's top finishers, by finishing place. The list's
+		-- own length is how many places pay, so shortening it is the knob for
+		-- making the prize rarer. It pays steeply at the top on purpose: a prize
+		-- spread evenly over ten places is ten players' worth of nothing much.
+		Prizes = { 250, 150, 100, 60, 40, 30, 25, 20, 15, 10 },
 		RefreshSeconds = 60,
 		-- How many of those the board in the hub shows. Fewer than the panel,
 		-- because it's read from across the map rather than scrolled.

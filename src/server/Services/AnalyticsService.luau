@@ -61,6 +61,7 @@ local CUSTOM_EVENTS: { [string]: boolean } = {
 	DailyClaimed = true,
 	QuestClaimed = true,
 	PlaytimeClaimed = true,
+	PrizeClaimed = true,
 	ProductPurchased = true,
 	SessionEnded = true,
 }
@@ -220,6 +221,7 @@ function AnalyticsService.init()
 	measure("DailyClaimed")
 	measure("QuestClaimed")
 	measure("PlaytimeClaimed")
+	measure("PrizeClaimed")
 	measure("OfflineEarned")
 	measure("ProductPurchased")
 	measure("SessionStarted")

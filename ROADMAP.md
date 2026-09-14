@@ -1,11 +1,20 @@
 # Roadmap
 
-**Where things stand (2026-09-14).** Batch 1 is done and committed. Batch 2 is
-one item from finished: `ClaimList`, quests and the playtime ladder are in,
-leaderboard payouts are not. Quests and the playtime ladder have not been played
-yet — the playtime ladder especially wants a sitting, since its rungs are the
-one thing in the game that can only be checked by waiting. Next session: play
-what's there, then leaderboard payouts, which is the last of batch 2.
+**Where things stand (2026-09-14).** Batches 1 and 2 are both done. None of
+batch 2 has been played yet, and it's the batch that most needs it: quests, the
+playtime ladder and the weekly race are all things that only show themselves
+over time. Next session is a playthrough, not a build.
+
+Two of the three can't be checked by sitting down for ten minutes, so there are
+knobs for it: `Settings.StudioPlaytimeSpeed` runs the playtime ladder twenty
+times faster in Studio. The weekly race has no equivalent — its board is keyed
+on the real week number, and the only honest way to see a payout is to set a
+player's `Weekly.PaidWeek` back by hand in a Studio session and rejoin.
+
+Batch 3 is monetisation, and it's the first batch that can't be finished from
+here: every item is a gamepass or product ID, and this place has never been
+published, so `Settings.GamePasses` and `Settings.Products` are all still `0`.
+Publishing it is the blocker to start on.
 
 `tests/README.md` explains how to run the headless checks — worth doing before
 and after any change to the shared modules.
@@ -56,8 +65,12 @@ rate is balanced against two demands rather than one.
       another ten minutes, and the daily streak already pays for coming back.
       The session clock is its own rather than the analytics one, so nothing
       else has to depend on a service whose job is to listen.
-- [ ] **Leaderboard payouts.** Weekly reset with a gem prize, so the boards are
-      worth climbing.
+- [x] **Leaderboard payouts.** A third board — the weekly race, ranking earned
+      since the player's week turned over — with gems for last week's top
+      finishers. The two lifetime boards were the wrong thing to pay out on:
+      nobody new can climb them, so a prize on one rewards seniority. Each
+      week's board is its own OrderedDataStore named for its week, so the reset
+      is a rename and last week's standings survive to be paid out on.
 
 ## Batch 3 — Monetisation
 

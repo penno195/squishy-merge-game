@@ -31,6 +31,7 @@ local COUNTS: { [string]: string } = {
 	DailyClaimed = "DailyClaims",
 	QuestClaimed = "QuestsClaimed",
 	PlaytimeClaimed = "PlaytimeClaims",
+	PrizeClaimed = "Prizes",
 }
 
 function StatsService.get(data: Types.PlayerData, stat: string): number
@@ -65,6 +66,7 @@ function StatsService.init()
 	count("DailyClaimed")
 	count("QuestClaimed")
 	count("PlaytimeClaimed")
+	count("PrizeClaimed")
 
 	-- Playtime comes off the session clock rather than a tally, so it's the one
 	-- thing here that isn't a count of something.
