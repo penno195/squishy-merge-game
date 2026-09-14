@@ -60,6 +60,7 @@ local CUSTOM_EVENTS: { [string]: boolean } = {
 	SpinBought = true,
 	DailyClaimed = true,
 	QuestClaimed = true,
+	PlaytimeClaimed = true,
 	ProductPurchased = true,
 	SessionEnded = true,
 }
@@ -218,6 +219,7 @@ function AnalyticsService.init()
 	measure("SpinBought")
 	measure("DailyClaimed")
 	measure("QuestClaimed")
+	measure("PlaytimeClaimed")
 	measure("OfflineEarned")
 	measure("ProductPurchased")
 	measure("SessionStarted")

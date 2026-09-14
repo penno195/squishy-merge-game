@@ -36,6 +36,7 @@ export type Action =
 	| "SpinBought"
 	| "DailyClaimed"
 	| "QuestClaimed"
+	| "PlaytimeClaimed"
 	| "OfflineEarned"
 	| "ProductPurchased"
 	-- Session bookends

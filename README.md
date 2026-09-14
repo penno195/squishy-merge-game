@@ -30,6 +30,10 @@ plus a few IDs — no gameplay code is copied or edited.
 Studio only**, so the gem-priced things can be tried before any have been
 earned. A published server ignores it; set it to 0 to test the real drip.
 
+`Settings.StudioPlaytimeSpeed` does the same for the playtime ladder, running
+its clock that many times faster in Studio — at 20, the ninety-minute rung lands
+four and a half minutes in. A published server always runs it at 1.
+
 `rojo build -o game.rbxl` produces a place file instead, if you'd rather not sync.
 
 ## How a round plays
@@ -113,6 +117,12 @@ earned. A published server ignores it; set it to 0 to test the real drip.
 - Offline earnings, a 7-day daily reward streak and global leaderboards keep
   players coming back. Offline earnings ignore the boost, so one can't be
   banked against hours away.
+- A **playtime ladder** pays for staying, where the daily streak pays for coming
+  back: eight rungs from one minute to ninety, claimed as the session runs. It
+  measures the current session and resets when you leave, so it's never stored —
+  `Balance.Playtime.Rungs` is the whole thing, and a rung coming up announces
+  itself. `data.Playtime` still keeps the lifetime total for anything that wants
+  to ask how long someone has played; the ladder isn't counting that.
 
 ## The crafting station
 

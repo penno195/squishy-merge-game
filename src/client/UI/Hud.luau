@@ -29,6 +29,7 @@ local CraftPanel = require(script.Parent.Panels.Craft)
 local DailyPanel = require(script.Parent.Panels.Daily)
 local IndexPanel = require(script.Parent.Panels.Index)
 local LeaderboardPanel = require(script.Parent.Panels.Leaderboard)
+local PlaytimePanel = require(script.Parent.Panels.Playtime)
 local QuestsPanel = require(script.Parent.Panels.Quests)
 local RebirthPanel = require(script.Parent.Panels.Rebirth)
 local ShopPanel = require(script.Parent.Panels.Shop)
@@ -55,6 +56,7 @@ local MENU_ICONS: { [string]: string } = {
 	Shop = "🛒",
 	Daily = "🎁",
 	Quests = "📋",
+	Playtime = "⏱️",
 	Wheel = "🎡",
 	Craft = "⚗️",
 	Ranks = "🏆",
@@ -173,6 +175,7 @@ function Hud.start()
 		{ Name = "Shop", Icon = MENU_ICONS.Shop, Panel = ShopPanel.create(screen) },
 		{ Name = Theme.Text.Rebirth, Icon = "🔁", Panel = RebirthPanel.create(screen) },
 		{ Name = "Quests", Icon = MENU_ICONS.Quests, Panel = QuestsPanel.create(screen) },
+		{ Name = "Playtime", Icon = MENU_ICONS.Playtime, Panel = PlaytimePanel.create(screen) },
 		{ Name = "Daily", Icon = MENU_ICONS.Daily, Panel = DailyPanel.create(screen) },
 		{ Name = WHEEL_PANEL, Icon = MENU_ICONS.Wheel, Panel = WheelPanel.create(screen) },
 		{ Name = CRAFT_PANEL, Icon = MENU_ICONS.Craft, Panel = CraftPanel.create(screen) },

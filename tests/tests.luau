@@ -368,6 +368,57 @@ check("an unknown quest is never complete", not Economy.questComplete(questData,
 -- Weeks advance with days.
 check("a week is seven days", Economy.currentWeek(0) == 0 and Economy.currentWeek(86400 * 7) == 1)
 
+-- Playtime rewards. The ladder is session seconds rather than anything in the
+-- save, so these are the arithmetic: a rung is ready at its own minute and not
+-- a second before, and claiming one never affects another.
+local rungs = Economy.playtimeRungs()
+check("the ladder has rungs", #rungs > 0)
+
+local claimedNone: { [number]: boolean } = {}
+for index, rung in rungs do
+	local target = Economy.playtimeTarget(index)
+	check("a rung's target is its minutes", target == rung.Minutes * 60, `rung {index}`)
+	check("a rung is not ready a second early", not Economy.playtimeReached(target - 1, index), `rung {index}`)
+	check("a rung is ready on the second", Economy.playtimeReached(target, index), `rung {index}`)
+
+	local done, shown = Economy.playtimeProgress(target - 30, index)
+	check("progress counts the seconds waited", done == target - 30, `rung {index}`)
+	check("progress is out of the target", shown == target, `rung {index}`)
+	local over = Economy.playtimeProgress(target * 10, index)
+	check("progress is clamped to the target", over == target, `rung {index}`)
+
+	check("an unclaimed reached rung is claimable", Economy.playtimeClaimable(target, claimedNone, index))
+	check(
+		"an unreached rung is not claimable",
+		not Economy.playtimeClaimable(target - 1, claimedNone, index),
+		`rung {index}`
+	)
+end
+
+-- A rung off the end of the ladder degrades rather than throwing, the way an
+-- unknown quest id does: the index comes off a remote.
+check("a rung past the end has no target", Economy.playtimeTarget(#rungs + 1) == 0)
+check("a rung past the end is never ready", not Economy.playtimeReached(math.huge, #rungs + 1))
+local ghostDone, ghostTarget = Economy.playtimeProgress(500, 0)
+check("a rung before the start has no progress", ghostDone == 0 and ghostTarget == 0)
+
+-- Sitting past the top of the ladder has every rung waiting, and claiming one
+-- takes exactly one off the count.
+local forever = Economy.playtimeTarget(#rungs)
+check("every rung comes up eventually", Economy.playtimeReadyCount(forever, claimedNone) == #rungs)
+check("a fresh session has none ready", Economy.playtimeReadyCount(0, claimedNone) == 0)
+
+local claimedOne: { [number]: boolean } = { [1] = true }
+check("claiming one takes one off the count", Economy.playtimeReadyCount(forever, claimedOne) == #rungs - 1)
+check("a claimed rung is not claimable again", not Economy.playtimeClaimable(forever, claimedOne, 1))
+check("claiming one leaves the others alone", Economy.playtimeClaimable(forever, claimedOne, 2))
+
+-- The rungs climb, which is what lets the panel list them in order and what
+-- makes "the next one up" mean anything.
+for index = 2, #rungs do
+	check("the ladder climbs", rungs[index].Minutes > rungs[index - 1].Minutes, `rung {index}`)
+end
+
 print(`{checks - failures} / {checks} checks passed`)
 if failures > 0 then
 	error(`{failures} checks failed`)

@@ -432,6 +432,26 @@ return {
 		},
 	},
 
+	-- Playtime rewards: a ladder of claims through one sitting. The rungs are
+	-- minutes into the current session and they reset when the player leaves, so
+	-- this is a reason to stay rather than a second daily -- which is why the
+	-- early ones land fast and the late ones are worth waiting for.
+	--
+	-- Rungs must be listed in ascending order; Economy asserts it, because a
+	-- ladder out of order would show the panel's rows climbing and falling.
+	Playtime = {
+		Rungs = {
+			{ Minutes = 1, Reward = { IncomeMinutes = 2, MinCash = 100 } },
+			{ Minutes = 5, Reward = { IncomeMinutes = 5, MinCash = 300 } },
+			{ Minutes = 10, Reward = { IncomeMinutes = 8, MinCash = 600, Gems = 2 } },
+			{ Minutes = 20, Reward = { IncomeMinutes = 14, MinCash = 1200 } },
+			{ Minutes = 30, Reward = { IncomeMinutes = 20, MinCash = 2000, Gems = 5 } },
+			{ Minutes = 45, Reward = { IncomeMinutes = 30, MinCash = 3500, UnitTierBonus = 1 } },
+			{ Minutes = 60, Reward = { IncomeMinutes = 45, MinCash = 6000, Gems = 12 } },
+			{ Minutes = 90, Reward = { IncomeMinutes = 70, MinCash = 10000, UnitTierBonus = 2, Gems = 20 } },
+		},
+	},
+
 	Leaderboard = {
 		Size = 25,
 		RefreshSeconds = 60,

@@ -564,6 +564,73 @@ function Economy.questClaimable(data: Types.PlayerData, slot: Types.QuestSlot): 
 	return not slot.Claimed and Economy.questComplete(data, slot)
 end
 
+-- Playtime rewards --------------------------------------------------------
+-- A ladder of claims through one session. Unlike quests, nothing here is
+-- measured off the save: the ladder is how long the player has been in *this*
+-- session, and what they have already taken from it resets when they leave.
+-- So these take the elapsed seconds and the claimed flags as arguments rather
+-- than PlayerData, which also means the panel and the server agree on whether
+-- a rung is ready without either one asking the other.
+
+export type PlaytimeRung = {
+	Minutes: number,
+	Reward: Types.Reward,
+}
+
+-- Cast for the same reason the quest pools are: Balance is a plain table, and
+-- a rung whose reward has no Gems infers a narrower shape than one that does.
+local PLAYTIME_RUNGS: { PlaytimeRung } = Balance.Playtime.Rungs :: any
+
+for index = 2, #PLAYTIME_RUNGS do
+	assert(
+		PLAYTIME_RUNGS[index].Minutes > PLAYTIME_RUNGS[index - 1].Minutes,
+		`Balance.Playtime.Rungs must climb; rung {index} is not above the one before it`
+	)
+end
+
+function Economy.playtimeRungs(): { PlaytimeRung }
+	return PLAYTIME_RUNGS
+end
+
+-- How long into the session this rung unlocks, in seconds.
+function Economy.playtimeTarget(index: number): number
+	local rung = PLAYTIME_RUNGS[index]
+	return if rung then rung.Minutes * 60 else 0
+end
+
+-- Seconds waited towards this rung and what it needs, clamped so a finished row
+-- reads as finished rather than as overshot.
+function Economy.playtimeProgress(elapsed: number, index: number): (number, number)
+	local target = Economy.playtimeTarget(index)
+	if target <= 0 then
+		return 0, 0
+	end
+	return math.clamp(math.floor(elapsed), 0, target), target
+end
+
+function Economy.playtimeReached(elapsed: number, index: number): boolean
+	local target = Economy.playtimeTarget(index)
+	return target > 0 and elapsed >= target
+end
+
+-- `claimed` is keyed by rung index. A rung that isn't there yet counts as
+-- unclaimed, which is what makes an empty table the state of a fresh session.
+function Economy.playtimeClaimable(elapsed: number, claimed: { [number]: boolean }, index: number): boolean
+	return Economy.playtimeReached(elapsed, index) and not claimed[index]
+end
+
+-- How many rungs are sitting there waiting to be taken. The panel leads with it
+-- and the server uses it to decide whether a session is worth interrupting.
+function Economy.playtimeReadyCount(elapsed: number, claimed: { [number]: boolean }): number
+	local ready = 0
+	for index = 1, #PLAYTIME_RUNGS do
+		if Economy.playtimeClaimable(elapsed, claimed, index) then
+			ready += 1
+		end
+	end
+	return ready
+end
+
 -- Prize wheel -------------------------------------------------------------
 -- Placed after the daily section because it reuses `currentDay`, so a free
 -- spin and a daily reward roll over at the same moment.

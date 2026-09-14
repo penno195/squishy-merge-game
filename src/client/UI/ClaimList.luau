@@ -16,8 +16,12 @@ export type Row = {
 	-- What the player is being asked to do.
 	Text: string,
 	-- How far along, and out of what. A row with Target 0 shows no progress.
+	-- These decide whether the claim button turns on, whatever is displayed.
 	Progress: number,
 	Target: number,
+	-- Overrides the "3 / 10" the numbers would otherwise read as, for a row
+	-- whose progress isn't a count: a clock wants "1m 23s / 5m", not "83 / 300".
+	ProgressText: string?,
 	-- What claiming it pays, written out.
 	Reward: string,
 	Claimed: boolean,
@@ -94,7 +98,8 @@ function ClaimList.create(props: { [string]: any }, onClaim: (index: number) -> 
 				entry.Progress.Text = `Claimed — {row.Reward}`
 				entry.Progress.TextColor3 = Palette.TextMuted
 			elseif row.Target > 0 then
-				entry.Progress.Text = `{row.Progress} / {row.Target}  ·  {row.Reward}`
+				local along = row.ProgressText or `{row.Progress} / {row.Target}`
+				entry.Progress.Text = `{along}  ·  {row.Reward}`
 				entry.Progress.TextColor3 = if done then Palette.Positive else Palette.TextMuted
 			else
 				entry.Progress.Text = row.Reward

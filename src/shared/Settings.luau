@@ -7,6 +7,7 @@ export type Settings = {
 	DataStoreName: string,
 	LeaderboardPrefix: string,
 	StudioGems: number,
+	StudioPlaytimeSpeed: number,
 	GamePasses: { [string]: number },
 	Products: { [string]: number },
 }
@@ -22,6 +23,12 @@ local settings: Settings = {
 	-- gem-priced things can be tried before any have been earned. A live server
 	-- ignores it entirely. Set to 0 to test the real drip instead.
 	StudioGems = 1000,
+
+	-- Runs the playtime ladder this many times faster **in Studio only**, so its
+	-- rungs can be watched arriving instead of waited out -- at 20, the
+	-- ninety-minute rung lands four and a half minutes in. A live server always
+	-- runs it at 1. Set to 1 to test the real pace.
+	StudioPlaytimeSpeed = 20,
 
 	-- Asset IDs are unique to each Roblox experience, so every reskin needs its own.
 	-- 0 means "not set up yet": the matching shop button is hidden.

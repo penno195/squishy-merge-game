@@ -1,11 +1,11 @@
 # Roadmap
 
-**Where things stand (2026-09-13).** Batch 1 is done and committed; batch 2 is
-half done — `ClaimList` and quests are in, playtime rewards and leaderboard
-payouts are not. None of it has been played yet beyond the first pass that
-turned up the daily-panel, rebirth and leaderboard fixes. Next session: play
-what's there, then finish batch 2 (both remaining items ride on `ClaimList`,
-and `data.Playtime` and the session clock already exist, so neither is large).
+**Where things stand (2026-09-14).** Batch 1 is done and committed. Batch 2 is
+one item from finished: `ClaimList`, quests and the playtime ladder are in,
+leaderboard payouts are not. Quests and the playtime ladder have not been played
+yet — the playtime ladder especially wants a sitting, since its rungs are the
+one thing in the game that can only be checked by waiting. Next session: play
+what's there, then leaderboard payouts, which is the last of batch 2.
 
 `tests/README.md` explains how to run the headless checks — worth doing before
 and after any change to the shared modules.
@@ -51,8 +51,11 @@ rate is balanced against two demands rather than one.
       claims over the existing `RewardService` bundles, used by the three below.
 - [x] **Quests.** Three daily and one weekly, pointed at the verbs the game
       already has.
-- [ ] **Playtime rewards.** A ladder of claims through a session. Rides on
-      `ClaimList`; `data.Playtime` and the session clock already exist.
+- [x] **Playtime rewards.** A ladder of claims through a session, on
+      `ClaimList`. Session-scoped and never saved: it's a reason to stay for
+      another ten minutes, and the daily streak already pays for coming back.
+      The session clock is its own rather than the analytics one, so nothing
+      else has to depend on a service whose job is to listen.
 - [ ] **Leaderboard payouts.** Weekly reset with a gem prize, so the boards are
       worth climbing.
 
