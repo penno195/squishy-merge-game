@@ -146,6 +146,9 @@ local theme: Types.Theme = {
 		},
 	},
 
+	-- `Features` dresses the blob from the vocabulary in UnitVisuals. This skin
+	-- is mostly named after sweets rather than animals, so most rungs stay
+	-- plain blobs and the ones that aren't stand out for it.
 	Units = {
 		{ Name = "Sugar Crumb", Color = Color3.fromRGB(255, 250, 235) },
 		{ Name = "Jelly Bean", Color = Color3.fromRGB(255, 140, 165) },
@@ -155,28 +158,52 @@ local theme: Types.Theme = {
 		{ Name = "Marshmallow", Color = Color3.fromRGB(255, 235, 245) },
 		{ Name = "Liquorice Twist", Color = Color3.fromRGB(90, 70, 110) },
 		{ Name = "Bubblegum Blob", Color = Color3.fromRGB(255, 125, 205) },
-		{ Name = "Toffee Bear", Color = Color3.fromRGB(205, 140, 75) },
+		{ Name = "Toffee Bear", Color = Color3.fromRGB(205, 140, 75), Features = { "RoundEars", "Snout" } },
 		{ Name = "Choc Truffle", Color = Color3.fromRGB(120, 78, 60) },
 		{ Name = "Peppermint Swirl", Color = Color3.fromRGB(180, 245, 230) },
-		{ Name = "Caramel Cub", Color = Color3.fromRGB(235, 175, 95) },
-		{ Name = "Rock Candy Crown", Color = Color3.fromRGB(160, 200, 255) },
-		{ Name = "Sherbet Star", Color = Color3.fromRGB(255, 225, 120) },
-		{ Name = "Cosmic Gobstopper", Color = Color3.fromRGB(175, 90, 255) },
-		{ Name = "Candy Floss Cloud", Color = Color3.fromRGB(255, 200, 235) },
-		{ Name = "Fudge Fox", Color = Color3.fromRGB(170, 105, 65) },
-		{ Name = "Praline Panda", Color = Color3.fromRGB(240, 215, 180) },
+		{
+			Name = "Caramel Cub",
+			Color = Color3.fromRGB(235, 175, 95),
+			Features = { "RoundEars", "Snout", "Tail" },
+		},
+		{ Name = "Rock Candy Crown", Color = Color3.fromRGB(160, 200, 255), Features = { "Crown" } },
+		{ Name = "Sherbet Star", Color = Color3.fromRGB(255, 225, 120), Features = { "Star" } },
+		{ Name = "Cosmic Gobstopper", Color = Color3.fromRGB(175, 90, 255), Features = { "Ring" } },
+		{ Name = "Candy Floss Cloud", Color = Color3.fromRGB(255, 200, 235), Features = { "Fluff" } },
+		{
+			Name = "Fudge Fox",
+			Color = Color3.fromRGB(170, 105, 65),
+			Features = { "CatEars", "Snout", "Tail" },
+		},
+		{
+			Name = "Praline Panda",
+			Color = Color3.fromRGB(240, 215, 180),
+			Features = { "RoundEars", "Patches", "Snout" },
+		},
 		{ Name = "Nougat Knight", Color = Color3.fromRGB(235, 225, 195) },
-		{ Name = "Macaron Moth", Color = Color3.fromRGB(255, 175, 210) },
-		{ Name = "Honeycomb Hart", Color = Color3.fromRGB(255, 200, 70) },
+		{ Name = "Macaron Moth", Color = Color3.fromRGB(255, 175, 210), Features = { "Wings" } },
+		{
+			Name = "Honeycomb Hart",
+			Color = Color3.fromRGB(255, 200, 70),
+			Features = { "RoundEars", "Snout", "Tail" },
+		},
 		{ Name = "Sherbet Serpent", Color = Color3.fromRGB(150, 255, 215) },
 		{ Name = "Brittle Basilisk", Color = Color3.fromRGB(215, 150, 70) },
 		{ Name = "Truffle Titan", Color = Color3.fromRGB(95, 60, 50) },
 		{ Name = "Gobstopper Golem", Color = Color3.fromRGB(150, 175, 255) },
-		{ Name = "Sugarplum Seraph", Color = Color3.fromRGB(220, 150, 255) },
-		{ Name = "Candy Crown Dragon", Color = Color3.fromRGB(255, 90, 140) },
+		{ Name = "Sugarplum Seraph", Color = Color3.fromRGB(220, 150, 255), Features = { "Wings" } },
+		{
+			Name = "Candy Crown Dragon",
+			Color = Color3.fromRGB(255, 90, 140),
+			Features = { "Crown", "Wings", "Tail" },
+		},
 		{ Name = "Eternal Eclair", Color = Color3.fromRGB(255, 230, 190) },
 		{ Name = "Infinity Icing", Color = Color3.fromRGB(235, 250, 255) },
-		{ Name = "Confection Singularity", Color = Color3.fromRGB(255, 255, 255) },
+		{
+			Name = "Confection Singularity",
+			Color = Color3.fromRGB(255, 255, 255),
+			Features = { "Ring", "Star", "Crown" },
+		},
 	},
 
 	-- What the mixer makes: one per band of three tiers, all the way up the

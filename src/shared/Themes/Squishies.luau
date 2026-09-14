@@ -180,37 +180,88 @@ local theme: Types.Theme = {
 		},
 	},
 
+	-- `Features` dresses the blob from the vocabulary in UnitVisuals, so a thing
+	-- called a Pup has ears and a snout and a thing called an Octo has arms. The
+	-- first rungs are named after sweets rather than animals, and they stay plain
+	-- blobs on purpose: it's what makes the first animal, six merges in, feel
+	-- like it was worth getting to.
 	Units = {
 		{ Name = "Droplet", Color = Color3.fromRGB(150, 220, 255) },
 		{ Name = "Jellybean", Color = Color3.fromRGB(255, 150, 170) },
 		{ Name = "Gumdrop", Color = Color3.fromRGB(140, 230, 150) },
 		{ Name = "Mochi", Color = Color3.fromRGB(255, 240, 245) },
 		{ Name = "Marshmallow", Color = Color3.fromRGB(255, 205, 150) },
-		{ Name = "Puddle Pup", Color = Color3.fromRGB(190, 160, 255) },
-		{ Name = "Squish Cat", Color = Color3.fromRGB(255, 180, 90) },
-		{ Name = "Bouncy Bunny", Color = Color3.fromRGB(255, 130, 210) },
-		{ Name = "Jelly Frog", Color = Color3.fromRGB(100, 210, 120) },
-		{ Name = "Squidge Octo", Color = Color3.fromRGB(240, 100, 130) },
-		{ Name = "Blobfish King", Color = Color3.fromRGB(255, 160, 180) },
-		{ Name = "Cloud Sheep", Color = Color3.fromRGB(235, 245, 255) },
+		{
+			Name = "Puddle Pup",
+			Color = Color3.fromRGB(190, 160, 255),
+			Features = { "DogEars", "Snout", "Tail" },
+		},
+		{
+			Name = "Squish Cat",
+			Color = Color3.fromRGB(255, 180, 90),
+			Features = { "CatEars", "Whiskers", "Tail" },
+		},
+		{ Name = "Bouncy Bunny", Color = Color3.fromRGB(255, 130, 210), Features = { "BunnyEars", "Tail" } },
+		{ Name = "Jelly Frog", Color = Color3.fromRGB(100, 210, 120), Features = { "Legs", "WideMouth" } },
+		{ Name = "Squidge Octo", Color = Color3.fromRGB(240, 100, 130), Features = { "Tentacles" } },
+		{
+			Name = "Blobfish King",
+			Color = Color3.fromRGB(255, 160, 180),
+			Features = { "Crown", "Fins", "WideMouth" },
+		},
+		{ Name = "Cloud Sheep", Color = Color3.fromRGB(235, 245, 255), Features = { "Fluff", "RoundEars" } },
 		{ Name = "Moon Mochi", Color = Color3.fromRGB(255, 235, 140) },
-		{ Name = "Star Jelly", Color = Color3.fromRGB(120, 140, 255) },
-		{ Name = "Cosmic Squish", Color = Color3.fromRGB(170, 80, 255) },
+		{ Name = "Star Jelly", Color = Color3.fromRGB(120, 140, 255), Features = { "Star" } },
+		{ Name = "Cosmic Squish", Color = Color3.fromRGB(170, 80, 255), Features = { "Ring" } },
 		{ Name = "Nebula Slime", Color = Color3.fromRGB(120, 90, 220) },
-		{ Name = "Comet Kitten", Color = Color3.fromRGB(190, 225, 255) },
-		{ Name = "Aurora Axolotl", Color = Color3.fromRGB(110, 255, 210) },
+		{
+			Name = "Comet Kitten",
+			Color = Color3.fromRGB(190, 225, 255),
+			Features = { "CatEars", "Whiskers", "Tail", "Star" },
+		},
+		{
+			Name = "Aurora Axolotl",
+			Color = Color3.fromRGB(110, 255, 210),
+			Features = { "Frills", "WideMouth" },
+		},
 		{ Name = "Meteor Mallow", Color = Color3.fromRGB(255, 140, 80) },
-		{ Name = "Galaxy Gummy", Color = Color3.fromRGB(90, 60, 180) },
-		{ Name = "Quasar Quokka", Color = Color3.fromRGB(255, 105, 245) },
-		{ Name = "Eclipse Owl", Color = Color3.fromRGB(70, 60, 100) },
-		{ Name = "Pulsar Panda", Color = Color3.fromRGB(235, 245, 255) },
-		{ Name = "Supernova Seal", Color = Color3.fromRGB(255, 200, 120) },
-		{ Name = "Black Hole Blob", Color = Color3.fromRGB(35, 25, 55) },
-		{ Name = "Stardust Sphinx", Color = Color3.fromRGB(215, 195, 255) },
-		{ Name = "Celestial Whale", Color = Color3.fromRGB(95, 150, 255) },
+		{ Name = "Galaxy Gummy", Color = Color3.fromRGB(90, 60, 180), Features = { "Ring" } },
+		{
+			Name = "Quasar Quokka",
+			Color = Color3.fromRGB(255, 105, 245),
+			Features = { "RoundEars", "Snout", "WideMouth" },
+		},
+		{
+			Name = "Eclipse Owl",
+			Color = Color3.fromRGB(70, 60, 100),
+			Features = { "CatEars", "Beak", "Wings" },
+		},
+		{
+			Name = "Pulsar Panda",
+			Color = Color3.fromRGB(235, 245, 255),
+			Features = { "RoundEars", "Patches", "Snout" },
+		},
+		{
+			Name = "Supernova Seal",
+			Color = Color3.fromRGB(255, 200, 120),
+			Features = { "Fins", "Snout", "Whiskers" },
+		},
+		-- The accretion disc, which is the one prop in the vocabulary that was
+		-- drawn for a planet and turned out to suit this better.
+		{ Name = "Black Hole Blob", Color = Color3.fromRGB(35, 25, 55), Features = { "Ring" } },
+		{
+			Name = "Stardust Sphinx",
+			Color = Color3.fromRGB(215, 195, 255),
+			Features = { "CatEars", "Whiskers", "Crown" },
+		},
+		{ Name = "Celestial Whale", Color = Color3.fromRGB(95, 150, 255), Features = { "Fluke", "Fins" } },
 		{ Name = "Infinity Jelly", Color = Color3.fromRGB(150, 255, 245) },
 		{ Name = "Eternal Squish", Color = Color3.fromRGB(255, 235, 170) },
-		{ Name = "Squish Singularity", Color = Color3.fromRGB(255, 255, 255) },
+		{
+			Name = "Squish Singularity",
+			Color = Color3.fromRGB(255, 255, 255),
+			Features = { "Ring", "Star", "Crown" },
+		},
 	},
 
 	-- Crafting prizes: one per band of three tiers, all the way up the ladder.

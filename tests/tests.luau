@@ -44,6 +44,23 @@ for position = 0, #variants do
 	end
 end
 
+-- A variant is a copy of its rung, so it has to wear the same face. A Golden
+-- Pup with no ears would read as a different animal to the Pup it came from.
+for position = 1, #variants do
+	for tier = 1, MaxTier do
+		local base = Config.Units[tier].Features
+		local copy = Config.Units[Economy.variantIndex(tier, position)].Features
+		if base == nil then
+			check("a plain rung stays plain in every variant", copy == nil, `v{position} t{tier}`)
+		else
+			check("a variant keeps its rung's features", copy ~= nil and #copy == #base, `v{position} t{tier}`)
+			for slot, name in base do
+				check("a variant keeps them in order", copy and copy[slot] == name, `v{position} t{tier} {name}`)
+			end
+		end
+	end
+end
+
 -- Merging stays inside its own variant block, and stops at the top of it.
 for position = 0, #variants do
 	for tier = 1, MaxTier do
@@ -131,22 +148,22 @@ end
 
 -- Stranding: a variant is only stranded when nothing matches it exactly.
 if #variants > 0 then
-local strandedData = {
-	Upgrades = { SpawnTier = 6 },
-	Items = { Economy.variantIndex(2, 1) },
-	Carried = Economy.variantIndex(2, 1),
-	LuckEndsAt = 0,
-	Rebirths = 0,
-	Sparkles = {},
-	Discovered = {},
-}
-check("a matching variant is not stranded", not Economy.carriedIsStranded(strandedData))
-strandedData.Items = { 2 }
-check("an ordinary unit will not do", Economy.carriedIsStranded(strandedData))
-if #sparkles > 0 then
-	strandedData.Carried = Economy.sparkleIndex(1)
-	check("a sparkle is never stranded", not Economy.carriedIsStranded(strandedData))
-end
+	local strandedData = {
+		Upgrades = { SpawnTier = 6 },
+		Items = { Economy.variantIndex(2, 1) },
+		Carried = Economy.variantIndex(2, 1),
+		LuckEndsAt = 0,
+		Rebirths = 0,
+		Sparkles = {},
+		Discovered = {},
+	}
+	check("a matching variant is not stranded", not Economy.carriedIsStranded(strandedData))
+	strandedData.Items = { 2 }
+	check("an ordinary unit will not do", Economy.carriedIsStranded(strandedData))
+	if #sparkles > 0 then
+		strandedData.Carried = Economy.sparkleIndex(1)
+		check("a sparkle is never stranded", not Economy.carriedIsStranded(strandedData))
+	end
 end
 
 -- Rebirth now needs a rung as well as a price.
@@ -243,7 +260,10 @@ if #sparkles > 0 then
 				`{variant.Id} raises the ceiling`,
 				Economy.craftCeiling(one, sparkle) > Economy.craftCeiling(plain, sparkle)
 			)
-			check(`{variant.Id} improves the odds`, Economy.craftSparkleChance(one, sparkle) > Economy.craftSparkleChance(plain, sparkle))
+			check(
+				`{variant.Id} improves the odds`,
+				Economy.craftSparkleChance(one, sparkle) > Economy.craftSparkleChance(plain, sparkle)
+			)
 		end
 
 		local stacked = {}
@@ -270,8 +290,14 @@ end
 
 -- Quests.
 local questData = {
-	Upgrades = {}, Items = {}, Carried = 0, LuckEndsAt = 0, Rebirths = 0,
-	Sparkles = {}, Discovered = {}, Stats = {},
+	Upgrades = {},
+	Items = {},
+	Carried = 0,
+	LuckEndsAt = 0,
+	Rebirths = 0,
+	Sparkles = {},
+	Discovered = {},
+	Stats = {},
 }
 local dailyCount = Config.Balance.Quests.DailyCount
 

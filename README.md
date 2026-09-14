@@ -388,13 +388,69 @@ own `DataStoreName`, and only surprising when testing both over one save.
    permanent bonus it pays and the best odds it can be made at. A theme with no
    sparkles still gets a working crafting station — it just trades units up.
 3. Point `Theme` in `src/shared/Settings.luau` at the new file.
-4. Optional: drop `.rbxm` models into `assets/units/` and name them in a unit's
+4. Optional: give a unit `Features` — see below.
+5. Optional: drop `.rbxm` models into `assets/units/` and name them in a unit's
    `Model` field. Units without a model get a procedural blob in their colour.
-5. Optional: override any economy number for that theme with a `Balance` table
+6. Optional: override any economy number for that theme with a `Balance` table
    inside the theme (tables merge over the defaults in
    `src/shared/Balance.luau`; arrays replace).
 
 Nothing in `src/server` or `src/client` needs to change for a reskin.
+
+### What a unit looks like
+
+Every procedural unit is a squishy ball with a face: two eyes, a highlight in
+each, and a smile under them. The mouth is what makes it a face from the side as
+well as head on — two dots on a ball only read as eyes when you're square in
+front of them.
+
+The smile is an arc of five overlapping segments, each laid on the body's own
+surface and turned to the slope of the curve under it, rather than one flattened
+part. That's worth the four extra parts: a single part gives a straight slot, and
+a straight slot on a round face reads as a grimace at every size you can make it.
+
+On top of that a unit can name **features**, so a thing called a Pup has
+something dog about it and a thing called a Cat doesn't look identical to it:
+
+```lua
+{ Name = "Puddle Pup", Color = ..., Features = { "DogEars", "Snout", "Tail" } },
+```
+
+Features are split the same way scenery is: **which** ones a unit wears is theme
+data, and **what each one looks like** is shared code in
+`src/shared/UnitVisuals.luau`. So a new skin gets dog ears by writing
+`"DogEars"`, not by modelling one, and both shipped themes draw on the same
+vocabulary:
+
+| | |
+|---|---|
+| `DogEars` `CatEars` `BunnyEars` `RoundEars` | ears: floppy, pointed, long, round |
+| `Snout` `Beak` `Whiskers` `Patches` | a muzzle and nose, a beak, whiskers, dark rings round the eyes |
+| `WideMouth` | a wider, deeper grin — a frog, an axolotl, a quokka |
+| `Tail` `Fluke` `Fins` `Wings` `Legs` | a curled tail, a whale's tail, flippers, folded wings, haunches and feet |
+| `Frills` `Tentacles` `Fluff` | axolotl fronds, a skirt of arms, wool over the crown |
+| `Crown` `Ring` `Star` | a gold crown, a tilted planet ring, a spark above the head |
+
+A few things worth knowing:
+
+- A unit with a `Model` ignores its features. The model is already the artwork,
+  and bolting procedural ears onto it would fight it.
+- A name the vocabulary doesn't have is warned about once and skipped, so a typo
+  costs one unit its ears rather than breaking the game.
+- `WideMouth` is the one name that builds nothing: it's read when the face is
+  laid out, not run afterwards like the rest. An arc has to be placed in one go,
+  and rebuilding one that a `Snout` had already moved would put it back on the
+  cheek.
+- Variants inherit the features of the rung they copy — a Golden Pup is a Pup.
+  Sparkles have none: they're trophies, and the glow is the point of them.
+- Leaving the bottom rungs plain is deliberate in both shipped themes. They're
+  named after sweets rather than animals, and it's what makes the first animal,
+  several merges in, feel like it was worth getting to.
+- A shape nobody has built yet is added to `UnitVisuals.Features` once, and
+  every other theme can then use it. Each one is handed the blob's width and
+  height and the unit's colour and builds in the model's own space; anything
+  sitting on the crown should overlap the head rather than rest on it, because
+  the body squashes underneath it and a gap would open on every bounce.
 
 ## Publishing a new game from this base
 

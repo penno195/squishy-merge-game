@@ -175,9 +175,9 @@ local function makeBall(name: string, size: Vector3, cframe: CFrame, color: Colo
 	return part
 end
 
--- Eyes, shines and blush on the front, which is the side facing the middle of
--- the map. A giant prop with a face reads as one of the things the game is
--- about; the same prop without one reads as furniture.
+-- Eyes, a mouth, shines and blush on the front, which is the side facing the
+-- middle of the map. A giant prop with a face reads as one of the things the
+-- game is about; the same prop without one reads as furniture.
 --
 -- `spread` is half the gap between the eyes, `front` how far the face is from
 -- the body's centre, and `lift` where the eyes sit above it.
@@ -201,6 +201,29 @@ local function addFace(model: Model, centre: CFrame, spread: number, front: numb
 			centre * CFrame.new(side * spread * 1.9, lift - eyeSize * 1.15, -front) * CFrame.Angles(0, math.pi / 2, 0),
 			Color3.fromRGB(255, 150, 180),
 			Enum.PartType.Cylinder,
+			model
+		)
+	end
+
+	-- A smile below them, built as an arc of segments the way the units' is, so
+	-- a giant one reads as the same creature scaled up rather than as a relative
+	-- of it. A straight slot would read as a grimace at this size most of all.
+	local segments = 5
+	local smileSpread = spread * 1.6
+	local smileCurve = eyeSize * 0.8
+	for index = 1, segments do
+		local across = (index - 1) / (segments - 1) * 2 - 1
+		makeBall(
+			"Mouth",
+			Vector3.new(smileSpread * 2 / (segments - 1) * 1.45, eyeSize * 0.42, eyeSize * 0.5),
+			centre
+				* CFrame.new(
+					smileSpread * across,
+					lift - eyeSize * 2.4 + smileCurve * across * across,
+					-front - eyeSize * 0.1
+				)
+				* CFrame.Angles(0, 0, math.atan2(2 * smileCurve * across, smileSpread)),
+			Color3.fromRGB(35, 25, 45),
 			model
 		)
 	end

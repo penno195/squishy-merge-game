@@ -97,6 +97,7 @@ for position, variant in variantDefs do
 			Color = unit.Color:Lerp(color, tint),
 			Model = unit.Model,
 			Scale = unit.Scale,
+			Features = unit.Features,
 			Tier = tier,
 			Variant = position,
 			Shine = styling.Shine,

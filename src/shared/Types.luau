@@ -9,6 +9,12 @@ export type UnitDef = {
 	-- found, a procedural squishy blob in `Color` is built instead.
 	Model: string?,
 	Scale: number?,
+	-- Namesake features built onto the procedural blob, from the vocabulary in
+	-- UnitVisuals.Features: "CatEars", "Snout", "Tail" and so on. A unit with a
+	-- supplied `Model` ignores them -- the model is already the artwork. An
+	-- unknown name is warned about and skipped, so a typo costs one unit's ears
+	-- rather than the game.
+	Features: { string }?,
 	-- Set by Config on the units it appends for the theme's sparkles, so the
 	-- visuals know to build a glowing one. Themes don't set this.
 	Sparkle: boolean?,
