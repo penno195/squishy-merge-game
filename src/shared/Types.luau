@@ -140,6 +140,11 @@ export type Theme = {
 		-- Face of the prize wheel. Must be a circle divided into as many equal
 		-- segments as Balance.Wheel.Prizes, with segment 1 centred at the top.
 		Wheel: string?,
+		-- Tiled behind the contents of a patterned card. Must be a square that
+		-- tiles seamlessly -- a two-tone checker is the usual one. Left unset,
+		-- the checker is built from parts of the card's own colour instead, so
+		-- a theme gets the pattern with no uploaded asset at all.
+		CardPattern: string?,
 	}?,
 	Palette: Palette,
 	World: {

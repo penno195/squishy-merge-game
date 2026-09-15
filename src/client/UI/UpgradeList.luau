@@ -23,6 +23,11 @@ local Theme = Config.Theme
 local BOOST_ID = "Boost"
 local LUCK_ID = "Luck"
 
+-- Cap on the price drawn across a board tile, in that surface's own pixels. The
+-- caption box is about 130 of them tall, so this lets the price fill it rather
+-- than sit at the size a button on a phone screen would use.
+local BOARD_PRICE_TEXT = 96
+
 type Timed = {
 	Name: string,
 	Icon: string,
@@ -222,6 +227,7 @@ function UpgradeList.tiles(parent: Instance, ids: { string }): List
 			-- Each tile gives up its share of the gaps between them.
 			Size = UDim2.new(width, -12, 1, 0),
 			LayoutOrder = order,
+			Pattern = true,
 			BackgroundColor3 = if isTimed then Palette.Secondary else Palette.Surface,
 			Parent = strip,
 		})
@@ -263,6 +269,10 @@ function UpgradeList.tiles(parent: Instance, ids: { string }): List
 			Position = UDim2.fromScale(0, 0.74),
 			BackgroundColor3 = if isTimed then Palette.Accent else Palette.Positive,
 			TextColor3 = if isTimed then Palette.Background else Palette.Text,
+			-- The price, and the whole point of the board is that it's read from
+			-- across the garden. The default cap is a screen button's, which on
+			-- this surface's canvas came out about a fifth of the space it has.
+			MaxTextSize = BOARD_PRICE_TEXT,
 			Parent = card,
 		}, function()
 			buy(id)
@@ -297,6 +307,7 @@ function UpgradeList.rows(parent: Instance, ids: { string }): List
 		local card = Components.card({
 			Size = UDim2.new(1, -12, 0, 88),
 			LayoutOrder = order,
+			Pattern = true,
 			BackgroundColor3 = if isTimed then Palette.Secondary else Palette.Surface,
 			Parent = list,
 		})

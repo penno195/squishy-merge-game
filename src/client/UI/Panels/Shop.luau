@@ -76,7 +76,8 @@ function Shop.create(parent: Instance)
 
 	local function addEntry(title: string, description: string, id: number, infoType: Enum.InfoType, onBuy: () -> ())
 		order += 1
-		local card = Components.card({ Size = UDim2.new(1, -12, 0, 80), LayoutOrder = order, Parent = list })
+		local card =
+			Components.card({ Size = UDim2.new(1, -12, 0, 80), LayoutOrder = order, Pattern = true, Parent = list })
 		Components.label({
 			Text = title,
 			Size = UDim2.new(0.55, 0, 0, 28),

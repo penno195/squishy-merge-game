@@ -108,7 +108,7 @@ local function oddsRow(order: number, parent: Instance): Row
 end
 
 function Craft.create(parent: Instance)
-	local panel = Components.panel(Theme.Text.Machine, UDim2.fromOffset(440, 676), parent)
+	local panel = Components.panel(Theme.Text.Machine, UDim2.fromOffset(440, 684), parent)
 
 	local slotRow: Frame = Components.new("Frame", {
 		BackgroundTransparency = 1,

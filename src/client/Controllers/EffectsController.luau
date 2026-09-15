@@ -14,6 +14,9 @@ local UnitVisuals = require(ReplicatedStorage.Shared.UnitVisuals)
 
 local SQUASH = 0.09
 local SQUASH_SPEED = 2.2
+-- Studs a supplied model rises and falls, as a multiple of the squash it can't
+-- do. Small: this is a breath, not a hop.
+local BOB = 2.5
 
 local EffectsController = {}
 
@@ -53,8 +56,11 @@ local function animate(now: number)
 			mesh.Scale = Vector3.new(1 + squash, 1 - squash, 1 + squash)
 			model:PivotTo(rest * CFrame.new(0, -body.Size.Y * squash / 2, 0))
 		else
-			-- A theme model with no squishable body just sits where it landed.
-			model:PivotTo(rest)
+			-- A supplied model has no mesh to squash, so it bobs on the spot
+			-- instead. Rescaling a whole model every frame would cost far too
+			-- much across a garden full of them, and a model sitting dead still
+			-- among squashing neighbours reads as broken rather than different.
+			model:PivotTo(rest * CFrame.new(0, squash * BOB, 0))
 		end
 	end
 end

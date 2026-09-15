@@ -51,6 +51,7 @@ function ClaimList.create(props: { [string]: any }, onClaim: (index: number) -> 
 		local card = Components.card({
 			Size = UDim2.new(1, -12, 0, ROW_HEIGHT),
 			LayoutOrder = index,
+			Pattern = true,
 			Parent = scroller,
 		})
 		local text = Components.label({

@@ -41,7 +41,7 @@ function Index.create(parent: Instance)
 
 	local cells = {}
 	for tier, unit in Config.Units do
-		local card = Components.card({ LayoutOrder = tier, Parent = grid })
+		local card = Components.card({ LayoutOrder = tier, Pattern = true, Parent = grid })
 		local swatch = Components.new("Frame", {
 			BackgroundColor3 = unit.Color,
 			BorderSizePixel = 0,

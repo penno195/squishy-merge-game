@@ -37,7 +37,8 @@ function Daily.create(parent: Instance)
 
 	local cards = {}
 	for day = 1, #Rewards do
-		local card = Components.card({ Size = UDim2.fromOffset(72, 130), LayoutOrder = day, Parent = row })
+		local card =
+			Components.card({ Size = UDim2.fromOffset(72, 130), LayoutOrder = day, Pattern = true, Parent = row })
 		Components.label({
 			Text = `Day {day}`,
 			Size = UDim2.new(1, -8, 0, 24),

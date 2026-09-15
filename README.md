@@ -421,7 +421,7 @@ own `DataStoreName`, and only surprising when testing both over one save.
 1. Copy `src/shared/Themes/Squishies.luau` to `src/shared/Themes/YourTheme.luau`.
 2. Edit it: the words the UI uses (`Text`), the glyphs beside stats and on
    upgrade tiles (`Icons`), colours (`Palette`, `World`), the font, optional
-   sounds, and the `Units` list — index 1 is the first tier, and the list can be
+   sounds, optional artwork (`Images`), and the `Units` list — index 1 is the first tier, and the list can be
    any length of at least 2.
    `Sparkles` is optional: each one names a band of tiers it's crafted from, the
    permanent bonus it pays and the best odds it can be made at. A theme with no
@@ -435,6 +435,27 @@ own `DataStoreName`, and only surprising when testing both over one save.
    `src/shared/Balance.luau`; arrays replace).
 
 Nothing in `src/server` or `src/client` needs to change for a reskin.
+
+### What the UI looks like
+
+Every panel is built from `src/client/UI/Components.luau`, so the whole game's
+look is one file plus the theme's palette. The dressing is the chunky moulded
+plastic the front page of the platform is made of: a heavy near-black outline on
+every surface, generous corners, fills that ramp light to dark, a gloss over the
+top half of anything pressable, buttons sitting on a lip they sink onto when
+pressed, and text outlined in the same near-black.
+
+None of it needs artwork. The outline colour is derived from the theme's own
+`Palette.Background` rather than fixed, so a pale skin gets dark grey where a
+dark one gets near-black. `OUTLINE_THICKNESS` at the top of that file is the
+single biggest lever on how moulded or how soft the whole game reads.
+
+Cards built with `Pattern = true` — the shop rows, upgrade tiles, index cells,
+daily days and claim rows — get a checker behind their contents. Without any
+asset it's built from one gradient per row rather than one frame per square,
+which is five instances for a forty-square checker. A theme that would rather
+supply its own sets `Images.CardPattern` to a square that tiles seamlessly, and
+it's tiled in place of the built one.
 
 ### What a unit looks like
 

@@ -30,6 +30,24 @@ local HUB_SIZE = 0.23
 local LABEL_RADIUS = 0.31
 local DIVIDER_WIDTH = 0.007
 
+-- The box a segment's two lines are drawn in, as fractions of the wheel: length
+-- runs along the radius, depth across the arc. Both lines are TextScaled, so
+-- this box is the only thing deciding how big the writing comes out -- and the
+-- depth is what was holding the odds down to a few pixels on the wheel standing
+-- in the hub.
+--
+-- How deep it can go is set by its neighbours. Eight segments at a radius of
+-- 0.31 leave about 0.24 of arc each, so the box has that much before two labels
+-- start to touch. Its length is bounded the same way at both ends: the hub
+-- reaches 0.115 and the dial ends at 0.5, so a box 0.32 long centred at 0.31
+-- runs from 0.15 to 0.47 and clears both.
+local LABEL_LENGTH = 0.32
+local LABEL_DEPTH = 0.17
+-- How that depth is split. The odds are the number players are actually reading
+-- off a wheel, so they get more of it than the two-thirds they had.
+local LABEL_NAME_SHARE = 0.56
+local LABEL_ODDS_SHARE = 0.4
+
 local WheelFace = {}
 
 export type Face = {
@@ -155,7 +173,7 @@ function WheelFace.create(props: { [string]: any }, onSpin: () -> ()): Face
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5 + math.sin(angle) * LABEL_RADIUS, 0.5 - math.cos(angle) * LABEL_RADIUS),
 			-- Width runs along the radius once rotated, height across the arc.
-			Size = UDim2.fromScale(0.32, 0.115),
+			Size = UDim2.fromScale(LABEL_LENGTH, LABEL_DEPTH),
 			Rotation = if flipped then degrees + 90 else degrees - 90,
 			BackgroundTransparency = 1,
 			Parent = spinner,
@@ -164,16 +182,16 @@ function WheelFace.create(props: { [string]: any }, onSpin: () -> ()): Face
 		-- the name above the odds on screen either way.
 		Components.label({
 			Text = prize.Label,
-			Position = UDim2.fromScale(0, if flipped then 0.4 else 0),
-			Size = UDim2.fromScale(1, 0.6),
+			Position = UDim2.fromScale(0, if flipped then 1 - LABEL_NAME_SHARE else 0),
+			Size = UDim2.fromScale(1, LABEL_NAME_SHARE),
 			Stroke = 3,
 			Parent = holder,
 		})
 		Components.label({
 			Text = `{string.format("%.0f", Economy.prizeChance(index) * 100)}%`,
-			Position = UDim2.fromScale(0, if flipped then 0.04 else 0.62),
-			Size = UDim2.fromScale(1, 0.34),
-			TextColor3 = Palette.Text,
+			Position = UDim2.fromScale(0, if flipped then 0 else 1 - LABEL_ODDS_SHARE),
+			Size = UDim2.fromScale(1, LABEL_ODDS_SHARE),
+			TextColor3 = Palette.Accent,
 			Stroke = 3,
 			Parent = holder,
 		})
