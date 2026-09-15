@@ -72,19 +72,37 @@ return {
 	},
 
 	Garden = {
-		Width = 48,
-		Depth = 40,
+		-- Sized off what has to fit on the floor, not off how it looks empty.
+		-- An item needs `Drop.Spacing` clear of its neighbours, so hexagon-packed
+		-- each one claims `Spacing^2 * sqrt(3)/2` -- about 37 square studs at the
+		-- default 6.5. The usable floor is the fence less `Drop.EdgePadding` on
+		-- every side, less the corner the bin keeps clear.
+		--
+		-- At the 48x40 this was, that came to room for 29 items touching, against
+		-- a capacity of 40 -- or 55 with the Bigger Garden pass. Placement asks
+		-- for a clear spot a few times and then gives up and overlaps, so every
+		-- upgraded garden was a heap. At 76x66 the same 55 items have 1.8x the
+		-- floor they need, which reads as scattered rather than tiled.
+		--
+		-- Widening pushes the whole arena out rather than crowding it: the plot
+		-- radius is `Width + Hub.PlotGap`, so the gap between neighbouring
+		-- gardens stays exactly PlotGap whatever this is.
+		Width = 76,
+		Depth = 66,
 		FenceHeight = 5,
 		-- Gap in the fence at the front so players can run in.
 		GateWidth = 12,
 		-- The upgrade screen standing over the back wall. It spans the full
 		-- width of the fence, so only its height is a free knob. Tall enough
 		-- that the five tiles across it are portrait cards rather than a
-		-- letterbox strip.
-		BoardHeight = 18,
+		-- letterbox strip -- which means it has to grow with Width, or the
+		-- tiles flatten out as the fence gets wider.
+		BoardHeight = 28,
 	},
 
 	-- How many items the ground holds, per Garden Space level (index 1 = level 0).
+	-- Read against Garden.Width and Depth: the floor has to have room for the last
+	-- number here plus Monetisation.BiggerGardenSpaces.
 	GardenCapacities = { 12, 16, 21, 27, 33, 40 },
 
 	Drop = {

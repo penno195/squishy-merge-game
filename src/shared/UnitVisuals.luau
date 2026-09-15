@@ -16,6 +16,8 @@ local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(script.Parent.Config)
+local Economy = require(script.Parent.Economy)
+local Format = require(script.Parent.Format)
 local Types = require(script.Parent.Types)
 
 local Theme = Config.Theme
@@ -579,7 +581,17 @@ local function setBottomPivot(model: Model)
 	end
 end
 
-local function addLabel(model: Model, name: string, tier: number, sparkle: boolean?)
+-- Three lines over an item: what it is, where it sits on the ladder, and what it
+-- earns. The rate is the reason the ladder is worth climbing, and before this the
+-- only way to find out was to watch the HUD total change after a merge.
+--
+-- Per minute rather than per second, because a tier 1 unit earns 1 a second and
+-- "1" reads as nothing at all where "60 Goo/min" reads as a wage. It's the base
+-- rate for that unit: the income upgrade, rebirths, sparkle bonuses, a running
+-- boost and the x2 pass all multiply what the garden actually pays, so these add
+-- up to less than the HUD says. They're here to be compared with each other --
+-- which is the question a player standing over two units is asking.
+local function addLabel(model: Model, name: string, tier: number, index: number, sparkle: boolean?)
 	local adornee = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
 	if not adornee then
 		return
@@ -590,7 +602,7 @@ local function addLabel(model: Model, name: string, tier: number, sparkle: boole
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "Label"
 	billboard.Adornee = adornee
-	billboard.Size = UDim2.fromScale(6, 1.6)
+	billboard.Size = UDim2.fromScale(6, 2.1)
 	billboard.StudsOffsetWorldSpace = Vector3.new(0, top - adornee.Position.Y + 1.1, 0)
 	billboard.MaxDistance = 80
 	billboard.LightInfluence = 0
@@ -610,14 +622,20 @@ local function addLabel(model: Model, name: string, tier: number, sparkle: boole
 		stroke.Parent = label
 		label.Parent = billboard
 	end
-	makeText(name, Theme.Palette.Text, UDim2.fromScale(0, 0), UDim2.fromScale(1, 0.6))
+	makeText(name, Theme.Palette.Text, UDim2.fromScale(0, 0), UDim2.fromScale(1, 0.46))
 	-- A sparkle has no tier to speak of: it sits off the end of the ladder and
 	-- can't be merged, so it's labelled by what it is instead.
 	makeText(
 		if sparkle then Theme.Text.Sparkle else `Lv. {tier}`,
 		Theme.Palette.Accent,
-		UDim2.fromScale(0, 0.6),
-		UDim2.fromScale(1, 0.4)
+		UDim2.fromScale(0, 0.46),
+		UDim2.fromScale(1, 0.27)
+	)
+	makeText(
+		`{Format.number(Economy.tierIncome(index) * 60)} {Theme.Text.Currency}/min`,
+		Theme.Palette.Positive,
+		UDim2.fromScale(0, 0.73),
+		UDim2.fromScale(1, 0.27)
 	)
 
 	billboard.Parent = adornee
@@ -687,7 +705,7 @@ function UnitVisuals.build(tier: number): Model
 	setBottomPivot(model)
 	model.Name = def.Name
 	model:SetAttribute("Tier", tier)
-	addLabel(model, def.Name, def.Tier or tier, def.Sparkle)
+	addLabel(model, def.Name, def.Tier or tier, tier, def.Sparkle)
 	CollectionService:AddTag(model, UnitVisuals.Tag)
 	return model
 end
