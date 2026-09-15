@@ -627,6 +627,233 @@ starterData.StarterClaimed = true
 check("a claimed pack is not offered again", not Economy.starterOffered(starterData, joined))
 check("a claimed pack has no time left", Economy.starterRemaining(starterData, joined) == 0)
 
+-- Pets. One is equipped at a time and the perk is the reason to own it, so what
+-- these hold is: the perk reaching the right consumer, rarity and variant scaling
+-- it the amounts Balance says, the cash multiplier staying in its narrow band, and
+-- an egg always handing back something real for the cash it takes.
+
+local petData = {
+	Upgrades = { SpawnTier = 6 },
+	Items = {},
+	Carried = 0,
+	LuckEndsAt = 0,
+	Rebirths = 0,
+	Sparkles = {},
+	Discovered = {},
+	Pets = {},
+	EquippedPet = 0,
+}
+
+local petList = Config.Pets
+check("the theme ships pets", #petList > 0)
+
+-- Every pet names a rarity and a perk that exist. Config asserts this at load, so
+-- reaching here at all is most of the check; this says which one if it ever fails.
+for _, pet in petList do
+	check(`{pet.Id} has a real rarity`, Config.PetRarityById[pet.Rarity] ~= nil, pet.Rarity)
+	check(`{pet.Id} has a real perk`, Config.PetPerkById[pet.Perk] ~= nil, pet.Perk)
+end
+
+-- Every perk in the vocabulary is carried by at least one pet, or it is a perk no
+-- player can ever have -- which is a typo, not a design.
+for _, perk in Config.Balance.Pets.Perks do
+	local carried = false
+	for _, pet in petList do
+		carried = carried or pet.Perk == perk.Id
+	end
+	check(`some pet carries {perk.Id}`, carried)
+end
+
+-- Nothing equipped answers nothing, for every perk. Every consumer relies on this
+-- rather than checking whether the player has a pet.
+check("no pet means no multiplier", Economy.petCashMultiplier(petData) == 1)
+for _, perk in Config.Balance.Pets.Perks do
+	check(`no pet means no {perk.Id}`, Economy.petPerkValue(petData, perk.Id) == 0)
+end
+check("no pet is no pet", Economy.equippedPet(petData) == nil)
+
+-- Equip one, and only its own perk answers.
+local sample = petList[1]
+petData.Pets = { { Id = sample.Id, Variant = 0 } }
+petData.EquippedPet = 1
+check("the equipped pet is found", Economy.equippedPet(petData) ~= nil)
+check("its own perk answers", Economy.petPerkValue(petData, sample.Perk) > 0)
+for _, perk in Config.Balance.Pets.Perks do
+	if perk.Id ~= sample.Perk then
+		check(`a pet does not carry {perk.Id} as well`, Economy.petPerkValue(petData, perk.Id) == 0)
+	end
+end
+
+-- An index pointing past the end is what releasing a pet can leave behind, and it
+-- has to read as "nothing equipped" rather than throwing.
+petData.EquippedPet = 5
+check("an index past the end is nothing", Economy.equippedPet(petData) == nil)
+check("and pays nothing", Economy.petCashMultiplier(petData) == 1)
+petData.EquippedPet = 1
+
+-- Rarity and variant both scale the perk, and the multiplier stays in its band.
+local rarities = Config.Balance.Pets.Rarities
+local lowest, highest = rarities[1], rarities[#rarities]
+check("the rarity ladder climbs", highest.Perk > lowest.Perk)
+check("so does what it pays", highest.Multiplier > lowest.Multiplier)
+check(
+	"but the multiplier stays a nudge",
+	highest.Multiplier / lowest.Multiplier < 1.5,
+	`{highest.Multiplier} vs {lowest.Multiplier}`
+)
+for _, rarity in rarities do
+	check(`{rarity.Id} pays more than nothing`, rarity.Multiplier >= 1)
+	check(`{rarity.Id} is not a doubling`, rarity.Multiplier <= 1.5, `{rarity.Multiplier}`)
+end
+
+local plain = { Id = sample.Id, Variant = 0 }
+local plainStrength = Economy.petPerkStrength(plain)
+check("a pet's perk is worth something", plainStrength > 0)
+for position, variant in Config.Variants do
+	local dressed = { Id = sample.Id, Variant = position }
+	check(`a {variant.Id} pet has a stronger perk`, Economy.petPerkStrength(dressed) > plainStrength, variant.Id)
+	check(
+		`{variant.Id} scales the perk by PetPerk`,
+		math.abs(Economy.petPerkStrength(dressed) - plainStrength * variant.PetPerk) < 1e-9
+	)
+	-- A variant changes the perk and nothing else: the cash multiplier is the
+	-- rarity's, so a Rainbow common still pays what a common pays.
+	petData.Pets = { dressed }
+	local dressedMultiplier = Economy.petCashMultiplier(petData)
+	petData.Pets = { plain }
+	check(`a {variant.Id} pet pays the same`, Economy.petCashMultiplier(petData) == dressedMultiplier)
+end
+-- The variant ladder has to climb for pets as well, or the rarest dressing is not
+-- the best one.
+for position = 2, #Config.Variants do
+	check(
+		`variant {position} beats {position - 1} on perks`,
+		Config.Variants[position].PetPerk > Config.Variants[position - 1].PetPerk
+	)
+end
+
+-- Eggs: the odds add up, they only name rarities the theme can fill, and a roll
+-- always produces a pet that exists. The last one matters most -- an egg takes
+-- cash, so a roll that returns nothing is a robbery.
+for _, egg in Config.Balance.Pets.Eggs do
+	local chances = Economy.eggChances(egg)
+	local total = 0
+	for rarityId, chance in chances do
+		total += chance
+		check(`{egg.Id} weights a real rarity`, Config.PetRarityById[rarityId] ~= nil, rarityId)
+		check(`{egg.Id} has pets for {rarityId}`, #Config.PetsByRarity[rarityId] > 0)
+	end
+	check(`{egg.Id}'s odds add up`, math.abs(total - 1) < 1e-9, `{total}`)
+	check(`{egg.Id} costs something`, egg.Cost > 0)
+	check(`{egg.Id} is found by Id`, Economy.eggById(egg.Id) ~= nil)
+
+	for _ = 1, 500 do
+		local rolled = Economy.rollEgg(egg, petData)
+		check(`{egg.Id} always rolls a real pet`, rolled ~= nil and Economy.petDef(rolled.Id) ~= nil)
+		if rolled then
+			local def = Economy.petDef(rolled.Id)
+			check(`{egg.Id} only rolls rarities it weights`, egg.Weights[(def :: any).Rarity] ~= nil)
+			check(`{egg.Id} rolls a real variant`, rolled.Variant == 0 or Config.Variants[rolled.Variant] ~= nil)
+			check(`{egg.Id} names what it rolled`, Economy.petName(rolled) ~= "Unknown")
+		end
+	end
+end
+check("an egg that doesn't exist isn't found", Economy.eggById("NoSuchEgg") == nil)
+
+-- Dearer eggs have to be better, or there is no reason to walk to one. Measured on
+-- the chance of the best rarity the ladder has.
+local best = rarities[#rarities].Id
+local eggs = Config.Balance.Pets.Eggs
+for index = 2, #eggs do
+	local dearer, cheaper = eggs[index], eggs[index - 1]
+	check(`{dearer.Id} costs more than {cheaper.Id}`, dearer.Cost > cheaper.Cost)
+	check(
+		`{dearer.Id} has better odds at a {best}`,
+		(Economy.eggChances(dearer)[best] or 0) >= (Economy.eggChances(cheaper)[best] or 0)
+	)
+end
+
+-- The perks that ride on seams other things already used: each has to make a
+-- difference in the direction it claims.
+local sellStrength = 0.2
+check("a Haggler makes the bin pay more", Economy.binValue(5, sellStrength) > Economy.binValue(5))
+check(
+	"but never the full price, however strong",
+	Economy.binValue(5, 99) < Economy.unitValue(5),
+	`{Economy.binValue(5, 99)} vs {Economy.unitValue(5)}`
+)
+check("a merge pays nothing without the perk", Economy.mergePayout(5, 0) == 0)
+check("and something with it", Economy.mergePayout(5, 0.5) > 0)
+local sparkleForCraft = sparkles[1]
+if sparkleForCraft then
+	local load = { sparkleForCraft.Band[1] }
+	check(
+		"a Lucky Crafter raises the ceiling",
+		Economy.craftCeiling(load, sparkleForCraft, 0.5) > Economy.craftCeiling(load, sparkleForCraft)
+	)
+	check(
+		"and the odds with it",
+		Economy.craftSparkleChance(load, sparkleForCraft, 0.5) > Economy.craftSparkleChance(load, sparkleForCraft)
+	)
+	-- The outcome chances still add to 1 with a pet in the mix, which is the one
+	-- thing raising a ceiling could quietly break.
+	local total = 0
+	for _, outcome in Economy.craftOutcomes(load, 0.5) do
+		total += outcome.Chance
+	end
+	check("a craft with a pet still adds up", math.abs(total - 1) < 1e-9, `{total}`)
+end
+
+-- Luck has three sources now and they must not stack into something silly: the
+-- charm and the permanent pass are the same tilt, so the greater of the two.
+petData.Pets = { plain }
+petData.EquippedPet = 1
+local charmBiasForPets = Config.Balance.Luck.Bias
+petData.LuckEndsAt = 0
+local noLuck = Economy.totalLuckBias(petData, os.time(), false)
+local passLuck = Economy.totalLuckBias(petData, os.time(), true)
+check("the pass is worth its bias", math.abs(passLuck - noLuck - charmBiasForPets) < 1e-9)
+petData.LuckEndsAt = os.time() + 600
+check(
+	"a charm on top of the pass adds nothing",
+	math.abs(Economy.totalLuckBias(petData, os.time(), true) - passLuck) < 1e-9
+)
+check(
+	"a charm alone is worth the same as the pass alone",
+	math.abs(Economy.totalLuckBias(petData, os.time(), false) - passLuck) < 1e-9
+)
+petData.LuckEndsAt = 0
+
+-- The Charmed pet adds on top of both, and only when it's the equipped one.
+local charmedId = nil
+for _, pet in petList do
+	if pet.Perk == "DropLuck" then
+		charmedId = pet.Id
+	end
+end
+if charmedId then
+	petData.Pets = { { Id = charmedId, Variant = 0 } }
+	local withPet = Economy.totalLuckBias(petData, os.time(), false)
+	check("a Charmed pet adds luck", withPet > noLuck)
+	check(
+		"and adds on top of the pass rather than replacing it",
+		Economy.totalLuckBias(petData, os.time(), true) > passLuck
+	)
+	petData.EquippedPet = 0
+	check(
+		"a Charmed pet in the bag adds nothing",
+		math.abs(Economy.totalLuckBias(petData, os.time(), false) - noLuck) < 1e-9
+	)
+end
+
+check("the inventory has a ceiling", Economy.maxOwnedPets() > 0)
+petData.Pets = {}
+check("an empty inventory is not full", not Economy.petsFull(petData))
+for index = 1, Economy.maxOwnedPets() do
+	petData.Pets[index] = { Id = sample.Id, Variant = 0 }
+end
+check("a full inventory is full", Economy.petsFull(petData))
+
 print(`{checks - failures} / {checks} checks passed`)
 if failures > 0 then
 	error(`{failures} checks failed`)

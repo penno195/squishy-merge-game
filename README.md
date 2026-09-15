@@ -390,6 +390,55 @@ the daily reset. The panel is built on `ClaimList`, a shared list of
 "make progress, then claim" rows — the playtime ladder and the leaderboard
 payouts are the same shape and will use it rather than growing their own.
 
+## Pets
+
+One pet rides on your shoulder and the rest wait in the inventory, swappable
+whenever you like. That single decision is what the whole system is built around:
+a pet is a **tool you pick for what you are about to do**, not a number you
+accumulate. So the **perk is the reason to own one**, and the cash multiplier is a
+nudge — 3% to 15% across the entire rarity ladder. A pet that paid double would be
+welded on forever and there would be nothing left to choose.
+
+- **Hatching** happens at the egg pads in a row behind the crafting station. Walk
+  up, press the prompt, pay cash, and the roll hands you a pet straight away.
+  There is no timer: the machine already owns the long wait, and two systems
+  competing for the same patience is one too many. The pad's sign carries the
+  price *and the odds* — this is where the decision is made, and a gacha that
+  hides its chances somewhere else is hiding them.
+- **Six perks**, in `Balance.Pets.Perks`: Merge Payout, Gem Finder, Lucky Crafter,
+  Haggler, Charmed and Gardener. They map onto things a player is *doing* — so the
+  Lucky Crafter goes on before opening the machine, the Gardener when the garden
+  is full, and the Gem Finder while grinding merges. Each is deliberately small.
+- **Variants give a stronger perk**, not more cash. Pets reuse the same
+  Golden/Rainbow/Shiny ladder the units have, with the same chances and the same
+  theme styling, so a Golden pet needs nothing configured that Golden units don't
+  already have. `PetPerk` on each variant rung is how much better its one job gets;
+  it's far smaller than the `Income` multiplier a variant *unit* carries, and on
+  purpose — a Rainbow pet sixty times better would end the switching.
+- **Rarity** decides how hard the perk hits and how much the nudge is worth.
+  A Legendary pays 12% more than a Common and is three times better at its job.
+  Which rarities an egg can reach is the egg's business and lives only there.
+
+Pets are **theme data**. A `PetDef` names a rarity and a perk from `Balance` and is
+otherwise a colour and a few `Features` off the same vocabulary the units use, so
+a new skin's pets look right with no model made for them — a pet that says
+`"CatEars"` gets cat ears from code that already existed. Both shipped themes
+carry the same thirteen, dressed differently, so a perk that feels wrong can be
+judged as the perk rather than as the skin.
+
+Nothing outside `PetService` knows what a perk *does*. It hands back a strength
+and the service that owns the affected thing applies it, exactly as the gamepasses
+work: the bin asks for `SellBonus`, the machine asks for `CraftLuck`, the drop loop
+asks for `DropLuck` and `Space`. Adding a perk is one entry in `Balance` and one
+number read in one service.
+
+Two consequences worth knowing. The equipped pet is read **at the moment of
+collection** for a craft rather than when the craft was started — swapping a Lucky
+Crafter on before opening the machine is meant to pay, because rewarding the swap
+is the point of having an inventory. And the model is built on the **server** and
+welded to the player, so everyone sees everyone's pet with nothing to keep in
+sync; it's rebuilt on respawn for the same reason a carried unit is.
+
 ## What Robux buys
 
 Eight gamepasses and four developer products, all of them optional and none of
@@ -511,6 +560,13 @@ own `DataStoreName`, and only surprising when testing both over one save.
    `src/shared/Balance.luau`; arrays replace).
 
 Nothing in `src/server` or `src/client` needs to change for a reskin.
+
+A theme's `Pets` list follows the same rule: each entry names a `Rarity` and a
+`Perk` that exist in `Balance.Pets` and supplies the dressing. Unlike a unit's
+unknown feature, a pet naming a rarity or perk that doesn't exist is a hard error
+at load — there is no sensible fallback, and a pet with no perk has no reason to be
+owned. `Config` also refuses a theme where an egg can roll a rarity that theme has
+no pets for, because that egg would take a player's cash and hand back nothing.
 
 ### What the UI looks like
 

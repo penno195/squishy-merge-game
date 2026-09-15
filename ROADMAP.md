@@ -1,8 +1,15 @@
 # Roadmap
 
-**Where things stand (2026-09-15).** Batches 1, 2 and 3 are built. Batch 3's
+**Where things stand (2026-09-15).** Batches 1 to 4 are built. Batch 3's
 behaviour is all there and testable; its *prices* are not, because the IDs are
-still `0`.
+still `0`. Batch 4 (pets) has been built but never played, and it is the biggest
+single system in the game.
+
+Pacing was measured and changed on 2026-09-15 after the first real playthrough: the
+whole thirty-rung ladder took about half an hour and every upgrade was affordable
+the moment it appeared. `tests/sim.luau` is now the tool for that question, and
+`Balance.Upgrades` records what it said. Pets were built against the new pace, and
+their cash multiplier is deliberately small enough not to disturb it.
 
 Batch 2 has still never been played, and it's the batch that most needs it:
 quests and the playtime ladder only show themselves over time. The playtime
@@ -125,15 +132,24 @@ show which slot is selected.
 
 ## Batch 4 — Pets
 
-- [ ] **Pets.** Pet list in theme data, eggs and hatching, equipping, effects
-      (auto-merge, income, and whatever else), and the UI for all of it. The
-      biggest single system on the list; it gets its own batch and its own testing
-      pass.
+- [x] **Pets.** Built. Pet list in theme data, eggs and hatching at pads in the
+      hub, one equipped at a time with a free swap, six perks, and a panel. See
+      "Pets" in the README for the shape of it.
 
-      This line used to say "auto-collect" among the effects. Batch 3 has spent
-      that name on offline earnings, so a pet that picks units up needs a
-      different one — and a pet effect that duplicates a pass is worth avoiding
-      anyway.
+      The design landed somewhere better than this line described. One pet
+      equipped rather than a stack, so the **perk** is the reason to own one and
+      the cash multiplier is a nudge — 3% to 15% over the whole rarity ladder.
+      Variants give a stronger perk rather than more cash. Collecting is for
+      breadth, and swapping to suit what you're about to do is the loop.
+
+      It deliberately does *not* mirror the gamepasses. This line used to list
+      "auto-collect" and "auto-merge" among the effects; batch 3 sells both, and
+      handing them out of eggs would undercut passes that are about to be priced.
+
+      Not done, and deliberately out of scope for v1: **fusing duplicates**. The
+      inventory caps at `Balance.Pets.MaxOwned` and full means the pads refuse
+      until something is released, which is a blunt answer to the same question
+      fusing answers better. Worth revisiting once pets have been played.
 
 ## Batch 5 — Polish for launch
 

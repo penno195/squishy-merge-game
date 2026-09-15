@@ -27,6 +27,10 @@ local EVENTS = {
 	"CraftStart",
 	"CraftSkip",
 	"CraftCollect",
+	-- Pets. Hatching happens at a pad in the hub; the rest is the panel.
+	"HatchEgg",
+	"EquipPet",
+	"ReleasePet",
 	-- Fired once the client's UI is listening, so nothing sent at join is lost.
 	"Ready",
 	-- Server -> client
@@ -36,6 +40,7 @@ local EVENTS = {
 	"SpinResult",
 	"SellPrompt",
 	"CraftResult",
+	"PetHatched",
 	"Leaderboard",
 }
 

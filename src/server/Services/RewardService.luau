@@ -9,6 +9,7 @@ local Economy = require(ReplicatedStorage.Shared.Economy)
 local Format = require(ReplicatedStorage.Shared.Format)
 local ItemService = require(script.Parent.ItemService)
 local PassService = require(script.Parent.PassService)
+local PetService = require(script.Parent.PetService)
 local StateService = require(script.Parent.StateService)
 local Types = require(ReplicatedStorage.Shared.Types)
 
@@ -23,7 +24,13 @@ local RewardService = {}
 -- 1 so a boost can't be banked against hours of away time.
 function RewardService.incomePerSecond(player: Player, boostMultiplier: number?): number
 	local data = DataService.get(player)
-	return if data then Economy.incomePerSecond(data, PassService.cashMultiplier(player), boostMultiplier) else 0
+	if not data then
+		return 0
+	end
+	-- The pass and the equipped pet multiply together. The pet's share is a nudge by
+	-- design -- 3% to 15% across the whole rarity ladder -- so this can't run away.
+	local multiplier = PassService.cashMultiplier(player) * PetService.cashMultiplier(player)
+	return Economy.incomePerSecond(data, multiplier, boostMultiplier)
 end
 
 function RewardService.grantGems(player: Player, amount: number)
@@ -81,14 +88,13 @@ function RewardService.grant(player: Player, reward: Types.Reward): (string, Gra
 
 	if reward.UnitTierBonus then
 		local tier = math.min(Economy.dropTier(data) + reward.UnitTierBonus, Config.MaxTier)
-		if
-			Economy.hasRoom(data, PassService.extraGardenSpaces(player))
-			and ItemService.dropItem(player, tier, nil, true)
-		then
+		local spaces = PassService.extraGardenSpaces(player) + PetService.extraSpaces(player)
+		if Economy.hasRoom(data, spaces) and ItemService.dropItem(player, tier, nil, true) then
 			granted.Tier = tier
 			table.insert(parts, `a {Config.Units[tier].Name}`)
 		else
-			local multiplier = Economy.cashMultiplier(data, PassService.cashMultiplier(player))
+			local multiplier =
+				Economy.cashMultiplier(data, PassService.cashMultiplier(player) * PetService.cashMultiplier(player))
 			local amount = math.floor(Economy.tierIncome(tier) * multiplier * FULL_GARDEN_SECONDS)
 			RewardService.grantCash(player, amount)
 			granted.Cash += amount

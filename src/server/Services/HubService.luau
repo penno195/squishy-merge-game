@@ -1,7 +1,8 @@
 --!strict
 -- The middle of the map: the pad players spawn on, the moving walkway that
 -- rings it, the paths out to each garden gate, the crafting station in the
--- middle, the prize wheel to one side of it and the leaderboard to the other.
+-- middle, the prize wheel to one side of it, the leaderboard to the other, and the
+-- egg pads in a row behind it.
 --
 -- Built after GardenService, which owns the World folder and decides how far
 -- out the gardens sit.
@@ -9,7 +10,10 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Economy = require(ReplicatedStorage.Shared.Economy)
+local Format = require(ReplicatedStorage.Shared.Format)
 local GardenService = require(script.Parent.GardenService)
+local Types = require(ReplicatedStorage.Shared.Types)
 
 local Balance = Config.Balance
 local Garden = Balance.Garden
@@ -62,9 +66,29 @@ local BOARD_PIXELS_PER_STUD = 34
 -- The saved field the board ranks.
 local BOARD_STAT = "TotalEarned"
 
+-- Egg pads, in a row behind the crafting station. Behind rather than beside it
+-- because the wheel and the leaderboard already hold the two flanks, and a player
+-- walking round the machine finds them without being sent. Facing -Z like the
+-- machine, so all three landmarks read from the spawn pad.
+local EGG_ROW_Z = 18
+local EGG_SPACING = 15
+local EGG_PLINTH = 1.6
+local EGG_PLINTH_WIDTH = 8
+-- Studs tall, and an egg is taller than it is wide. Big enough to read the sign
+-- over it from the machine, small enough not to hide what's behind it.
+local EGG_HEIGHT = 5
+local EGG_WIDTH = 3.6
+local EGG_SIGN_HEIGHT = 3
+local EGG_PIXELS_PER_STUD = 40
+
 local HubService = {}
 
 local machinePosition: Vector3? = nil
+-- Where each egg pad stands, by egg Id. PetService checks a hatch against these
+-- rather than trusting the prompt: a ProximityPrompt is driven by the client, and
+-- the distance it claims to enforce is the client's claim.
+local eggPositions: { [string]: Vector3 } = {}
+local eggPrompts: { [string]: ProximityPrompt } = {}
 -- Row labels for each face of the leaderboard, filled in by LeaderboardService.
 local boardRows: { [string]: { { Name: TextLabel, Value: TextLabel, Badge: TextLabel } } } = {}
 
@@ -357,6 +381,101 @@ local function buildMachine(parent: Instance, origin: CFrame)
 	machinePosition = (origin * CFrame.new(0, bodyY, 0)).Position
 end
 
+-- One pad per egg in Balance.Pets.Eggs: a plinth, an egg sat on it, and a sign
+-- saying what it costs. The prompt is the whole interaction -- hatching is instant,
+-- so there is nothing to open a panel for; the panel is for the inventory.
+local function buildEggPads(parent: Instance, origin: CFrame)
+	local eggs = Balance.Pets.Eggs :: { Types.PetEggDef }
+	if #eggs == 0 then
+		return
+	end
+	local pads = Instance.new("Folder")
+	pads.Name = "EggPads"
+	pads.Parent = parent
+
+	for index, egg in eggs do
+		local offsetX = (index - (#eggs + 1) / 2) * EGG_SPACING
+		local base = origin * CFrame.new(offsetX, 0, EGG_ROW_Z)
+		local model = Instance.new("Model")
+		model.Name = `EggPad_{egg.Id}`
+		model.Parent = pads
+
+		local plinth = makePart(
+			"Plinth",
+			Vector3.new(EGG_PLINTH, EGG_PLINTH_WIDTH, EGG_PLINTH_WIDTH),
+			base * CFrame.new(0, PAD_THICKNESS + EGG_PLINTH / 2, 0) * CFrame.Angles(0, 0, math.pi / 2),
+			Theme.World.Border,
+			Enum.Material.SmoothPlastic,
+			model
+		)
+		plinth.Shape = Enum.PartType.Cylinder
+
+		-- A ball stretched upward is an egg, near enough, and it costs one part.
+		local tone = (Theme.Palette :: { [string]: Color3 })[egg.Tone] or Theme.Palette.Surface
+		local eggY = PAD_THICKNESS + EGG_PLINTH + EGG_HEIGHT / 2
+		local shell = makePart(
+			"Egg",
+			Vector3.new(EGG_WIDTH, EGG_HEIGHT, EGG_WIDTH),
+			base * CFrame.new(0, eggY, 0),
+			tone,
+			Enum.Material.SmoothPlastic,
+			model
+		)
+		shell.Shape = Enum.PartType.Ball
+		model.PrimaryPart = shell
+
+		-- The sign over it. A SurfaceGui on a part rather than a billboard, so it
+		-- stays part of the scenery instead of turning to follow every player.
+		local signY = eggY + EGG_HEIGHT / 2 + EGG_SIGN_HEIGHT / 2 + 0.6
+		local sign = makePart(
+			"Sign",
+			Vector3.new(EGG_SPACING - 3, EGG_SIGN_HEIGHT, 0.4),
+			base * CFrame.new(0, signY, 0),
+			Theme.Palette.Background,
+			Enum.Material.SmoothPlastic,
+			model
+		)
+		sign.CanCollide = false
+
+		local surface = Instance.new("SurfaceGui")
+		surface.Face = Enum.NormalId.Front
+		surface.PixelsPerStud = EGG_PIXELS_PER_STUD
+		surface.Parent = sign
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Size = UDim2.fromScale(1, 1)
+		label.FontFace = Theme.Font
+		-- Odds on the sign, not in a panel. This is where the decision to hatch is
+		-- made, and a gacha that hides its chances somewhere else is hiding them.
+		-- Ordered by the rarity ladder rather than by the Weights table, which is a
+		-- dictionary and so has no order at all.
+		local odds: { string } = {}
+		local chances = Economy.eggChances(egg)
+		for _, rarity in Balance.Pets.Rarities :: { Types.PetRarity } do
+			local chance = chances[rarity.Id]
+			if chance and chance > 0 then
+				table.insert(odds, `{string.format("%.4g", chance * 100)}% {rarity.Name}`)
+			end
+		end
+		label.Text = `{egg.Name}\n{Format.number(egg.Cost)} {Theme.Text.Currency}\n{table.concat(odds, "  ")}`
+		label.TextColor3 = Theme.Palette.Text
+		label.TextScaled = true
+		label.Parent = surface
+
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "EggPrompt"
+		prompt.ActionText = "Hatch"
+		prompt.ObjectText = egg.Name
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = Balance.Pets.PadRadius
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = shell
+
+		eggPositions[egg.Id] = (base * CFrame.new(0, eggY, 0)).Position
+		eggPrompts[egg.Id] = prompt
+	end
+end
+
 -- One face of the leaderboard: a title and a column of rows, drawn onto a
 -- screen inset into the board the same way the machine's is. The rows are built
 -- empty and kept, so refreshing the board is setting text rather than rebuilding
@@ -474,6 +593,14 @@ function HubService.machinePosition(): Vector3?
 	return machinePosition
 end
 
+function HubService.eggPosition(eggId: string): Vector3?
+	return eggPositions[eggId]
+end
+
+function HubService.eggPrompts(): { [string]: ProximityPrompt }
+	return eggPrompts
+end
+
 -- Fills one face of the leaderboard. Entries are already ranked and formatted;
 -- rows past the end of the list are blanked, so a board that shrinks doesn't
 -- leave a stale name on the bottom row.
@@ -535,6 +662,7 @@ function HubService.init()
 	-- for the same reason: a flat face read at an angle is a hard read.
 	local boardPosition = Vector3.new(BOARD_OFFSET, 0, 0)
 	buildLeaderboard(hub, CFrame.lookAt(boardPosition, Vector3.new(0, 0, -Hub.SpawnOffset)))
+	buildEggPads(hub, CFrame.identity)
 end
 
 return HubService

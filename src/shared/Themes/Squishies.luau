@@ -95,6 +95,10 @@ local theme: Types.Theme = {
 				Color = Color3.fromRGB(235, 195, 145),
 				Accent = Color3.fromRGB(255, 140, 200),
 			},
+			-- A real model rather than a built shape. `Height` does nothing
+			-- here -- a supplied model is sized by `Scale` alone, off whatever
+			-- it was modelled at, which for this one is 6.4 studs long.
+			{ Model = "ButterSquishy", Scale = 1.6, Color = Color3.fromRGB(250, 206, 80) },
 		},
 		-- Out in the open ground between the walkway and the gardens, at the
 		-- size of a thing you'd stop and look at on the way home.
@@ -123,6 +127,7 @@ local theme: Types.Theme = {
 				Color = Color3.fromRGB(255, 245, 250),
 				Accent = Color3.fromRGB(190, 160, 255),
 			},
+			{ Model = "ButterSquishy", Scale = 3, Color = Color3.fromRGB(250, 206, 80) },
 		},
 		-- The landmarks in the gaps between gardens. Big enough to see over the
 		-- fences from the hub, small enough to leave the plinths either side of
@@ -274,6 +279,118 @@ local theme: Types.Theme = {
 		Shiny = { Prefix = "Shiny", Color = Color3.fromRGB(190, 240, 255), Tint = 0.4 },
 		Golden = { Prefix = "Golden", Color = Color3.fromRGB(255, 205, 70), Tint = 0.62 },
 		Rainbow = { Prefix = "Rainbow", Color = Color3.fromRGB(255, 130, 240), Tint = 0.7, Shine = true },
+	},
+
+	-- Pets. Each one names a rarity and a perk from Balance.Pets and is otherwise
+	-- pure dressing -- a colour and a few features off the UnitVisuals vocabulary,
+	-- so none of them needs a model made. The perk is the reason to own one, so the
+	-- six of them are spread across the rarities rather than stacked at the top:
+	-- a Common Gardener is still the pet you put on when the garden is full.
+	Pets = {
+		{
+			Id = "Pebble",
+			Name = "Pebble Pup",
+			Color = Color3.fromRGB(170, 180, 195),
+			Rarity = "Common",
+			Perk = "MergeCash",
+			Features = { "DogEars", "Snout", "Tail" },
+		},
+		{
+			Id = "Sprout",
+			Name = "Sprout Cat",
+			Color = Color3.fromRGB(150, 215, 130),
+			Rarity = "Common",
+			Perk = "Space",
+			Features = { "CatEars", "Whiskers", "Tail" },
+		},
+		{
+			Id = "Coin",
+			Name = "Coin Bun",
+			Color = Color3.fromRGB(240, 210, 120),
+			Rarity = "Common",
+			Perk = "SellBonus",
+			Features = { "BunnyEars", "Fluff" },
+		},
+		{
+			Id = "Bubble",
+			Name = "Bubble Fish",
+			Color = Color3.fromRGB(150, 220, 240),
+			Rarity = "Common",
+			Perk = "GemFind",
+			Features = { "Fins", "Fluke" },
+		},
+		{
+			Id = "Clover",
+			Name = "Clover Fox",
+			Color = Color3.fromRGB(120, 200, 140),
+			Rarity = "Rare",
+			Perk = "DropLuck",
+			Features = { "DogEars", "Snout", "Tail", "Legs" },
+		},
+		{
+			Id = "Kettle",
+			Name = "Kettle Owl",
+			Color = Color3.fromRGB(200, 170, 230),
+			Rarity = "Rare",
+			Perk = "CraftLuck",
+			Features = { "RoundEars", "Beak", "Wings" },
+		},
+		{
+			Id = "Marble",
+			Name = "Marble Mole",
+			Color = Color3.fromRGB(190, 160, 140),
+			Rarity = "Rare",
+			Perk = "Space",
+			Features = { "RoundEars", "Snout", "Legs" },
+		},
+		{
+			Id = "Gumdrop",
+			Name = "Gumdrop Frog",
+			Color = Color3.fromRGB(240, 150, 190),
+			Rarity = "Rare",
+			Perk = "MergeCash",
+			Features = { "WideMouth", "Legs", "Patches" },
+		},
+		{
+			Id = "Prism",
+			Name = "Prism Moth",
+			Color = Color3.fromRGB(180, 200, 255),
+			Rarity = "Epic",
+			Perk = "GemFind",
+			Features = { "Wings", "Whiskers", "Frills" },
+		},
+		{
+			Id = "Ember",
+			Name = "Ember Squirrel",
+			Color = Color3.fromRGB(250, 150, 90),
+			Rarity = "Epic",
+			Perk = "CraftLuck",
+			Features = { "RoundEars", "Snout", "Tail", "Fluff" },
+		},
+		{
+			Id = "Tide",
+			Name = "Tide Otter",
+			Color = Color3.fromRGB(130, 180, 220),
+			Rarity = "Epic",
+			Perk = "SellBonus",
+			Features = { "RoundEars", "Whiskers", "Fluke", "Legs" },
+		},
+		{
+			Id = "Comet",
+			Name = "Comet Stag",
+			Color = Color3.fromRGB(150, 140, 230),
+			Rarity = "Legendary",
+			Perk = "DropLuck",
+			Features = { "Crown", "Snout", "Legs", "Tail" },
+		},
+		{
+			Id = "Orbit",
+			Name = "Orbit Whale",
+			Color = Color3.fromRGB(120, 150, 240),
+			Rarity = "Legendary",
+			Perk = "MergeCash",
+			Features = { "Ring", "Fluke", "Fins" },
+		},
 	},
 
 	Sparkles = {

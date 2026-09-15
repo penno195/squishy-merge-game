@@ -375,11 +375,14 @@ function Craft.create(parent: Instance)
 
 		-- Said out loud, because a variant raising the ceiling is invisible
 		-- otherwise: the odds move, but nothing says why they moved.
-		local boost = Economy.craftBoost(inputs)
+		-- The pet counts toward the odds, so it has to count here too: this panel's
+		-- promise is that what's on screen is what the server rolls.
+		local petBoost = Economy.petPerkValue(data, "CraftLuck")
+		local boost = Economy.craftBoost(inputs, petBoost)
 		boostLabel.Visible = boost > 1
 		boostLabel.Text = `Variant boost: better odds, up to x{string.format("%.2g", boost)} the usual ceiling`
 
-		local outcomes = Economy.craftOutcomes(inputs)
+		local outcomes = Economy.craftOutcomes(inputs, petBoost)
 		for index, row in rows do
 			local outcome = outcomes[index]
 			row.Instance.Visible = outcome ~= nil

@@ -29,6 +29,7 @@ local CraftPanel = require(script.Parent.Panels.Craft)
 local DailyPanel = require(script.Parent.Panels.Daily)
 local IndexPanel = require(script.Parent.Panels.Index)
 local LeaderboardPanel = require(script.Parent.Panels.Leaderboard)
+local PetsPanel = require(script.Parent.Panels.Pets)
 local PlaytimePanel = require(script.Parent.Panels.Playtime)
 local QuestsPanel = require(script.Parent.Panels.Quests)
 local RebirthPanel = require(script.Parent.Panels.Rebirth)
@@ -61,6 +62,7 @@ local MENU_ICONS: { [string]: string } = {
 	Craft = "⚗️",
 	Ranks = "🏆",
 	Index = "📖",
+	Pets = "🐾",
 }
 local WHEEL_PANEL = "Wheel"
 local CRAFT_PANEL = "Craft"
@@ -179,6 +181,7 @@ function Hud.start()
 		{ Name = "Daily", Icon = MENU_ICONS.Daily, Panel = DailyPanel.create(screen) },
 		{ Name = WHEEL_PANEL, Icon = MENU_ICONS.Wheel, Panel = WheelPanel.create(screen) },
 		{ Name = CRAFT_PANEL, Icon = MENU_ICONS.Craft, Panel = CraftPanel.create(screen) },
+		{ Name = "Pets", Icon = MENU_ICONS.Pets, Panel = PetsPanel.create(screen) },
 		{ Name = "Ranks", Icon = MENU_ICONS.Ranks, Panel = LeaderboardPanel.create(screen) },
 		{ Name = "Index", Icon = MENU_ICONS.Index, Panel = IndexPanel.create(screen) },
 	}
@@ -353,7 +356,7 @@ function Hud.start()
 			carryLabel.Text = `Carrying {Config.Units[data.Carried].Name} ✨`
 		else
 			local line = `Carrying {Config.Units[data.Carried].Name}  ·  sells for {Format.number(
-				Economy.binValue(data.Carried)
+				Economy.binValue(data.Carried, Economy.petPerkValue(data, "SellBonus"))
 			)} {Theme.Text.Currency}`
 			if Economy.carriedIsStranded(data) then
 				line ..= `\nNothing left to merge it with`
@@ -362,7 +365,10 @@ function Hud.start()
 		end
 
 		local cost = Economy.buyUnitCost(data)
+		-- The pass and a Gardener pet both add room, and both are readable from what
+		-- the client already has: the pass from the snapshot, the pet from the save.
 		spaces = Economy.gardenPassSpaces((snapshot.Passes or {}).BiggerGarden)
+			+ math.floor(Economy.petPerkValue(data, "Space"))
 		buyButton.setText(`Buy {Theme.Text.Unit} — {Format.number(cost)}`)
 		buyButton.setEnabled(data.Cash >= cost and Economy.hasRoom(data, spaces))
 

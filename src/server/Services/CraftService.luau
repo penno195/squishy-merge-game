@@ -27,6 +27,7 @@ local HubService = require(script.Parent.HubService)
 local ItemService = require(script.Parent.ItemService)
 local Net = require(ReplicatedStorage.Shared.Net)
 local PassService = require(script.Parent.PassService)
+local PetService = require(script.Parent.PetService)
 local PlinthService = require(script.Parent.PlinthService)
 local StateService = require(script.Parent.StateService)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -60,6 +61,13 @@ local function readyMessage(player: Player, slot: number): string
 		return `Your {Theme.Text.Machine} has finished! Collect what's inside.`
 	end
 	return `Slot {slot} of your {Theme.Text.Machine} has finished! Collect what's inside.`
+end
+
+-- Room beyond what the Garden Space upgrade gives: the Bigger Garden pass plus a
+-- Gardener pet. Both are the same kind of thing to Economy, which only wants a
+-- number, so they are added here rather than threaded separately.
+local function spacesFor(player: Player): number
+	return PassService.extraGardenSpaces(player) + PetService.extraSpaces(player)
 end
 
 local function atMachine(player: Player): boolean
@@ -135,7 +143,7 @@ local function takeBack(player: Player, slot: unknown)
 	if not (data and craft) or Economy.craftRunning(craft) then
 		return
 	end
-	local spaces = PassService.extraGardenSpaces(player)
+	local spaces = spacesFor(player)
 	local left: { number } = {}
 	for _, tier in craft.Inputs do
 		if not (Economy.hasRoom(data, spaces) and ItemService.dropItem(player, tier, nil, false)) then
@@ -195,12 +203,15 @@ local function collect(player: Player, slot: unknown)
 	end
 	-- Checked before the roll, so a full garden costs the player nothing: the
 	-- craft simply stays finished until there's somewhere to put the result.
-	if not Economy.hasRoom(data, PassService.extraGardenSpaces(player)) then
+	if not Economy.hasRoom(data, spacesFor(player)) then
 		StateService.notify(player, "Your garden is full -- make room, then collect!", "Error")
 		return
 	end
 
-	local unitIndex = Economy.rollCraft(craft.Inputs)
+	-- The pet is read at the moment of collection rather than when the craft was
+	-- started, which is deliberate: a Lucky Crafter is a pet you put on to open the
+	-- machine, and rewarding the swap is the point of having an inventory.
+	local unitIndex = Economy.rollCraft(craft.Inputs, PetService.perk(player, "CraftLuck"))
 	if unitIndex == 0 or not ItemService.dropItem(player, unitIndex, nil, true) then
 		return
 	end

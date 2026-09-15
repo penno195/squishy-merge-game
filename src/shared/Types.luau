@@ -41,6 +41,11 @@ export type VariantRung = {
 	-- What it multiplies the ceiling on a craft's sparkle chance by, when one
 	-- is fed into the machine.
 	CraftBoost: number,
+	-- What it multiplies a pet's perk by. Far smaller than `Income`, and on
+	-- purpose: a variant unit earning sixty times as much is a jackpot, where a
+	-- variant pet is the same pet doing its one job better. A Rainbow pet that
+	-- were sixty times as good would end the switching the whole system is for.
+	PetPerk: number,
 }
 
 -- How a theme dresses one of the variants in Balance.Variants. Every field is
@@ -75,6 +80,73 @@ export type SparkleDef = {
 	-- Best odds this one can ever be crafted at. Later bands set this lower, so
 	-- the deeper sparkles stay rarer. Defaults to Balance.Craft.MaxChance.
 	MaxChance: number?,
+}
+
+-- One pet a theme offers. Everything mechanical about it is a name pointing into
+-- Balance.Pets -- which rarity band it sits in, and which perk it carries -- so a
+-- reskin names and dresses pets without balancing any of them. Same fallback deal
+-- as UnitDef: with no `Model` it's built as a procedural blob in `Color`, wearing
+-- whatever `Features` it names from the UnitVisuals vocabulary.
+export type PetDef = {
+	Id: string,
+	Name: string,
+	Color: Color3,
+	Model: string?,
+	Scale: number?,
+	Features: { string }?,
+	-- Ids from Balance.Pets.Rarities and Balance.Pets.Perks.
+	Rarity: string,
+	Perk: string,
+}
+
+-- One rung of the rarity ladder in Balance.Pets.Rarities: how often an egg turns
+-- one up, what it multiplies cash by, and how hard its perk hits.
+export type PetRarity = {
+	Id: string,
+	Name: string,
+	-- No weight of its own: how often a rarity turns up is the egg's business, so
+	-- that number lives in PetEggDef.Weights and only there. A ladder that also
+	-- carried a weight would be two answers to one question.
+	-- Deliberately a narrow band across the whole ladder. Pets are a help, not
+	-- the way the game is progressed, and a rare pet that paid ten times as much
+	-- would be equipped forever whatever its perk said.
+	Multiplier: number,
+	-- Scales the perk's own Amount. This is where rarity is allowed to matter.
+	Perk: number,
+}
+
+-- What a perk does, and how much of it one unit of strength is worth. The Id is
+-- read by the code that applies it, so adding a perk means adding a case there --
+-- a theme can only choose among the ones that exist.
+export type PetPerkDef = {
+	Id: string,
+	Name: string,
+	-- Filled into `Name` and the panel's description. One line, present tense.
+	Description: string,
+	-- Meaning depends on the Id, and is documented per perk in Balance.Pets.
+	Amount: number,
+}
+
+-- An egg on a pad in the hub: what it costs and which rarities it can turn up.
+-- `Weights` overrides the rarity ladder's own weights by Id; anything it leaves
+-- out cannot come out of that egg at all, which is what makes a dearer egg worth
+-- standing at.
+export type PetEggDef = {
+	Id: string,
+	Name: string,
+	Cost: number,
+	Weights: { [string]: number },
+	-- Names a Palette entry, so the pad in the hub is coloured by the theme --
+	-- the same trick the wheel's prizes use.
+	Tone: string,
+}
+
+-- A pet the player owns. `Variant` is a position in Balance.Variants, or 0 for an
+-- ordinary one -- the same numbering units use, so a Golden pet is dressed by the
+-- theme's existing Variants styling with nothing new to configure.
+export type PetRecord = {
+	Id: string,
+	Variant: number,
 }
 
 -- A piece of scenery. Same deal as UnitDef: a theme can point at a real model,
@@ -178,6 +250,10 @@ export type Theme = {
 	-- Ids. Anything left out falls back to a default, so this table is optional
 	-- in whole and in part.
 	Variants: { [string]: VariantDef }?,
+	-- The pets this skin offers, in no particular order -- which egg can turn one
+	-- up is decided by its Rarity, not by its place here. A theme with no Pets
+	-- still works: the egg pads simply aren't built.
+	Pets: { PetDef }?,
 	-- Scenery, keyed by the zone Ids in Balance.PropZones. Each slot in a zone
 	-- picks one of that zone's entries at random. A zone the theme says nothing
 	-- about is left bare, and a theme with no Props at all dresses no scenery.
@@ -262,6 +338,11 @@ export type PlayerData = {
 	-- Whether the starter pack has been handed over. The pass is what is bought,
 	-- and this is what stops it being granted again on every join.
 	StarterClaimed: boolean,
+	-- Pets owned, in the order they hatched, and which one is on the player's
+	-- shoulder as an index into it. 0 is none equipped, which is also what a
+	-- player who releases the pet they had ends up with.
+	Pets: { PetRecord },
+	EquippedPet: number,
 	Daily: DailyState,
 	-- Wheel spins bought with gems, and the day the last free spin was taken.
 	Spins: number,

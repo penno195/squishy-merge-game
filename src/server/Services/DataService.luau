@@ -29,6 +29,8 @@ local TEMPLATE: PlayerData = {
 	LastOnline = 0,
 	FirstJoin = 0,
 	StarterClaimed = false,
+	Pets = {},
+	EquippedPet = 0,
 	Daily = { Streak = 0, LastClaimDay = -1 },
 	Spins = 0,
 	LastFreeSpinDay = -1,
@@ -133,6 +135,26 @@ local function fitToConfig(data: PlayerData)
 	-- The machine takes ordinary units and variants, never sparkles. Anything
 	-- that no longer fits the list is clamped, and a sparkle that somehow got
 	-- in is dropped rather than clamped into an ordinary unit.
+	-- A pet whose Id the theme no longer has is dropped rather than clamped: there
+	-- is no nearest pet the way there is a nearest tier, and keeping it would mean
+	-- an inventory row naming something that cannot be built or equipped. Same
+	-- trade the unit clamping makes, and the same reason DataStoreName is per game.
+	local keptPets: { Types.PetRecord } = {}
+	local equippedRecord = data.Pets[data.EquippedPet]
+	local equipped = 0
+	for _, record in data.Pets do
+		if Economy.petDef(record.Id) then
+			table.insert(keptPets, record)
+			if record == equippedRecord then
+				equipped = #keptPets
+			end
+		end
+	end
+	data.Pets = keptPets
+	-- Re-found rather than clamped, so dropping a pet from the middle of the list
+	-- doesn't silently equip whichever one slid into its place.
+	data.EquippedPet = equipped
+
 	for _, craft in data.Craft do
 		local inputs = {}
 		for _, index in craft.Inputs do

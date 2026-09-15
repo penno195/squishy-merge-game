@@ -44,6 +44,7 @@ local TRANSACTION_TYPES: { [string]: string } = {
 	QuestClaimed = "Gameplay",
 	OfflineEarned = "TimedReward",
 	ProductPurchased = "IAP",
+	PetHatched = "Shop",
 	PassPurchased = "IAP",
 	StarterClaimed = "IAP",
 }
@@ -65,6 +66,7 @@ local CUSTOM_EVENTS: { [string]: boolean } = {
 	PlaytimeClaimed = true,
 	PrizeClaimed = true,
 	ProductPurchased = true,
+	PetHatched = true,
 	PassPurchased = true,
 	StarterClaimed = true,
 	SessionEnded = true,
@@ -227,6 +229,8 @@ function AnalyticsService.init()
 	measure("PlaytimeClaimed")
 	measure("PrizeClaimed")
 	measure("OfflineEarned")
+	measure("PetHatched")
+	measure("PetReleased")
 	measure("PassPurchased")
 	measure("StarterClaimed")
 	measure("ProductPurchased")

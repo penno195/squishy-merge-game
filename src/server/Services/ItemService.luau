@@ -11,6 +11,7 @@ local DataService = require(script.Parent.DataService)
 local Economy = require(ReplicatedStorage.Shared.Economy)
 local GardenService = require(script.Parent.GardenService)
 local Net = require(ReplicatedStorage.Shared.Net)
+local PetService = require(script.Parent.PetService)
 local StateService = require(script.Parent.StateService)
 local Types = require(ReplicatedStorage.Shared.Types)
 local UnitVisuals = require(ReplicatedStorage.Shared.UnitVisuals)
@@ -242,6 +243,29 @@ function ItemService.pickUp(player: Player, item: Item)
 	syncData(player)
 end
 
+-- What the equipped pet pays for a merge, if it is one of the two pets that pay
+-- for merges. Granted here rather than through RewardService, which requires this
+-- module -- and both amounts are a line each, the same way the income tick adds
+-- cash directly.
+--
+-- Returns what was handed over so the Merged action can carry it, which is what
+-- lets analytics see pets as a source of cash rather than as a mystery.
+local function payMergePerks(player: Player, data: Types.PlayerData, index: number): (number, number)
+	local cash = Economy.mergePayout(index, PetService.perk(player, "MergeCash"))
+	if cash > 0 then
+		data.Cash += cash
+		data.TotalEarned += cash
+	end
+	local gems = 0
+	local chance = PetService.perk(player, "GemFind")
+	if chance > 0 and math.random() < math.min(chance, 1) then
+		gems = 1
+		data.Gems += gems
+		StateService.notify(player, "Your pet found a Gem!", "Reward")
+	end
+	return cash, gems
+end
+
 -- Carrying tier N onto a tier N item destroys both and leaves tier N+1 on the
 -- ground, to be picked up again. Returns the item it left behind.
 function ItemService.mergeWith(player: Player, item: Item): Item?
@@ -258,8 +282,9 @@ function ItemService.mergeWith(player: Player, item: Item): Item?
 	clearCarried(player)
 	data.Carried = 0
 	local created = ItemService.dropItem(player, tier, pivot, false)
+	local cash, gems = payMergePerks(player, data, tier)
 	Net.event("MergeEffect"):FireAllClients(pivot.Position, tier)
-	ActionService.fire(player, "Merged", { Value = tier })
+	ActionService.fire(player, "Merged", { Value = tier, Cash = cash, Gems = gems })
 	return created
 end
 
@@ -307,7 +332,8 @@ end
 -- Merges the first matching pair lying in the garden (the auto-merge gamepass).
 function ItemService.autoMerge(player: Player): boolean
 	local list = items[player]
-	if not list then
+	local data = DataService.get(player)
+	if not (list and data) then
 		return false
 	end
 	local firstByTier: { [number]: Item } = {}
@@ -320,8 +346,16 @@ function ItemService.autoMerge(player: Player): boolean
 				removeItem(player, first)
 				removeItem(player, item)
 				ItemService.dropItem(player, tier, pivot, false)
+				-- A merge the pass made for you still pays the pet's perk. The pet
+				-- is paid for merges happening, not for the player pressing
+				-- anything, and the two passes are meant to stack.
+				local cash, gems = payMergePerks(player, data, tier)
 				Net.event("MergeEffect"):FireAllClients(pivot.Position, tier)
-				ActionService.fire(player, "Merged", { Value = tier, Fields = { Auto = "yes" } })
+				ActionService.fire(
+					player,
+					"Merged",
+					{ Value = tier, Cash = cash, Gems = gems, Fields = { Auto = "yes" } }
+				)
 				return true
 			end
 			firstByTier[item.tier] = item

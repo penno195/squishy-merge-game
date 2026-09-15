@@ -299,6 +299,184 @@ function Economy.offlineRate(autoCollect: boolean?): number
 	return if autoCollect then Balance.Monetisation.AutoCollect.Rate else Balance.OfflineEarnings.Rate
 end
 
+-- Pets --------------------------------------------------------------------
+-- One pet is equipped at a time and the rest wait in the inventory, so a pet is
+-- a tool chosen for what the player is about to do. Everything here is about the
+-- equipped one: `petPerkValue` is the single question every consumer asks, and it
+-- answers 0 for a player with no pet, the wrong pet, or no pets at all -- which
+-- means none of them has to branch on whether pets exist in this theme.
+
+local PetBalance = Balance.Pets
+
+function Economy.petDef(id: string): Types.PetDef?
+	return Config.PetById[id]
+end
+
+function Economy.petRarityOf(id: string): Types.PetRarity?
+	local def = Config.PetById[id]
+	return if def then Config.PetRarityById[def.Rarity] else nil
+end
+
+-- The pet on the player's shoulder, or nil. `EquippedPet` is an index into the
+-- inventory, so releasing a pet can leave it pointing past the end -- this is
+-- where that's caught rather than at every call site.
+function Economy.equippedPet(data: Types.PlayerData): Types.PetRecord?
+	local record = data.Pets[data.EquippedPet]
+	return if record and Config.PetById[record.Id] then record else nil
+end
+
+-- How hard one pet's perk hits: the perk's own Amount, scaled by rarity and then
+-- by the variant. Both scales are modest on purpose -- see Balance.Pets.
+function Economy.petPerkStrength(record: Types.PetRecord): number
+	local def = Config.PetById[record.Id]
+	if not def then
+		return 0
+	end
+	local perk = Config.PetPerkById[def.Perk]
+	local rarity = Config.PetRarityById[def.Rarity]
+	if not (perk and rarity) then
+		return 0
+	end
+	local variant = Config.Variants[record.Variant]
+	return perk.Amount * rarity.Perk * (if variant then variant.PetPerk else 1)
+end
+
+-- The strength of `perkId` from whatever is equipped, or 0. Every consumer of a
+-- perk goes through this, so asking for a perk the equipped pet doesn't have is
+-- the ordinary case rather than a special one.
+function Economy.petPerkValue(data: Types.PlayerData, perkId: string): number
+	local record = Economy.equippedPet(data)
+	if not record then
+		return 0
+	end
+	local def = Config.PetById[record.Id]
+	if not def or def.Perk ~= perkId then
+		return 0
+	end
+	return Economy.petPerkStrength(record)
+end
+
+-- What the equipped pet multiplies cash by. A narrow band by design, so this is
+-- a nudge rather than a reason to keep the rarest pet on forever.
+function Economy.petCashMultiplier(data: Types.PlayerData): number
+	local record = Economy.equippedPet(data)
+	if not record then
+		return 1
+	end
+	local rarity = Economy.petRarityOf(record.Id)
+	return if rarity then rarity.Multiplier else 1
+end
+
+-- Dressed the way a variant unit is, out of the theme's own Variants styling, so
+-- a Golden pet needs nothing configured beyond what Golden units already have.
+function Economy.petName(record: Types.PetRecord): string
+	local def = Config.PetById[record.Id]
+	if not def then
+		return "Unknown"
+	end
+	local variant = Config.Variants[record.Variant]
+	if not variant then
+		return def.Name
+	end
+	local styling = (Config.Theme.Variants or {})[variant.Id]
+	local prefix = if styling and styling.Prefix then styling.Prefix else variant.Id
+	return `{prefix} {def.Name}`
+end
+
+function Economy.petColor(record: Types.PetRecord): Color3
+	local def = Config.PetById[record.Id]
+	if not def then
+		return Color3.new(1, 1, 1)
+	end
+	local variant = Config.Variants[record.Variant]
+	if not variant then
+		return def.Color
+	end
+	local styling = (Config.Theme.Variants or {})[variant.Id]
+	local color = if styling and styling.Color then styling.Color else Color3.new(1, 1, 1)
+	local tint = if styling and styling.Tint then styling.Tint else 0.45
+	return def.Color:Lerp(color, tint)
+end
+
+function Economy.petPerkDef(id: string): Types.PetPerkDef?
+	return Config.PetPerkById[id]
+end
+
+function Economy.eggById(id: string): Types.PetEggDef?
+	for _, egg in PetBalance.Eggs :: { Types.PetEggDef } do
+		if egg.Id == id then
+			return egg
+		end
+	end
+	return nil
+end
+
+function Economy.maxOwnedPets(): number
+	return PetBalance.MaxOwned
+end
+
+function Economy.petsFull(data: Types.PlayerData): boolean
+	return #data.Pets >= PetBalance.MaxOwned
+end
+
+-- What an egg can turn up, as a chance per rarity Id. The panel and the pad quote
+-- this, and it is derived from the same weights the roll uses rather than written
+-- out twice.
+function Economy.eggChances(egg: Types.PetEggDef): { [string]: number }
+	local total = 0
+	for _, weight in egg.Weights do
+		total += weight
+	end
+	local chances: { [string]: number } = {}
+	if total <= 0 then
+		return chances
+	end
+	for rarityId, weight in egg.Weights do
+		chances[rarityId] = weight / total
+	end
+	return chances
+end
+
+-- One hatch: a rarity from the egg's weights, a pet of that rarity from the
+-- theme, then a variant on top using the very same chances a drop rolls with --
+-- so a Golden pet is exactly as rare as a Golden unit, and Luck tilts both.
+--
+-- nil when the theme has no pet for the rarity that came up, which Config has
+-- already refused to let happen; the check stays because taking a player's cash
+-- and returning nothing is the one outcome that must be impossible.
+function Economy.rollEgg(egg: Types.PetEggDef, data: Types.PlayerData, bias: number?): Types.PetRecord?
+	local total = 0
+	for _, weight in egg.Weights do
+		total += weight
+	end
+	if total <= 0 then
+		return nil
+	end
+	local roll = math.random() * total
+	local chosen: string? = nil
+	for rarityId, weight in egg.Weights do
+		roll -= weight
+		if roll <= 0 then
+			chosen = rarityId
+			break
+		end
+	end
+	-- Floating-point drift on the last rarity.
+	if not chosen then
+		for rarityId in egg.Weights do
+			chosen = rarityId
+		end
+	end
+	local candidates = if chosen then Config.PetsByRarity[chosen] else nil
+	if not candidates or #candidates == 0 then
+		return nil
+	end
+	return {
+		Id = candidates[math.random(#candidates)],
+		Variant = Economy.randomVariant(data, bias),
+	}
+end
+
 -- The starter pack --------------------------------------------------------
 -- On offer for a fixed window from a player's first join, and only until they
 -- have had it. Both halves are decided here, so the shop and the server reach
@@ -346,6 +524,21 @@ end
 -- as long as no charm is running.
 function Economy.luckBias(data: Types.PlayerData, now: number?): number
 	return if Economy.luckActive(data, now) then Balance.Luck.Bias else 0
+end
+
+-- Every source of luck at once: the timed charm, the permanent pass, and the
+-- equipped pet's Charmed perk. Returned as the same `bias` override every
+-- luck-sensitive function here already takes, so adding a third source threaded
+-- nothing new through anything.
+--
+-- The charm and the pass are the same tilt and so are taken as the greater of the
+-- two rather than summed -- a pass owner who buys a charm has wasted their gems,
+-- which is why the shop refuses the sale. The pet is a separate, smaller thing
+-- and adds on top.
+function Economy.totalLuckBias(data: Types.PlayerData, now: number?, passOwned: boolean?): number
+	local timed = Economy.luckBias(data, now)
+	local pass = Economy.luckPassBias(passOwned) or 0
+	return math.max(timed, pass) + Economy.petPerkValue(data, "DropLuck")
 end
 
 -- The tiers a drop can roll: the drop tier and the rungs below it, so an
@@ -456,8 +649,22 @@ function Economy.unitValue(index: number): number
 	return Balance.BuyUnit.BaseCost * Balance.Income.TierGrowth ^ (tier - 1) * Economy.variantIncome(index)
 end
 
-function Economy.binValue(tier: number): number
-	return math.floor(Economy.unitValue(tier) * Balance.Bin.Refund)
+-- `sellBonus` is added to the refund fraction, which is where a Haggler pet lands.
+-- Capped below 1 whatever it adds up to: a bin that paid the full price would make
+-- buying and binning a free loop, which is the thing Bin.Refund exists to prevent.
+function Economy.binValue(tier: number, sellBonus: number?): number
+	local refund = math.min(Balance.Bin.Refund + (sellBonus or 0), 0.95)
+	return math.floor(Economy.unitValue(tier) * refund)
+end
+
+-- What a merge hands over, for a pet with the Merge Payout perk: a share of what
+-- the unit that came out is worth. Measured off the result rather than the inputs
+-- so it grows with the ladder the same way everything else does.
+function Economy.mergePayout(index: number, strength: number): number
+	if strength <= 0 then
+		return 0
+	end
+	return math.floor(Economy.unitValue(index) * strength)
 end
 
 -- True when the carried unit can never be merged again: nothing on the ground
@@ -833,8 +1040,12 @@ end
 -- the ceiling on the sparkle chance, so feeding a rare one in is worth
 -- something even to a machine already filled with the band's top tier -- which
 -- is the whole point of letting variants in here.
-function Economy.craftBoost(inputs: { number }): number
-	local boost = 1
+-- `petBoost` is added on top of whatever the variants in the load are worth, which
+-- is what a Lucky Crafter pet contributes. Added rather than multiplied because it
+-- has to be worth something to an ordinary load -- a multiplier on a boost of 1 is
+-- a boost of 1.
+function Economy.craftBoost(inputs: { number }, petBoost: number?): number
+	local boost = 1 + (petBoost or 0)
 	for _, index in inputs do
 		local variant = Economy.variantAt(index)
 		if variant then
@@ -886,26 +1097,26 @@ end
 -- keeps every rung of the variant ladder distinguishable, keeps stacking worth
 -- something, and approaches the cap without ever reaching it -- because a
 -- sparkle you're guaranteed isn't a sparkle.
-function Economy.craftCeiling(inputs: { number }, sparkle: Types.SparkleDef): number
+function Economy.craftCeiling(inputs: { number }, sparkle: Types.SparkleDef, petBoost: number?): number
 	local craft = Balance.Craft
 	local base = sparkle.MaxChance or craft.MaxChance
-	local boost = Economy.craftBoost(inputs)
+	local boost = Economy.craftBoost(inputs, petBoost)
 	if boost <= 1 or base >= craft.HardCap then
 		return base
 	end
 	return base + (craft.HardCap - base) * (1 - 1 / boost)
 end
 
-function Economy.craftSparkleChance(inputs: { number }, sparkle: Types.SparkleDef): number
+function Economy.craftSparkleChance(inputs: { number }, sparkle: Types.SparkleDef, petBoost: number?): number
 	local craft = Balance.Craft
-	local ceiling = Economy.craftCeiling(inputs, sparkle)
+	local ceiling = Economy.craftCeiling(inputs, sparkle, petBoost)
 	local progress = Economy.craftProgress(inputs, sparkle)
 	return math.min(craft.MinChance + (ceiling - craft.MinChance) * progress ^ craft.Curve, ceiling)
 end
 
 -- The sparkle first, then the ordinary units that share out the rest. An empty
 -- machine has no outcomes at all.
-function Economy.craftOutcomes(inputs: { number }): { CraftOutcome }
+function Economy.craftOutcomes(inputs: { number }, petBoost: number?): { CraftOutcome }
 	local outcomes: { CraftOutcome } = {}
 	local highest = highestInput(inputs)
 	if highest == 0 then
@@ -916,7 +1127,7 @@ function Economy.craftOutcomes(inputs: { number }): { CraftOutcome }
 	local sparkleIndex = Economy.craftSparkleIndex(inputs)
 	if sparkleIndex then
 		local sparkle = Economy.sparkleAt(sparkleIndex) :: Types.SparkleDef
-		sparkleChance = Economy.craftSparkleChance(inputs, sparkle)
+		sparkleChance = Economy.craftSparkleChance(inputs, sparkle, petBoost)
 		table.insert(outcomes, { Index = sparkleIndex, Chance = sparkleChance, Sparkle = true })
 	end
 
@@ -945,8 +1156,8 @@ end
 
 -- Picks one outcome by its chance and returns the unit index, or 0 for a load
 -- with nothing in it.
-function Economy.rollCraft(inputs: { number }): number
-	local outcomes = Economy.craftOutcomes(inputs)
+function Economy.rollCraft(inputs: { number }, petBoost: number?): number
+	local outcomes = Economy.craftOutcomes(inputs, petBoost)
 	if #outcomes == 0 then
 		return 0
 	end

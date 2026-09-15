@@ -495,10 +495,12 @@ local function addFeatures(model: Model, def: Types.UnitDef, width: number, heig
 	end
 end
 
-local function buildBlob(def: Types.UnitDef, tier: number): Model
+-- `heightOverride` is for things that aren't on the merge ladder and so have no
+-- tier to be sized by -- pets, today.
+local function buildBlob(def: Types.UnitDef, tier: number, heightOverride: number?): Model
 	local model = Instance.new("Model")
 	local color = def.Color
-	local height = UnitVisuals.blobHeight(tier)
+	local height = heightOverride or UnitVisuals.blobHeight(tier)
 	local width = height * 1.25
 
 	local body = makeBall("Body", Vector3.new(width, height, width), CFrame.new(0, height / 2, 0), color, model)
@@ -639,6 +641,58 @@ local function addLabel(model: Model, name: string, tier: number, index: number,
 	)
 
 	billboard.Parent = adornee
+end
+
+-- A pet, built from the same procedural blob the units are. Reusing that is the
+-- whole reason a pet is a `Features` list in theme data rather than a model someone
+-- has to make: a new skin's pets look right before any asset exists for them, and a
+-- pet that names "CatEars" gets cat ears from code that already existed.
+--
+-- No label. A name tag welded to a running player's shoulder is noise, and the pets
+-- panel is where a pet's name and perk are read.
+--
+-- `blobHeight` scales with the merge ladder, which a pet has no place on, so this
+-- has a height of its own: big enough to read on a shoulder, small enough not to sit
+-- over the player's head.
+local PET_HEIGHT = 2.2
+
+function UnitVisuals.buildPet(record: Types.PetRecord): Model?
+	local def = Config.PetById[record.Id]
+	if not def then
+		return nil
+	end
+	local color = Economy.petColor(record)
+	local template = findThemeModel(def.Model)
+
+	local model: Model
+	if template then
+		model = template:Clone()
+		if def.Scale then
+			model:ScaleTo(def.Scale)
+		end
+		for _, descendant in model:GetDescendants() do
+			if descendant:IsA("BasePart") then
+				descendant.Anchored = true
+				descendant.CanCollide = false
+				descendant.CanTouch = false
+			end
+		end
+	else
+		model = buildBlob({ Name = def.Name, Color = color, Features = def.Features }, 1, PET_HEIGHT)
+	end
+
+	-- A variant pet glows if the theme's styling says that variant glows, which is
+	-- the same rule a variant unit follows.
+	local variant = Config.Variants[record.Variant]
+	local styling = if variant then (Config.Theme.Variants or {})[variant.Id] else nil
+	if styling and styling.Shine then
+		addShine(model, color)
+	end
+
+	setBottomPivot(model)
+	model.Name = Economy.petName(record)
+	model:SetAttribute("Pet", def.Id)
+	return model
 end
 
 function UnitVisuals.primaryPart(model: Model): BasePart?

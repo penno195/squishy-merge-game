@@ -153,9 +153,124 @@ return {
 	-- what they buy is a share of the gap up to Craft.HardCap, so the ladder
 	-- stays distinguishable instead of everything above Shiny hitting the cap.
 	Variants = {
-		{ Id = "Shiny", Chance = 0.06, Income = 3, CraftBoost = 1.35 },
-		{ Id = "Golden", Chance = 0.012, Income = 12, CraftBoost = 2.1 },
-		{ Id = "Rainbow", Chance = 0.002, Income = 60, CraftBoost = 3.6 },
+		{ Id = "Shiny", Chance = 0.06, Income = 3, CraftBoost = 1.35, PetPerk = 1.5 },
+		{ Id = "Golden", Chance = 0.012, Income = 12, CraftBoost = 2.1, PetPerk = 2.2 },
+		{ Id = "Rainbow", Chance = 0.002, Income = 60, CraftBoost = 3.6, PetPerk = 3.5 },
+	},
+
+	-- Pets. One rides on the player's shoulder at a time and the rest wait in the
+	-- inventory, swappable whenever, which is the decision the whole system turns
+	-- on: a pet is a tool you pick for what you are about to do, not a number you
+	-- accumulate. So the *perk* is the reason to own one and the cash multiplier
+	-- is a nudge -- 3% to 15% across the entire rarity ladder. A pet that paid
+	-- double would be welded on forever and there would be nothing to choose.
+	--
+	-- Which pets exist is theme data. What a rarity and a perk are worth is here,
+	-- so a reskin names pets and balances none of them.
+	Pets = {
+		-- One at a time. Raising this would need the panel and the shoulder offset
+		-- revisited, and would dilute the choosing that is the point.
+		EquipSlots = 1,
+		-- How close to an egg pad a player has to be to hatch. Also the range its
+		-- prompt answers from, and re-checked on the server: a ProximityPrompt is
+		-- driven by the client, so the distance it enforces is the client's word.
+		PadRadius = 14,
+		-- Room to collect the whole vocabulary a few times over without a save
+		-- that grows without limit. Full means the pads refuse to hatch until
+		-- something is released.
+		MaxOwned = 24,
+		-- What an egg costs is priced off the rarity it can reach, and the ladder
+		-- is narrow, so these are priced as a thing to spend a working income on
+		-- rather than a wall. `Weights` replaces the rarity weights by Id, and a
+		-- rarity an egg doesn't list can't come out of it -- which is the whole
+		-- reason to walk to a dearer pad.
+		Eggs = {
+			{
+				Id = "Basic",
+				Tone = "Surface",
+				Name = "Basic Egg",
+				Cost = 2500,
+				Weights = { Common = 72, Rare = 25, Epic = 3 },
+			},
+			{
+				Id = "Golden",
+				Tone = "Accent",
+				Name = "Golden Egg",
+				Cost = 120000,
+				Weights = { Common = 30, Rare = 45, Epic = 22, Legendary = 3 },
+			},
+			{
+				Id = "Rainbow",
+				Tone = "Primary",
+				Name = "Rainbow Egg",
+				Cost = 5000000,
+				Weights = { Rare = 28, Epic = 52, Legendary = 20 },
+			},
+			-- Annotated because the eggs weight different sets of rarities, and Luau
+			-- would otherwise infer the whole list from the first one.
+		} :: { Types.PetEggDef },
+		-- `Multiplier` is the cash multiplier the equipped pet adds. `Perk` scales
+		-- its perk's Amount, and is where rarity is allowed to matter: a Legendary
+		-- pays 12% more than a Common and is three times better at its job.
+		--
+		-- No weights here. How often a rarity turns up is the egg's business, and
+		-- lives in Eggs.Weights above -- two places saying it would be two answers.
+		Rarities = {
+			{ Id = "Common", Name = "Common", Multiplier = 1.03, Perk = 1 },
+			{ Id = "Rare", Name = "Rare", Multiplier = 1.06, Perk = 1.6 },
+			{ Id = "Epic", Name = "Epic", Multiplier = 1.1, Perk = 2.3 },
+			{ Id = "Legendary", Name = "Legendary", Multiplier = 1.15, Perk = 3 },
+		},
+		-- The vocabulary. A pet names one of these and the code that applies it
+		-- switches on the Id, so a theme can only choose among what exists --
+		-- adding a perk is shared work, which is the reskin promise.
+		--
+		-- `Amount` is one unit of strength, multiplied by the rarity's `Perk` and
+		-- again by the variant's `PetPerk`. What it means per perk:
+		--   MergeCash  fraction of the merged unit's value, paid on every merge
+		--   GemFind    chance of a Gem on a merge, capped at 1
+		--   CraftLuck  added to the boost on a craft's sparkle ceiling
+		--   SellBonus  added to Bin.Refund, so the bin pays better
+		--   DropLuck   added to Luck's bias on the drop roll
+		--   Space      extra room in the garden, rounded down to whole spaces
+		Perks = {
+			{
+				Id = "MergeCash",
+				Name = "Merge Payout",
+				Description = "Pays out every time you merge",
+				Amount = 0.2,
+			},
+			{
+				Id = "GemFind",
+				Name = "Gem Finder",
+				Description = "Merges sometimes turn up a Gem",
+				Amount = 0.012,
+			},
+			{
+				Id = "CraftLuck",
+				Name = "Lucky Crafter",
+				Description = "Better odds at the machine",
+				Amount = 0.25,
+			},
+			{
+				Id = "SellBonus",
+				Name = "Haggler",
+				Description = "The bin pays more",
+				Amount = 0.1,
+			},
+			{
+				Id = "DropLuck",
+				Name = "Charmed",
+				Description = "Tilts drops toward the top of your range",
+				Amount = 0.35,
+			},
+			{
+				Id = "Space",
+				Name = "Gardener",
+				Description = "Makes room in the garden",
+				Amount = 2,
+			},
+		},
 	},
 
 	Pickup = {

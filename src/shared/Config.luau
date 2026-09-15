@@ -109,6 +109,56 @@ assert(
 	`Balance.Variants chances add up to {variantChanceTotal}; they have to leave room for an ordinary unit`
 )
 
+-- Pets need no index trickery -- they are not units and never lie in the garden --
+-- so all this does is check the theme's list against the vocabulary in Balance and
+-- build the lookups the egg roll wants. A pet naming a rarity or a perk that
+-- doesn't exist is a hard error rather than a warning: unlike a unit's missing
+-- ears, there is no sensible thing to fall back to, and a pet with no perk is a
+-- pet with no reason to be owned.
+local pets: { Types.PetDef } = theme.Pets or {}
+local petRarities = balance.Pets.Rarities :: { Types.PetRarity }
+local petPerks = balance.Pets.Perks :: { Types.PetPerkDef }
+
+local petById: { [string]: Types.PetDef } = {}
+local rarityById: { [string]: Types.PetRarity } = {}
+local perkById: { [string]: Types.PetPerkDef } = {}
+-- Pet Ids by rarity Id, which is what an egg draws from once it has rolled one.
+local petsByRarity: { [string]: { string } } = {}
+
+for _, rarity in petRarities do
+	rarityById[rarity.Id] = rarity
+	petsByRarity[rarity.Id] = {}
+end
+for _, perk in petPerks do
+	perkById[perk.Id] = perk
+end
+for _, pet in pets do
+	assert(pet.Id and pet.Name and pet.Color, `Theme "{theme.Id}" has a pet missing an Id, Name or Color`)
+	assert(not petById[pet.Id], `Theme "{theme.Id}" has two pets with the Id "{pet.Id}"`)
+	assert(
+		rarityById[pet.Rarity],
+		`Theme "{theme.Id}" pet "{pet.Id}" names rarity "{pet.Rarity}", which isn't in Balance`
+	)
+	assert(perkById[pet.Perk], `Theme "{theme.Id}" pet "{pet.Id}" names perk "{pet.Perk}", which isn't in Balance`)
+	petById[pet.Id] = pet
+	table.insert(petsByRarity[pet.Rarity], pet.Id)
+end
+
+-- An egg that can roll a rarity the theme has no pets for would take the player's
+-- cash and hand back nothing, so say which egg and which rarity now rather than
+-- at the pad.
+for _, egg in balance.Pets.Eggs :: { Types.PetEggDef } do
+	for rarityId in egg.Weights do
+		assert(rarityById[rarityId], `Balance.Pets egg "{egg.Id}" weights rarity "{rarityId}", which isn't in Rarities`)
+		if #pets > 0 then
+			assert(
+				#petsByRarity[rarityId] > 0,
+				`Theme "{theme.Id}" has no {rarityId} pets, but egg "{egg.Id}" can roll one`
+			)
+		end
+	end
+end
+
 return {
 	Settings = Settings,
 	Theme = theme,
@@ -124,4 +174,11 @@ return {
 	-- the arithmetic; nothing else should need to.
 	Variants = variantDefs,
 	VariantBase = variantBase,
+	-- Pets, and the lookups Economy does the arithmetic with. Empty tables rather
+	-- than nil for a theme with no pets, so callers never branch on it.
+	Pets = pets,
+	PetById = petById,
+	PetRarityById = rarityById,
+	PetPerkById = perkById,
+	PetsByRarity = petsByRarity,
 }

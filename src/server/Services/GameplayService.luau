@@ -15,6 +15,7 @@ local GardenService = require(script.Parent.GardenService)
 local ItemService = require(script.Parent.ItemService)
 local Net = require(ReplicatedStorage.Shared.Net)
 local PassService = require(script.Parent.PassService)
+local PetService = require(script.Parent.PetService)
 local RewardService = require(script.Parent.RewardService)
 local StateService = require(script.Parent.StateService)
 
@@ -97,13 +98,21 @@ local function checkPickup(player: Player, playerTimers: Timers)
 			-- the bin sits where a player might wander while carrying something
 			-- they meant to keep.
 			playerTimers.sellPrompt = true
-			Net.event("SellPrompt"):FireClient(player, data.Carried, Economy.binValue(data.Carried))
+			Net.event("SellPrompt")
+				:FireClient(player, data.Carried, Economy.binValue(data.Carried, PetService.perk(player, "SellBonus")))
 		elseif playerTimers.sellPrompt and (not onBin or data.Carried == 0) then
 			playerTimers.sellPrompt = false
 			Net.event("SellPrompt"):FireClient(player)
 		end
 		playerTimers.onBin = onBin
 	end
+end
+
+-- Room beyond what the Garden Space upgrade gives: the Bigger Garden pass plus a
+-- Gardener pet. Both are the same kind of thing to Economy, which only wants a
+-- number, so they are added here rather than threaded separately.
+local function spacesFor(player: Player): number
+	return PassService.extraGardenSpaces(player) + PetService.extraSpaces(player)
 end
 
 local function tick(player: Player, playerTimers: Timers, now: number)
@@ -123,8 +132,10 @@ local function tick(player: Player, playerTimers: Timers, now: number)
 	end
 
 	-- A full garden leaves the drop "due", so one falls as soon as there's room.
-	if now >= playerTimers.nextDrop and Economy.hasRoom(data, PassService.extraGardenSpaces(player)) then
-		local tier = Economy.randomDropIndex(data, PassService.luckBias(player))
+	if now >= playerTimers.nextDrop and Economy.hasRoom(data, spacesFor(player)) then
+		-- Every source of luck at once -- the charm, the pass and a Charmed pet.
+		local tier =
+			Economy.randomDropIndex(data, Economy.totalLuckBias(data, os.time(), PassService.has(player, "LuckCharm")))
 		if ItemService.dropItem(player, tier, nil, true) then
 			local wait = Economy.randomDropInterval(data, PassService.spawnMultiplier(player))
 			playerTimers.nextDrop = now + wait
@@ -237,7 +248,7 @@ function GameplayService.init()
 
 		local tier = ItemService.takeCarried(player)
 		if tier then
-			local amount = Economy.binValue(tier)
+			local amount = Economy.binValue(tier, PetService.perk(player, "SellBonus"))
 			RewardService.grantCash(player, amount)
 			StateService.notify(
 				player,
@@ -258,7 +269,7 @@ function GameplayService.init()
 		local cost = Economy.buyUnitCost(data)
 		if data.Cash < cost then
 			StateService.notify(player, `Not enough {Theme.Text.Currency}!`, "Error")
-		elseif not Economy.hasRoom(data, PassService.extraGardenSpaces(player)) then
+		elseif not Economy.hasRoom(data, spacesFor(player)) then
 			StateService.notify(player, "Your garden is full. Merge to make room!", "Error")
 		else
 			data.Cash -= cost
