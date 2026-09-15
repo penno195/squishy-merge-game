@@ -46,21 +46,30 @@ local settings: Settings = {
 	-- some of them change the baseline -- LuckCharm tilts every drop, so the mix
 	-- you see is not the one a new player sees.
 	--
-	-- Set to {} to play as someone who has bought nothing.
+	-- Empty by default, so Studio plays the game a new player actually gets. Add the
+	-- ones you mean to test and take them out again afterwards:
 	--
-	-- "StarterPack" is left out on purpose. Owning it is what withdraws the offer,
-	-- so listing it hides the timed card and its countdown -- the one piece of
-	-- shop UI worth looking at. Add it to watch the bundle land on join instead;
-	-- you can't see both in one session, because that is the point of it.
-	StudioPasses = {
-		"DoubleCash",
-		"AutoMerge",
-		"FastSpawn",
-		"LuckCharm",
-		"AutoCollect",
-		"CraftSlot",
-		"BiggerGarden",
-	},
+	--   "DoubleCash"    x2 income
+	--   "FastSpawn"     drops twice as often
+	--   "LuckCharm"     the lucky charm, permanently
+	--   "AutoCollect"   full-rate offline earnings for a day
+	--   "CraftSlot"     a second craft running alongside the first
+	--   "BiggerGarden"  more room than the cash upgrade reaches
+	--   "AutoMerge"     merges a matching pair for you every 1.5 seconds
+	--   "StarterPack"   grants the bundle on join
+	--
+	-- Two of those are worth a warning. **AutoMerge plays the core loop for you** --
+	-- items land and pair off on their own, which looks like units randomly
+	-- upgrading and vanishing and makes the game impossible to judge. And
+	-- StarterPack, owning it is what withdraws the offer, so listing it hides the
+	-- timed shop card and its countdown; you can see the offer or the bundle landing,
+	-- not both in one session, because that is the point of a one-time offer.
+	--
+	-- This list was all seven for a while. That was a mistake: between x2 income,
+	-- double drop rate, permanent luck and a bigger garden, Studio was running about
+	-- three times faster than the real game, which is not the thing anyone is trying
+	-- to look at.
+	StudioPasses = {},
 
 	-- Asset IDs are unique to each Roblox experience, so every reskin needs its own.
 	-- 0 means "not set up yet": the matching shop button is hidden.

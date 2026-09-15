@@ -527,14 +527,20 @@ Studio-only settings close that gap, both ignored outright by a live server:
   what the player actually owns plus whatever is being tested. A name that isn't a
   pass is warned about, because a typo there looks exactly like an effect that
   doesn't work.
+
+  It is **empty by default**, and wants putting back to empty after testing a pass.
+  Anything in it changes the game you are looking at, and `"AutoMerge"` changes it
+  completely: it merges a pair for you every 1.5 seconds, so units appear to upgrade
+  and vanish on their own and the core loop plays itself. It was all seven passes for
+  a while, which had Studio running about three times faster than the real game.
 - In Studio the shop also draws entries whose ID is still `0`, greyed out and
   captioned "No ID yet". Otherwise that panel reads "nothing for sale yet" for the
   whole of development and none of its layout is seen until the day it goes live.
 
-`StarterPack` is deliberately not in the default list: owning it is what withdraws
-the offer, so listing it hides the timed card and its countdown. Add it to watch
-the bundle land on join instead. You can't see both in one session, which is the
-point of a one-time offer.
+`StarterPack` is worth its own note: owning it is what withdraws the offer, so
+listing it hides the timed card and its countdown. Add it to watch the bundle land
+on join instead. You can't see both in one session, which is the point of a
+one-time offer.
 
 No pass effect is written into `Economy`. That module stays pure and takes each
 one as an argument — a multiplier, a bias, a number of spaces — which the server
