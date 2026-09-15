@@ -5,6 +5,12 @@
 -- The odds come from Economy.craftOutcomes, the same function the server rolls
 -- with, and they're recalculated every time something goes in -- so the player
 -- can see a unit's worth to the machine before they commit it.
+--
+-- The panel shows one craft at a time. A player with the second-slot pass gets a
+-- row of tabs above it and everything below them follows the selected one --
+-- rather than two copies of the panel side by side, which at this width would
+-- halve a layout that is already tight. How many tabs there are is the server's
+-- answer (`CraftSlots`), not a guess made from the pass list here.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -22,11 +28,16 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Palette = Components.Palette
 local Theme = Config.Theme
 
-local SLOT_HEIGHT = 112
-local SLOT_WIDTH = 96
+local INPUT_HEIGHT = 112
+local INPUT_WIDTH = 96
 local ROW_HEIGHT = 46
 -- A sparkle plus the consolations. Rows past the outcomes on offer are hidden.
 local MAX_ROWS = 3
+-- The tab strip, and the room it takes off the top of everything below it. Zero
+-- of it is used by a player with one slot: the strip is hidden and the body sits
+-- where it always did, so nobody pays for a pass they don't own in layout.
+local TAB_HEIGHT = 44
+local TAB_GAP = 8
 
 local Craft = {}
 
@@ -37,11 +48,13 @@ type Row = {
 	Chance: TextLabel,
 }
 
--- One card per slot: what's in it, or an empty socket.
-local function slotCard(order: number, parent: Instance)
+-- One card per unit a craft can take: what's in it, or an empty socket. Not a
+-- "slot" -- that word now means a whole craft, and these are the four places
+-- inside one.
+local function inputCard(order: number, parent: Instance)
 	local card = Components.card({
 		LayoutOrder = order,
-		Size = UDim2.fromOffset(SLOT_WIDTH, SLOT_HEIGHT),
+		Size = UDim2.fromOffset(INPUT_WIDTH, INPUT_HEIGHT),
 		Parent = parent,
 	})
 	local swatch: Frame = Components.new("Frame", {
@@ -110,16 +123,43 @@ end
 function Craft.create(parent: Instance)
 	local panel = Components.panel(Theme.Text.Machine, UDim2.fromOffset(440, 684), parent)
 
-	local slotRow: Frame = Components.new("Frame", {
+	-- Which craft everything below the tabs is about. Set from the server's first
+	-- snapshot to whatever is worth looking at, and the player's own after that:
+	-- re-picking it on every snapshot would drag the panel off the slot they were
+	-- reading whenever the other one finished.
+	local selected = 1
+	local chosen = false
+
+	local tabStrip: Frame = Components.new("Frame", {
+		Name = "Slots",
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, SLOT_HEIGHT),
+		Size = UDim2.new(1, 0, 0, TAB_HEIGHT),
+		Visible = false,
 		Parent = panel.Content,
 	})
-	Components.listLayout({ Padding = UDim.new(0, 9), FillDirection = Enum.FillDirection.Horizontal }).Parent = slotRow
+	Components.listLayout({ Padding = UDim.new(0, TAB_GAP), FillDirection = Enum.FillDirection.Horizontal }).Parent =
+		tabStrip
 
-	local slots = {}
-	for index = 1, Economy.craftSlots() do
-		slots[index] = slotCard(index, slotRow)
+	-- Everything the panel had before, moved into a frame of its own so the tab
+	-- strip can push it down when there is one. Its children keep the absolute
+	-- positions they always had.
+	local body: Frame = Components.new("Frame", {
+		Name = "Body",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		Parent = panel.Content,
+	})
+
+	local inputRow: Frame = Components.new("Frame", {
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, INPUT_HEIGHT),
+		Parent = body,
+	})
+	Components.listLayout({ Padding = UDim.new(0, 9), FillDirection = Enum.FillDirection.Horizontal }).Parent = inputRow
+
+	local inputCards = {}
+	for index = 1, Economy.craftInputs() do
+		inputCards[index] = inputCard(index, inputRow)
 	end
 
 	local addButton = Components.button({
@@ -127,10 +167,10 @@ function Craft.create(parent: Instance)
 		Position = UDim2.fromOffset(0, 120),
 		Size = UDim2.new(1, 0, 0, 62),
 		BackgroundColor3 = Palette.Secondary,
-		Parent = panel.Content,
+		Parent = body,
 	}, function()
 		Sound.play(Theme.Sounds.Purchase)
-		Net.event("CraftAdd"):FireServer()
+		Net.event("CraftAdd"):FireServer(selected)
 	end)
 
 	Components.label({
@@ -140,14 +180,14 @@ function Craft.create(parent: Instance)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = Palette.Accent,
 		MaxTextSize = 22,
-		Parent = panel.Content,
+		Parent = body,
 	})
 
 	local oddsList: Frame = Components.new("Frame", {
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(0, 220),
 		Size = UDim2.new(1, 0, 0, MAX_ROWS * ROW_HEIGHT),
-		Parent = panel.Content,
+		Parent = body,
 	})
 	Components.listLayout({ Padding = UDim.new(0, 6) }).Parent = oddsList
 
@@ -166,7 +206,7 @@ function Craft.create(parent: Instance)
 		TextWrapped = true,
 		MaxTextSize = 17,
 		Visible = false,
-		Parent = panel.Content,
+		Parent = body,
 	})
 
 	local resultLabel = Components.label({
@@ -176,7 +216,7 @@ function Craft.create(parent: Instance)
 		TextColor3 = Palette.Accent,
 		TextWrapped = true,
 		MaxTextSize = 20,
-		Parent = panel.Content,
+		Parent = body,
 	})
 
 	-- Both buttons carry two jobs, so what each one is on right now is kept
@@ -190,10 +230,10 @@ function Craft.create(parent: Instance)
 		Position = UDim2.fromOffset(0, 430),
 		Size = UDim2.new(1, 0, 0, 66),
 		BackgroundColor3 = Palette.Positive,
-		Parent = panel.Content,
+		Parent = body,
 	}, function()
 		Sound.play(Theme.Sounds.Purchase)
-		Net.event(if collecting then "CraftCollect" else "CraftStart"):FireServer()
+		Net.event(if collecting then "CraftCollect" else "CraftStart"):FireServer(selected)
 	end)
 
 	local secondButton = Components.button({
@@ -201,44 +241,117 @@ function Craft.create(parent: Instance)
 		Position = UDim2.fromOffset(0, 504),
 		Size = UDim2.new(1, 0, 0, 54),
 		BackgroundColor3 = Palette.Secondary,
-		Parent = panel.Content,
+		Parent = body,
 	}, function()
 		Sound.play(Theme.Sounds.Purchase)
-		Net.event(if skipping then "CraftSkip" else "CraftTakeBack"):FireServer()
+		Net.event(if skipping then "CraftSkip" else "CraftTakeBack"):FireServer(selected)
 	end)
 
 	local hintLabel = Components.label({
-		Text = `Feed it up to {Economy.craftSlots()} {Theme.Text.UnitPlural}. Better ones, and more of them, mean better odds — and a variant raises the ceiling on them.`,
+		Text = `Feed it up to {Economy.craftInputs()} {Theme.Text.UnitPlural}. Better ones, and more of them, mean better odds — and a variant raises the ceiling on them.`,
 		Position = UDim2.fromOffset(4, 566),
 		Size = UDim2.new(1, -8, 0, 24),
 		TextColor3 = Palette.TextMuted,
 		TextWrapped = true,
 		MaxTextSize = 15,
-		Parent = panel.Content,
+		Parent = body,
 	})
 	hintLabel.Name = "Hint"
 
 	local latest: { [string]: any }? = nil
 
-	local function render()
+	-- Forward-declared: the tabs are built before it and call it, and it reads the
+	-- tabs it draws.
+	local render: () -> ()
+
+	-- Built for the most any player could ever have, and shown down to the number
+	-- the server says this one has. Building them up front keeps the panel from
+	-- having to create instances in the middle of a purchase.
+	local tabs = {}
+	for slot = 1, Economy.maxCraftSlots() do
+		local width = 1 / Economy.maxCraftSlots()
+		tabs[slot] = Components.button({
+			Text = `Slot {slot}`,
+			-- Each tab gives up its share of the gaps between them.
+			Size = UDim2.new(width, -TAB_GAP, 1, 0),
+			LayoutOrder = slot,
+			BackgroundColor3 = Palette.Surface,
+			Parent = tabStrip,
+		}, function()
+			selected = slot
+			Sound.play(Theme.Sounds.Purchase)
+			render()
+		end)
+	end
+
+	render = function()
 		local snapshot = latest
 		if not snapshot then
 			return
 		end
 		local data: Types.PlayerData = snapshot.Data
-		local inputs = data.Craft.Inputs
-		local running = Economy.craftRunning(data)
-		local remaining = if running
-			then math.max((snapshot.CraftReadyAt or 0) - Workspace:GetServerTimeNow(), 0)
-			else 0
+		local slots: number = snapshot.CraftSlots or 1
+		local readyAt: { number } = snapshot.CraftReadyAt or {}
+		local skipCosts: { number } = snapshot.CraftSkipCost or {}
+		local gameNow = Workspace:GetServerTimeNow()
+
+		-- Opens on whatever is worth seeing: something to collect, else something
+		-- to load. Once only -- after that the tabs are the player's business.
+		if not chosen then
+			chosen = true
+			selected = Economy.readyCraftSlot(data, os.time(), slots) or Economy.openCraftSlot(data, slots) or 1
+		end
+		-- A pass can go away mid-session, and the panel must not be left pointing
+		-- at a slot the server will refuse every message about.
+		selected = math.clamp(selected, 1, slots)
+
+		local craft = data.Craft[selected]
+		if not craft then
+			return
+		end
+
+		-- The strip earns its space only when there is a choice to make.
+		tabStrip.Visible = slots > 1
+		body.Position = UDim2.fromOffset(0, if slots > 1 then TAB_HEIGHT + TAB_GAP else 0)
+		body.Size = UDim2.new(1, 0, 1, if slots > 1 then -(TAB_HEIGHT + TAB_GAP) else 0)
+		for slot, tab in tabs do
+			tab.Instance.Visible = slot <= slots
+			local other = data.Craft[slot]
+			if other and slot <= slots then
+				-- Each tab says what its own slot is doing, so the choice can be
+				-- made without visiting both.
+				local otherRemaining = math.max((readyAt[slot] or 0) - gameNow, 0)
+				local caption
+				if Economy.craftRunning(other) then
+					caption = if otherRemaining <= 0 then "Ready!" else Format.time(math.ceil(otherRemaining))
+				else
+					caption = `{#other.Inputs} / {Economy.craftInputs()}`
+				end
+				tab.setText(`{slot} — {caption}`)
+				-- The selected one is lit; a slot with something waiting in it is
+				-- lit differently again, since that is the one worth a look. All
+				-- of them stay pressable -- a disabled tab would grey out exactly
+				-- the one the player is looking at, and re-picking it costs
+				-- nothing anyway.
+				local tone = if slot == selected
+					then Palette.Secondary
+					elseif Economy.craftReady(other, os.time()) then Palette.Positive
+					else Palette.Surface
+				tab.setColor(tone)
+			end
+		end
+
+		local inputs = craft.Inputs
+		local running = Economy.craftRunning(craft)
+		local remaining = if running then math.max((readyAt[selected] or 0) - gameNow, 0) else 0
 		local ready = running and remaining <= 0
 
-		for index, slot in slots do
+		for index, card in inputCards do
 			local tier = inputs[index]
 			local unit = if tier then Config.Units[tier] else nil
-			slot.Swatch.BackgroundColor3 = if unit then unit.Color else Palette.Background
-			slot.Name.Text = if unit then unit.Name else "Empty"
-			slot.Level.Text = if tier then `Lv. {Economy.ladderTier(tier)}` else ""
+			card.Swatch.BackgroundColor3 = if unit then unit.Color else Palette.Background
+			card.Name.Text = if unit then unit.Name else "Empty"
+			card.Level.Text = if tier then `Lv. {Economy.ladderTier(tier)}` else ""
 		end
 
 		-- What's stopping the player loading it, said on the button itself.
@@ -246,8 +359,8 @@ function Craft.create(parent: Instance)
 		local addText, addEnabled
 		if running then
 			addText, addEnabled = "Running...", false
-		elseif #inputs >= Economy.craftSlots() then
-			addText, addEnabled = "Machine is full", false
+		elseif #inputs >= Economy.craftInputs() then
+			addText, addEnabled = "This slot is full", false
 		elseif carried == 0 then
 			addText, addEnabled = `Carry a {Theme.Text.Unit} over`, false
 		elseif Economy.isSparkle(carried) then
@@ -302,7 +415,7 @@ function Craft.create(parent: Instance)
 		-- second button is only ever the gem skip while one is running.
 		secondButton.Instance.Visible = skipping or (not running and #inputs > 0)
 		if skipping then
-			local cost = snapshot.CraftSkipCost or Economy.craftSkipCost(data)
+			local cost = skipCosts[selected] or Economy.craftSkipCost(craft)
 			secondButton.setText(`Finish now — {cost}`)
 			secondButton.setIcon(Theme.Icons.Gems or "")
 			secondButton.setEnabled(data.Gems >= cost)
@@ -314,7 +427,7 @@ function Craft.create(parent: Instance)
 
 		if #outcomes == 0 and not running then
 			hintLabel.Text =
-				`Feed it up to {Economy.craftSlots()} {Theme.Text.UnitPlural}. Better ones, and more of them, mean better odds.`
+				`Feed it up to {Economy.craftInputs()} {Theme.Text.UnitPlural}. Better ones, and more of them, mean better odds.`
 		else
 			hintLabel.Text = `Whatever goes in is used up, however it turns out.`
 		end

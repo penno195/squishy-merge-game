@@ -327,6 +327,9 @@ function Hud.start()
 
 	-- Updates ------------------------------------------------------------
 	local latest: { [string]: any }? = nil
+	-- What the Bigger Garden pass adds, kept from the last snapshot: the drop
+	-- timer runs every frame and reads the same capacity the buy button does.
+	local spaces = 0
 
 	State.onChange(function(snapshot)
 		latest = snapshot
@@ -359,8 +362,9 @@ function Hud.start()
 		end
 
 		local cost = Economy.buyUnitCost(data)
+		spaces = Economy.gardenPassSpaces((snapshot.Passes or {}).BiggerGarden)
 		buyButton.setText(`Buy {Theme.Text.Unit} — {Format.number(cost)}`)
-		buyButton.setEnabled(data.Cash >= cost and Economy.hasRoom(data))
+		buyButton.setEnabled(data.Cash >= cost and Economy.hasRoom(data, spaces))
 
 		dropButton.setText(if data.Carried > 0 then "Drop  (Q)" else "Nothing to drop")
 		dropButton.setEnabled(data.Carried > 0)
@@ -390,7 +394,7 @@ function Hud.start()
 			luckPill.setText(`Lucky  {Format.time(luckLeft)}`)
 		end
 
-		if not Economy.hasRoom(data) then
+		if not Economy.hasRoom(data, spaces) then
 			dropLabel.Text = "Garden full — merge to make room!"
 			dropBar.setProgress(1)
 			return

@@ -44,6 +44,8 @@ local TRANSACTION_TYPES: { [string]: string } = {
 	QuestClaimed = "Gameplay",
 	OfflineEarned = "TimedReward",
 	ProductPurchased = "IAP",
+	PassPurchased = "IAP",
+	StarterClaimed = "IAP",
 }
 
 -- Actions rare enough to be worth their own event. Drops and merges happen
@@ -63,6 +65,8 @@ local CUSTOM_EVENTS: { [string]: boolean } = {
 	PlaytimeClaimed = true,
 	PrizeClaimed = true,
 	ProductPurchased = true,
+	PassPurchased = true,
+	StarterClaimed = true,
 	SessionEnded = true,
 }
 
@@ -223,6 +227,8 @@ function AnalyticsService.init()
 	measure("PlaytimeClaimed")
 	measure("PrizeClaimed")
 	measure("OfflineEarned")
+	measure("PassPurchased")
+	measure("StarterClaimed")
 	measure("ProductPurchased")
 	measure("SessionStarted")
 	measure("SessionEnded")

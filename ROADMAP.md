@@ -1,20 +1,28 @@
 # Roadmap
 
-**Where things stand (2026-09-14).** Batches 1 and 2 are both done. None of
-batch 2 has been played yet, and it's the batch that most needs it: quests, the
-playtime ladder and the weekly race are all things that only show themselves
-over time. Next session is a playthrough, not a build.
+**Where things stand (2026-09-15).** Batches 1, 2 and 3 are built. Batch 3's
+behaviour is all there and testable; its *prices* are not, because the IDs are
+still `0`.
 
-Two of the three can't be checked by sitting down for ten minutes, so there are
-knobs for it: `Settings.StudioPlaytimeSpeed` runs the playtime ladder twenty
-times faster in Studio. The weekly race has no equivalent — its board is keyed
-on the real week number, and the only honest way to see a payout is to set a
-player's `Weekly.PaidWeek` back by hand in a Studio session and rejoin.
+Batch 2 has still never been played, and it's the batch that most needs it:
+quests and the playtime ladder only show themselves over time. The playtime
+ladder has a knob for that — `Settings.StudioPlaytimeSpeed` runs it twenty times
+faster in Studio.
 
-Batch 3 is monetisation, and it's the first batch that can't be finished from
-here: every item is a gamepass or product ID, and this place has never been
-published, so `Settings.GamePasses` and `Settings.Products` are all still `0`.
-Publishing it is the blocker to start on.
+**The weekly race cannot be tested in this place at all.** Both of its boards are
+OrderedDataStores, which are unreachable until the experience is published, so
+`readWeek` comes back with nothing and the column stays empty. Setting
+`Weekly.PaidWeek` back by hand, which this file used to suggest, does not get
+round that — there is no board to have placed on. (ProfileStore does fall back to
+a mock store, so everything *else* works in Studio; it just doesn't persist
+between sessions.)
+
+Batch 3 turned out not to need publishing to build after all. The `id ~= 0` check
+was already threaded through `PassService`, `ProductService` and the shop panel,
+so all five items are written with their IDs at `0`: the effects are live and
+testable in Studio right now, and the only thing publishing adds is the ability to
+charge for them. What is left is to create eight passes and four products in
+Studio and paste the IDs into `src/shared/Settings.luau`.
 
 `tests/README.md` explains how to run the headless checks — worth doing before
 and after any change to the shared modules.
@@ -74,20 +82,47 @@ rate is balanced against two demands rather than one.
 
 ## Batch 3 — Monetisation
 
-Small and mostly independent — each is a Settings ID plus a shop entry — so
-they're done together.
+Done. Not small, in the end: two of the five changed the save schema, and one
+changed what the word "slot" means. See "What Robux buys" in the README.
 
-- [ ] Starter pack (one-time, time-limited)
-- [ ] Second craft slot
-- [ ] Luck pass (permanent lucky charm)
-- [ ] Auto-collect pass
-- [ ] Bigger garden (beyond what the cash upgrade reaches)
+- [x] **Starter pack** (one-time, time-limited). A gamepass rather than a
+      product, because Roblox won't sell a pass twice and that is what "one-time"
+      has to mean. Offered for `StarterPack.Hours` from `FirstJoin`; granted from
+      ownership on every join, gated by `StarterClaimed`, so a purchase that
+      landed on a dying server is still honoured later.
+- [x] **Second craft slot.** A second *craft*, not a fifth input: `data.Craft` is
+      a list of `CraftState` now, each with its own load and clock, and the panel
+      grew a tab strip that a player without the pass never sees. `Balance.Craft`
+      splits into `Slots` (crafts at once) and `Inputs` (units each takes).
+- [x] **Luck pass** (permanent lucky charm). Expressed as the `bias` override
+      every luck-sensitive `Economy` function already took, so nothing new was
+      added to the drop roll. The board and the server both stop selling the
+      timed charm to someone who owns it.
+- [x] **Auto-collect pass.** Read as offline earnings, since auto-merge already
+      plays the moment-to-moment game for you and income is already collected per
+      second. Full rate for 24 hours against half for 8; the one-minute minimum
+      is deliberately not waived.
+- [x] **Bigger garden** (beyond what the cash upgrade reaches). A flat
+      `BiggerGardenSpaces` on top of the upgrade rather than extra levels, so it
+      is worth the same at level 0 as at level 5.
+
+Two things fell out of building it rather than being asked for. Gamepass sales
+were not reported to analytics at all, so `PassPurchased` joins the action bus
+(with the price looked up once per pass, since a pass purchase hands the server no
+receipt); and `Components.button` gained `setColor`, which the craft tabs need to
+show which slot is selected.
 
 ## Batch 4 — Pets
 
 - [ ] **Pets.** Pet list in theme data, eggs and hatching, equipping, effects
-      (auto-collect, auto-merge, income), and the UI for all of it. The biggest
-      single system on the list; it gets its own batch and its own testing pass.
+      (auto-merge, income, and whatever else), and the UI for all of it. The
+      biggest single system on the list; it gets its own batch and its own testing
+      pass.
+
+      This line used to say "auto-collect" among the effects. Batch 3 has spent
+      that name on offline earnings, so a pet that picks units up needs a
+      different one — and a pet effect that duplicates a pass is worth avoiding
+      anyway.
 
 ## Batch 5 — Polish for launch
 

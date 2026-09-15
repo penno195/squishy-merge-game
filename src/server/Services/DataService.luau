@@ -27,11 +27,15 @@ local TEMPLATE: PlayerData = {
 	TotalEarned = 0,
 	HighestTier = 1,
 	LastOnline = 0,
+	FirstJoin = 0,
+	StarterClaimed = false,
 	Daily = { Streak = 0, LastClaimDay = -1 },
 	Spins = 0,
 	LastFreeSpinDay = -1,
 	PurchaseIds = {},
-	Craft = { Inputs = {}, EndsAt = 0 },
+	-- One craft to start with. migrateLegacy pads this out to however many slots
+	-- the balance allows, so the length follows Balance rather than this literal.
+	Craft = { { Inputs = {}, EndsAt = 0 } },
 	Sparkles = {},
 	Discovered = {},
 	Stats = {},
@@ -87,6 +91,30 @@ local function migrateLegacy(data: PlayerData)
 			data.Discovered[tostring(index)] = true
 		end
 	end
+
+	-- The machine was one craft, saved as a single { Inputs, EndsAt }. It is a
+	-- list of them now, one per slot, so the second-slot pass has somewhere to
+	-- put its own load. An old save's craft becomes slot 1 with its clock and
+	-- its contents untouched -- a craft left running over the update finishes
+	-- on time.
+	local craft = data.Craft :: any
+	if craft.Inputs then
+		data.Craft = { craft }
+	end
+	-- Kept at full length whatever the player owns, so no slot has to be created
+	-- at the moment a pass is bought, and a load parked in a slot whose pass has
+	-- lapsed is still sitting there rather than quietly gone.
+	for slot = #data.Craft + 1, Economy.maxCraftSlots() do
+		data.Craft[slot] = { Inputs = {}, EndsAt = 0 }
+	end
+
+	-- What the starter pack's window counts from. A save written before the field
+	-- existed has 0 and gets stamped now: there is no way to recover when they
+	-- really started, and handing everyone one window when the feature ships is
+	-- the better of the two wrong answers.
+	if data.FirstJoin <= 0 then
+		data.FirstJoin = os.time()
+	end
 end
 
 -- The theme can change between versions (fewer tiers, fewer sparkles, fewer
@@ -105,14 +133,16 @@ local function fitToConfig(data: PlayerData)
 	-- The machine takes ordinary units and variants, never sparkles. Anything
 	-- that no longer fits the list is clamped, and a sparkle that somehow got
 	-- in is dropped rather than clamped into an ordinary unit.
-	local inputs = {}
-	for _, index in data.Craft.Inputs do
-		local fitted = math.clamp(index, 1, maxUnit)
-		if not Economy.isSparkle(fitted) then
-			table.insert(inputs, fitted)
+	for _, craft in data.Craft do
+		local inputs = {}
+		for _, index in craft.Inputs do
+			local fitted = math.clamp(index, 1, maxUnit)
+			if not Economy.isSparkle(fitted) then
+				table.insert(inputs, fitted)
+			end
 		end
+		craft.Inputs = inputs
 	end
-	data.Craft.Inputs = inputs
 end
 
 local function runCallbacks(callbacks: { Callback }, player: Player, data: PlayerData)

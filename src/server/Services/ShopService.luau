@@ -11,6 +11,7 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local GameplayService = require(script.Parent.GameplayService)
 local ItemService = require(script.Parent.ItemService)
 local Net = require(ReplicatedStorage.Shared.Net)
+local PassService = require(script.Parent.PassService)
 local StateService = require(script.Parent.StateService)
 
 local Theme = Config.Theme
@@ -74,6 +75,13 @@ local function buyLuck(player: Player)
 	if not data then
 		return
 	end
+	-- Refused rather than sold. The pass is the same tilt, permanently, so gems
+	-- spent on a charm on top of it buy precisely nothing -- and a shop that
+	-- takes them anyway is a shop that cheated them.
+	if PassService.luckBias(player) then
+		StateService.notify(player, "Your lucky charm is permanent -- no need to buy another!", "Info")
+		return
+	end
 	local cost = Economy.luckCost()
 	if data.Gems < cost then
 		StateService.notify(player, `You need {cost} Gems for a lucky charm!`, "Error")
@@ -83,7 +91,7 @@ local function buyLuck(player: Player)
 	local now = os.time()
 	data.LuckEndsAt = math.max(data.LuckEndsAt, now) + Economy.luckSeconds()
 	StateService.markDirty(player)
-	local chance = math.floor(Economy.topTierChance(data) * 100 + 0.5)
+	local chance = math.floor(Economy.topTierChance(data, PassService.luckBias(player)) * 100 + 0.5)
 	StateService.notify(
 		player,
 		`Lucky charm active! {chance}% of drops are top tier for {Format.time(data.LuckEndsAt - now)}.`,

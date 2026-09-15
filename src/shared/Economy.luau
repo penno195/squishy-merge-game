@@ -136,9 +136,12 @@ end
 
 -- Garden -----------------------------------------------------------------
 
-function Economy.gardenCapacity(data: Types.PlayerData): number
+-- `extraSpaces` is what the Bigger Garden pass adds, passed in by whoever
+-- verified it -- the server from PassService, the client from its snapshot --
+-- the same way every other pass effect reaches this module.
+function Economy.gardenCapacity(data: Types.PlayerData, extraSpaces: number?): number
 	local level = math.clamp(Economy.upgradeLevel(data, "GardenSpace"), 0, #Balance.GardenCapacities - 1)
-	return Balance.GardenCapacities[level + 1]
+	return Balance.GardenCapacities[level + 1] + (extraSpaces or 0)
 end
 
 -- A carried item still takes up its space in the garden, so putting it back
@@ -147,8 +150,22 @@ function Economy.usedSpace(data: Types.PlayerData): number
 	return #data.Items + (if data.Carried > 0 then 1 else 0)
 end
 
-function Economy.hasRoom(data: Types.PlayerData): boolean
-	return Economy.usedSpace(data) < Economy.gardenCapacity(data)
+function Economy.hasRoom(data: Types.PlayerData, extraSpaces: number?): boolean
+	return Economy.usedSpace(data) < Economy.gardenCapacity(data, extraSpaces)
+end
+
+-- What the Bigger Garden pass is worth, given whether it's owned. Here rather
+-- than at each call site because the server asks this question once and the
+-- client asks it in two places, and three copies of one `if` is how the three
+-- come to disagree.
+function Economy.gardenPassSpaces(owned: boolean?): number
+	return if owned then Balance.Monetisation.BiggerGardenSpaces else 0
+end
+
+-- The permanent charm, in the form every luck-sensitive function here already
+-- takes: a bias override, or nil for "whatever the player's own charm says".
+function Economy.luckPassBias(owned: boolean?): number?
+	return if owned then Balance.Luck.Bias else nil
 end
 
 -- New players (and rebirths) start with a mergeable pair on the ground.
@@ -253,13 +270,55 @@ function Economy.incomeReward(incomePerSecond: number, incomeMinutes: number, mi
 	return math.max(math.floor(incomePerSecond * incomeMinutes * 60), minCash)
 end
 
-function Economy.offlineEarnings(incomePerSecond: number, secondsAway: number): number
+-- `autoCollect` is the pass: it replaces both halves of the deal at once, the
+-- fraction earned and how many hours are counted. Replacing rather than stacking
+-- keeps the offer describable in one line -- "a full day, at full rate" -- and
+-- means the two numbers can be tuned without their product surprising anyone.
+--
+-- MinSeconds is deliberately not waived. It exists so rejoining after a
+-- disconnect doesn't pay out, which is as true for a pass owner as anyone.
+function Economy.offlineEarnings(incomePerSecond: number, secondsAway: number, autoCollect: boolean?): number
 	local offline = Balance.OfflineEarnings
+	local auto = Balance.Monetisation.AutoCollect
 	if secondsAway < offline.MinSeconds then
 		return 0
 	end
-	local seconds = math.min(secondsAway, offline.MaxHours * 3600)
-	return math.floor(incomePerSecond * seconds * offline.Rate)
+	local maxHours = if autoCollect then auto.MaxHours else offline.MaxHours
+	local rate = if autoCollect then auto.Rate else offline.Rate
+	local seconds = math.min(secondsAway, maxHours * 3600)
+	return math.floor(incomePerSecond * seconds * rate)
+end
+
+-- What the Auto Collect pass is worth, for the shop line that sells it: hours
+-- banked and the rate they bank at, against what the same time is worth without.
+function Economy.offlineHours(autoCollect: boolean?): number
+	return if autoCollect then Balance.Monetisation.AutoCollect.MaxHours else Balance.OfflineEarnings.MaxHours
+end
+
+function Economy.offlineRate(autoCollect: boolean?): number
+	return if autoCollect then Balance.Monetisation.AutoCollect.Rate else Balance.OfflineEarnings.Rate
+end
+
+-- The starter pack --------------------------------------------------------
+-- On offer for a fixed window from a player's first join, and only until they
+-- have had it. Both halves are decided here, so the shop and the server reach
+-- the same verdict about whether it is on sale without either asking the other.
+
+function Economy.starterWindow(): number
+	return Balance.Monetisation.StarterPack.Hours * 3600
+end
+
+-- Seconds left on the offer, or 0 if it has expired, been taken, or the player's
+-- first join was never recorded.
+function Economy.starterRemaining(data: Types.PlayerData, now: number?): number
+	if data.StarterClaimed or data.FirstJoin <= 0 then
+		return 0
+	end
+	return math.max(data.FirstJoin + Economy.starterWindow() - (now or os.time()), 0)
+end
+
+function Economy.starterOffered(data: Types.PlayerData, now: number?): boolean
+	return Economy.starterRemaining(data, now) > 0
 end
 
 -- Drops & buying ---------------------------------------------------------
@@ -359,10 +418,13 @@ function Economy.randomVariant(data: Types.PlayerData, bias: number?): number
 	return 0
 end
 
-function Economy.randomDropTier(data: Types.PlayerData): number
+-- `bias` overrides the player's own, which is how the permanent charm reaches
+-- the roll: the pass is worth exactly a charm that never runs out, so the server
+-- passes Luck.Bias in rather than this module learning about gamepasses.
+function Economy.randomDropTier(data: Types.PlayerData, bias: number?): number
 	local bottom, top = Economy.dropTierRange(data)
 	local roll = math.random()
-	for rung, chance in Economy.dropTierChances(data) do
+	for rung, chance in Economy.dropTierChances(data, bias) do
 		roll -= chance
 		if roll <= 0 then
 			return bottom + rung - 1
@@ -373,8 +435,8 @@ function Economy.randomDropTier(data: Types.PlayerData): number
 end
 
 -- A whole drop: a tier from the pyramid, then a variant over the top of it.
-function Economy.randomDropIndex(data: Types.PlayerData): number
-	return Economy.variantIndex(Economy.randomDropTier(data), Economy.randomVariant(data))
+function Economy.randomDropIndex(data: Types.PlayerData, bias: number?): number
+	return Economy.variantIndex(Economy.randomDropTier(data, bias), Economy.randomVariant(data, bias))
 end
 
 -- The chance a drop rolls the very top tier, which is what Luck is really
@@ -725,8 +787,32 @@ export type CraftOutcome = {
 	Sparkle: boolean,
 }
 
-function Economy.craftSlots(): number
-	return Balance.Craft.Slots
+-- Units one craft takes. Unchanged by anything a player can buy: the pass sells
+-- a second craft, not a bigger one, so the odds a load reaches are the same for
+-- everyone and nothing about the sparkle ceiling has to be re-balanced.
+function Economy.craftInputs(): number
+	return Balance.Craft.Inputs
+end
+
+-- Crafts a player can have running at once. `extra` is the Second Slot pass.
+function Economy.craftSlots(extra: number?): number
+	return Balance.Craft.Slots + (extra or 0)
+end
+
+-- The most any player could have, which is how long the saved list is kept. Held
+-- at full length rather than grown on demand so nothing has to create a slot
+-- mid-purchase, and so a slot loaded while the pass was owned is still there --
+-- untouched, not emptied -- if the pass ever goes away.
+function Economy.maxCraftSlots(): number
+	return Balance.Craft.Slots + Balance.Monetisation.ExtraCraftSlots
+end
+
+-- The craft in a slot, or nil for a slot index that doesn't exist. Callers take
+-- the nil rather than being handed an empty craft, because "no such slot" and
+-- "an empty slot" have to produce different answers on the wire: one is a player
+-- without the pass, the other is a player with it who hasn't loaded it yet.
+function Economy.craftAt(data: Types.PlayerData, slot: number): Types.CraftState?
+	return data.Craft[slot]
 end
 
 function Economy.craftSeconds(): number
@@ -780,7 +866,7 @@ end
 function Economy.craftProgress(inputs: { number }, sparkle: Types.SparkleDef): number
 	local craft = Balance.Craft
 	local bottom, top = sparkle.Band[1], sparkle.Band[2]
-	local best = craft.Slots * craft.TierWeight ^ (top - bottom)
+	local best = craft.Inputs * craft.TierWeight ^ (top - bottom)
 	local total = 0
 	for _, index in inputs do
 		total += craft.TierWeight ^ (Economy.ladderTier(index) - bottom)
@@ -875,26 +961,55 @@ function Economy.rollCraft(inputs: { number }): number
 	return outcomes[#outcomes].Index
 end
 
-function Economy.craftRunning(data: Types.PlayerData): boolean
-	return data.Craft.EndsAt > 0
+-- These take one craft rather than the player, because with two slots there is
+-- no longer a single answer to "is the machine running". Whoever asks has to say
+-- which one they mean -- and the two loops that care about either of them use
+-- the slot-finding helpers below.
+function Economy.craftRunning(craft: Types.CraftState): boolean
+	return craft.EndsAt > 0
 end
 
-function Economy.craftRemaining(data: Types.PlayerData, now: number?): number
-	if not Economy.craftRunning(data) then
+function Economy.craftRemaining(craft: Types.CraftState, now: number?): number
+	if not Economy.craftRunning(craft) then
 		return 0
 	end
-	return math.max(data.Craft.EndsAt - (now or os.time()), 0)
+	return math.max(craft.EndsAt - (now or os.time()), 0)
 end
 
-function Economy.craftReady(data: Types.PlayerData, now: number?): boolean
-	return Economy.craftRunning(data) and Economy.craftRemaining(data, now) <= 0
+function Economy.craftReady(craft: Types.CraftState, now: number?): boolean
+	return Economy.craftRunning(craft) and Economy.craftRemaining(craft, now) <= 0
 end
 
 -- Gems to finish a craft now, by the hours still to wait. Always at least one,
 -- so the button never reads as free.
-function Economy.craftSkipCost(data: Types.PlayerData, now: number?): number
-	local hours = math.ceil(Economy.craftRemaining(data, now) / 3600)
+function Economy.craftSkipCost(craft: Types.CraftState, now: number?): number
+	local hours = math.ceil(Economy.craftRemaining(craft, now) / 3600)
 	return math.max(hours * Balance.Craft.SkipGemsPerHour, 1)
+end
+
+-- The first slot with something waiting in it, within the `slots` the player
+-- actually has. `slots` is passed rather than assumed so a craft parked in a
+-- second slot the player no longer has access to is never announced as ready --
+-- it would be a toast about a button they cannot press.
+function Economy.readyCraftSlot(data: Types.PlayerData, now: number?, slots: number): number?
+	for slot = 1, math.min(slots, #data.Craft) do
+		if Economy.craftReady(data.Craft[slot], now) then
+			return slot
+		end
+	end
+	return nil
+end
+
+-- The first slot that could take a unit right now: empty, or part-loaded and not
+-- yet started. What the panel opens on, and what the machine's prompt loads.
+function Economy.openCraftSlot(data: Types.PlayerData, slots: number): number?
+	for slot = 1, math.min(slots, #data.Craft) do
+		local craft = data.Craft[slot]
+		if not Economy.craftRunning(craft) and #craft.Inputs < Economy.craftInputs() then
+			return slot
+		end
+	end
+	return nil
 end
 
 return Economy

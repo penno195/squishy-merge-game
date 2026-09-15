@@ -267,8 +267,8 @@ if #sparkles > 0 then
 		end
 
 		local stacked = {}
-		for slot = 1, Config.Balance.Craft.Slots do
-			stacked[slot] = Economy.variantIndex(top, #variants)
+		for input = 1, Economy.craftInputs() do
+			stacked[input] = Economy.variantIndex(top, #variants)
 		end
 		check("boosts multiply", Economy.craftBoost(stacked) > Economy.craftBoost({ stacked[1] }))
 		check("the ceiling stops short of certainty", Economy.craftCeiling(stacked, sparkle) <= HardCap)
@@ -477,6 +477,155 @@ check("the next week's prize is owed", Economy.prizeUnclaimed(raceData, 6))
 check("an older week is not owed", not Economy.prizeUnclaimed(raceData, 4))
 -- Before any standings have been read the week is -1, which is nobody's week.
 check("no standings means nothing owed", not Economy.prizeUnclaimed(raceData, -1))
+
+-- Monetisation: what each pass is worth, checked against what the same player is
+-- worth without it. Every one of these is a number the shop quotes and the server
+-- acts on, so the two agreeing is the whole point.
+
+local passData = {
+	-- Drop tier upgraded on purpose: at level 0 the drop window is a single rung,
+	-- where the top tier is 100% of drops and no amount of luck can improve on it.
+	-- A pass that looks worthless is usually a fixture that gave it nothing to do.
+	Upgrades = { SpawnTier = 6 },
+	Items = {},
+	Carried = 0,
+	LuckEndsAt = 0,
+	Rebirths = 0,
+	Sparkles = {},
+	Discovered = {},
+	FirstJoin = 0,
+	StarterClaimed = false,
+	Craft = { { Inputs = {}, EndsAt = 0 }, { Inputs = {}, EndsAt = 0 } },
+}
+
+-- Bigger Garden: spaces on top of the upgrade, at every level of it.
+local baseCapacity = Economy.gardenCapacity(passData)
+local passSpaces = Economy.gardenPassSpaces(true)
+check("the garden pass is worth something", passSpaces > 0)
+check("no pass adds nothing", Economy.gardenPassSpaces(false) == 0)
+check("no pass adds nothing when unknown", Economy.gardenPassSpaces(nil) == 0)
+check("the pass adds its spaces", Economy.gardenCapacity(passData, passSpaces) == baseCapacity + passSpaces)
+passData.Upgrades.GardenSpace = Economy.upgradeMaxLevel("GardenSpace")
+check(
+	"the pass is worth the same at the top of the upgrade",
+	Economy.gardenCapacity(passData, passSpaces) - Economy.gardenCapacity(passData) == passSpaces
+)
+-- Room is measured against the raised capacity, or the pass buys nothing.
+for _ = 1, Economy.gardenCapacity(passData) do
+	table.insert(passData.Items, 1)
+end
+check("a full garden is full", not Economy.hasRoom(passData))
+check("the pass makes room in a full garden", Economy.hasRoom(passData, passSpaces))
+passData.Items = {}
+passData.Upgrades.GardenSpace = nil
+
+-- Luck: the pass is a charm that never runs out, so it has to be worth exactly
+-- one -- no more, and no less.
+local charmBias = Config.Balance.Luck.Bias
+check("the pass is worth a charm", Economy.luckPassBias(true) == charmBias)
+check("no pass overrides nothing", Economy.luckPassBias(false) == nil)
+local plainOdds = Economy.topTierChance(passData)
+local passOdds = Economy.topTierChance(passData, Economy.luckPassBias(true))
+check("the pass improves the top-tier odds", passOdds > plainOdds)
+passData.LuckEndsAt = os.time() + 600
+check(
+	"a charm on top of the pass is worth nothing more",
+	math.abs(Economy.topTierChance(passData, Economy.luckPassBias(true)) - Economy.topTierChance(passData)) < 1e-9
+)
+passData.LuckEndsAt = 0
+-- The roll takes the same override the quote does, or the shop would be lying.
+for _ = 1, 2000 do
+	local index = Economy.randomDropIndex(passData, charmBias)
+	check("a lucky drop is still a real unit", Config.Units[index] ~= nil, `index {index}`)
+end
+
+-- Auto Collect: a better rate over more hours. Checked at a time away inside
+-- both caps and at one past them, since the cap is half the offer.
+local perSecond = 10
+local oneHour = 3600
+check(
+	"the pass pays more for the same hour",
+	Economy.offlineEarnings(perSecond, oneHour, true) > Economy.offlineEarnings(perSecond, oneHour, false)
+)
+local longAway = Economy.offlineHours(true) * oneHour * 2
+check(
+	"the pass banks more of a long absence",
+	Economy.offlineEarnings(perSecond, longAway, true) > Economy.offlineEarnings(perSecond, longAway, false)
+)
+check(
+	"the cap still bites with the pass",
+	Economy.offlineEarnings(perSecond, longAway, true)
+		== Economy.offlineEarnings(perSecond, Economy.offlineHours(true) * oneHour, true)
+)
+check("the pass's cap is the longer one", Economy.offlineHours(true) > Economy.offlineHours(false))
+check("the pass's rate is the better one", Economy.offlineRate(true) > Economy.offlineRate(false))
+-- The minimum stands for everyone: rejoining after a disconnect pays nobody.
+local brief = Config.Balance.OfflineEarnings.MinSeconds - 1
+check("a moment away pays nothing", Economy.offlineEarnings(perSecond, brief, false) == 0)
+check("a moment away pays nothing with the pass either", Economy.offlineEarnings(perSecond, brief, true) == 0)
+
+-- Craft slots: the pass sells a second craft, not a bigger one.
+check("one slot by default", Economy.craftSlots() == Config.Balance.Craft.Slots)
+check("the pass adds a slot", Economy.craftSlots(1) == Economy.craftSlots() + 1)
+check("the save holds every slot anyone can have", Economy.maxCraftSlots() >= Economy.craftSlots(1))
+check("the inputs are unchanged by the pass", Economy.craftInputs() == Config.Balance.Craft.Inputs)
+check("slot 1 exists", Economy.craftAt(passData, 1) ~= nil)
+check("a slot past the save is nothing", Economy.craftAt(passData, #passData.Craft + 1) == nil)
+
+-- The two slot-finders are what every loop over crafts uses, and both have to
+-- respect how many slots the player actually has.
+local slotOne = passData.Craft[1]
+local slotTwo = passData.Craft[2]
+check("an empty machine is open at slot 1", Economy.openCraftSlot(passData, 1) == 1)
+check("nothing is ready in an empty machine", Economy.readyCraftSlot(passData, os.time(), 2) == nil)
+slotOne.Inputs = { 1, 1, 1, 1 }
+slotOne.EndsAt = os.time() + Economy.craftSeconds()
+check("a running slot is not open", Economy.openCraftSlot(passData, 1) == nil)
+check("the second slot is open to a pass owner", Economy.openCraftSlot(passData, 2) == 2)
+check("running is not ready", Economy.readyCraftSlot(passData, os.time(), 2) == nil)
+slotOne.EndsAt = os.time() - 1
+check("a finished slot is ready", Economy.readyCraftSlot(passData, os.time(), 2) == 1)
+-- A craft parked in a slot the player no longer has access to is invisible to
+-- both, rather than being announced as a thing they can collect.
+slotTwo.Inputs = { 1 }
+slotTwo.EndsAt = os.time() - 1
+check("only the first slot is ready without the pass", Economy.readyCraftSlot(passData, os.time(), 1) == 1)
+slotOne.EndsAt = os.time() + Economy.craftSeconds()
+check("a parked second slot is never ready without the pass", Economy.readyCraftSlot(passData, os.time(), 1) == nil)
+check("a parked second slot is never open without the pass", Economy.openCraftSlot(passData, 1) == nil)
+check("but it is with the pass", Economy.readyCraftSlot(passData, os.time(), 2) == 2)
+-- The clocks are per craft now, so one slot's state must say nothing about the
+-- other's.
+check("the running slot is running", Economy.craftRunning(slotOne))
+check("the running slot is not ready", not Economy.craftReady(slotOne, os.time()))
+check("the finished slot is ready", Economy.craftReady(slotTwo, os.time()))
+check("a skip is never free", Economy.craftSkipCost(slotOne, os.time()) >= 1)
+check("a finished craft costs the minimum to skip", Economy.craftSkipCost(slotTwo, os.time()) == 1)
+check(
+	"a longer wait costs more to skip",
+	Economy.craftSkipCost(slotOne, os.time()) > Economy.craftSkipCost(slotOne, os.time() + Economy.craftSeconds() // 2)
+)
+
+-- The starter pack: one window, from first join, once.
+local starterData = {
+	FirstJoin = 0,
+	StarterClaimed = false,
+}
+local window = Economy.starterWindow()
+check("the window is a real length of time", window > 0)
+-- A save with no first join recorded is not a new player, and gets no offer.
+check("no first join means no offer", not Economy.starterOffered(starterData, os.time()))
+local joined = os.time()
+starterData.FirstJoin = joined
+check("a new player is offered it", Economy.starterOffered(starterData, joined))
+check("the whole window is left at the start", Economy.starterRemaining(starterData, joined) == window)
+check("it is still offered just before the end", Economy.starterOffered(starterData, joined + window - 1))
+check("it expires exactly at the end", not Economy.starterOffered(starterData, joined + window))
+check("an expired offer has nothing left", Economy.starterRemaining(starterData, joined + window + 1) == 0)
+-- Taking it withdraws it, whatever the clock says.
+starterData.StarterClaimed = true
+check("a claimed pack is not offered again", not Economy.starterOffered(starterData, joined))
+check("a claimed pack has no time left", Economy.starterRemaining(starterData, joined) == 0)
 
 print(`{checks - failures} / {checks} checks passed`)
 if failures > 0 then

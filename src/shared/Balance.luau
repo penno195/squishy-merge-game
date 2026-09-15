@@ -261,6 +261,30 @@ return {
 		DoubleCashMultiplier = 2,
 		FastSpawnMultiplier = 0.5,
 		AutoMergeInterval = 1.5,
+		-- Auto Collect: the offline clock on better terms. Rate 1 against the
+		-- usual 0.5 means an hour away is worth an hour played, and the cap goes
+		-- from one working day to a whole one -- which is the difference between
+		-- logging off costing you the night and logging off being free.
+		AutoCollect = { Rate = 1, MaxHours = 24 },
+		-- Bigger Garden: spaces on top of whatever Garden Space has reached,
+		-- rather than extra levels of it. Levels would have to line up with
+		-- GardenCapacities, and a flat number keeps the pass worth the same to a
+		-- player at level 0 as at level 5 -- which is the one who is likely to
+		-- buy it.
+		BiggerGardenSpaces = 15,
+		-- Second Slot: crafts that can run alongside the first.
+		ExtraCraftSlots = 1,
+		-- The starter pack. `Hours` is how long after a player's first join it
+		-- stays on offer; the pass is hidden from the shop after that, and from
+		-- anyone who has already had it.
+		--
+		-- Priced as a pack rather than a pass: it is deliberately worth more than
+		-- its parts, because a first-session player has no income for
+		-- IncomeMinutes to multiply and the floor is what they actually get.
+		StarterPack = {
+			Hours = 24,
+			Reward = { IncomeMinutes = 60, MinCash = 5000, Gems = 150, UnitTierBonus = 3 },
+		},
 		ProductRewards = {
 			CashSmall = { IncomeMinutes = 15, MinCash = 1000 },
 			CashLarge = { IncomeMinutes = 120, MinCash = 10000 },
@@ -304,7 +328,11 @@ return {
 	-- the ceiling, and the ceiling is deliberately a coin flip: a sparkle you
 	-- are more likely than not to get isn't a sparkle.
 	Craft = {
-		Slots = 4,
+		-- How many crafts can run at once, before the pass adds any. The inputs
+		-- each one takes are `Inputs` below: what a player calls a slot is a
+		-- craft, not a place to put a unit.
+		Slots = 1,
+		Inputs = 4,
 		-- How close a player has to be to feed the machine. Also the range its
 		-- prompt answers from.
 		Radius = 16,

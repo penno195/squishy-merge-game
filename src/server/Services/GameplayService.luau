@@ -123,8 +123,8 @@ local function tick(player: Player, playerTimers: Timers, now: number)
 	end
 
 	-- A full garden leaves the drop "due", so one falls as soon as there's room.
-	if now >= playerTimers.nextDrop and Economy.hasRoom(data) then
-		local tier = Economy.randomDropIndex(data)
+	if now >= playerTimers.nextDrop and Economy.hasRoom(data, PassService.extraGardenSpaces(player)) then
+		local tier = Economy.randomDropIndex(data, PassService.luckBias(player))
 		if ItemService.dropItem(player, tier, nil, true) then
 			local wait = Economy.randomDropInterval(data, PassService.spawnMultiplier(player))
 			playerTimers.nextDrop = now + wait
@@ -258,7 +258,7 @@ function GameplayService.init()
 		local cost = Economy.buyUnitCost(data)
 		if data.Cash < cost then
 			StateService.notify(player, `Not enough {Theme.Text.Currency}!`, "Error")
-		elseif not Economy.hasRoom(data) then
+		elseif not Economy.hasRoom(data, PassService.extraGardenSpaces(player)) then
 			StateService.notify(player, "Your garden is full. Merge to make room!", "Error")
 		else
 			data.Cash -= cost

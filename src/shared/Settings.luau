@@ -36,6 +36,18 @@ local settings: Settings = {
 		DoubleCash = 0,
 		AutoMerge = 0,
 		FastSpawn = 0,
+		-- The lucky charm, permanently, instead of ten minutes for gems.
+		LuckCharm = 0,
+		-- Full-rate offline earnings, for a day instead of eight hours.
+		AutoCollect = 0,
+		-- A second craft running alongside the first.
+		CraftSlot = 0,
+		-- More room in the garden than the cash upgrade can reach.
+		BiggerGarden = 0,
+		-- The one-off bundle, offered for a player's first day only. A pass
+		-- rather than a product because a pass can only be bought once, which is
+		-- what "one-time" has to mean when real money is involved.
+		StarterPack = 0,
 	},
 	Products = {
 		CashSmall = 0,

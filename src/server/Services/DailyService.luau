@@ -10,6 +10,7 @@ local DataService = require(script.Parent.DataService)
 local Economy = require(ReplicatedStorage.Shared.Economy)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Net = require(ReplicatedStorage.Shared.Net)
+local PassService = require(script.Parent.PassService)
 local RewardService = require(script.Parent.RewardService)
 local StateService = require(script.Parent.StateService)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -23,7 +24,8 @@ function DailyService.applyOffline(player: Player, data: Types.PlayerData)
 		return
 	end
 	local away = os.time() - data.LastOnline
-	local amount = Economy.offlineEarnings(RewardService.incomePerSecond(player, 1), away)
+	local amount =
+		Economy.offlineEarnings(RewardService.incomePerSecond(player, 1), away, PassService.autoCollect(player))
 	if amount > 0 then
 		RewardService.grantCash(player, amount)
 		StateService.notify(

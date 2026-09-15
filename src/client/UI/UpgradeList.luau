@@ -100,9 +100,17 @@ local function describe(id: string, data: Types.PlayerData, passes: { [string]: 
 	elseif id == "SpawnTier" then
 		return `Drops up to {Config.Units[Economy.dropTier(data)].Name}`
 	elseif id == "GardenSpace" then
-		return `Garden holds {Economy.gardenCapacity(data)} {Theme.Text.UnitPlural}`
+		local spaces = Economy.gardenPassSpaces(passes.BiggerGarden)
+		return `Garden holds {Economy.gardenCapacity(data, spaces)} {Theme.Text.UnitPlural}`
 	elseif id == LUCK_ID then
 		local _, top = Economy.dropTierRange(data)
+		local passBias = Economy.luckPassBias(passes.LuckCharm)
+		-- The pass is a charm that never runs out, so the tile stops offering to
+		-- sell one: there is no clock to show and nothing left to buy.
+		if passBias then
+			local chance = math.floor(Economy.topTierChance(data, passBias) * 100 + 0.5)
+			return `Lucky for good — {chance}% {Config.Units[top].Name}`
+		end
 		local remaining = Economy.luckRemaining(data)
 		if remaining > 0 then
 			local chance = math.floor(Economy.topTierChance(data) * 100 + 0.5)
@@ -129,9 +137,12 @@ end
 
 -- The line above the button: an upgrade's level, or whether the timed thing is
 -- running.
-local function statusOf(id: string, data: Types.PlayerData): string
+local function statusOf(id: string, data: Types.PlayerData, passes: { [string]: boolean }): string
 	local timed = TIMED[id]
 	if timed then
+		if id == LUCK_ID and passes.LuckCharm then
+			return "OWNED"
+		end
 		return if timed.remaining(data) > 0 then "RUNNING" else "Ready"
 	end
 	return `Level {Economy.upgradeLevel(data, id)} / {Economy.upgradeMaxLevel(id)}`
@@ -159,14 +170,22 @@ local function makeUpdater(rows: { [string]: Row }): ({ [string]: any }) -> ()
 		local data: Types.PlayerData = snapshot.Data
 		local passes = snapshot.Passes or {}
 		for id, row in rows do
-			row.Status.Text = statusOf(id, data)
+			row.Status.Text = statusOf(id, data, passes)
 			row.Detail.Text = describe(id, data, passes)
 
 			local timed = TIMED[id]
 			if timed then
 				local cost = timed.cost()
-				row.Button.setText(`{cost} Gems`)
-				row.Button.setEnabled(data.Gems >= cost)
+				-- The pass owner's charm never runs out, so the tile stops asking
+				-- for gems. The server refuses the sale too; this is so the button
+				-- doesn't invite one.
+				if id == LUCK_ID and passes.LuckCharm then
+					row.Button.setText("Permanent")
+					row.Button.setEnabled(false)
+				else
+					row.Button.setText(`{cost} Gems`)
+					row.Button.setEnabled(data.Gems >= cost)
+				end
 			else
 				local level = Economy.upgradeLevel(data, id)
 				if level >= Economy.upgradeMaxLevel(id) then

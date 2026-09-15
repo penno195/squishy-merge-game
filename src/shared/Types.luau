@@ -194,6 +194,9 @@ export type DailyState = {
 -- What's loaded into the crafting station. Inputs sit there until the craft is
 -- started, and are locked in once it is. EndsAt is os.time(), not game time, so
 -- a craft runs down while the player is away -- which is the whole point of it.
+-- One craft. A player has `Economy.craftSlots` of these -- one by default, and
+-- a second with the pass -- each with its own load and its own clock, so two can
+-- run side by side without either waiting for the other.
 export type CraftState = {
 	Inputs: { number },
 	EndsAt: number,
@@ -252,13 +255,23 @@ export type PlayerData = {
 	TotalEarned: number,
 	HighestTier: number,
 	LastOnline: number,
+	-- os.time() this player first loaded, which is what the starter pack's offer
+	-- window counts from. 0 for a save written before the field existed; set on
+	-- the first load that finds it 0.
+	FirstJoin: number,
+	-- Whether the starter pack has been handed over. The pass is what is bought,
+	-- and this is what stops it being granted again on every join.
+	StarterClaimed: boolean,
 	Daily: DailyState,
 	-- Wheel spins bought with gems, and the day the last free spin was taken.
 	Spins: number,
 	LastFreeSpinDay: number,
 	-- Recent developer product receipt IDs, so a retried receipt is never granted twice.
 	PurchaseIds: { string },
-	Craft: CraftState,
+	-- Indexed by craft slot. Slots past what the player has access to are never
+	-- written to, so losing the pass leaves a loaded second slot parked rather
+	-- than destroying what is in it.
+	Craft: { CraftState },
 	-- How many of each sparkle the player has ever made, keyed by SparkleDef.Id.
 	-- The collection record: what's in the garden can change, this can't.
 	Sparkles: { [string]: number },

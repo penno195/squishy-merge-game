@@ -102,18 +102,18 @@ local function mountScreen(): boolean
 		Parent = background,
 	})
 
-	-- One pip per slot, filled in as units go in.
+	-- One pip per unit the slot on show can hold, filled in as units go in.
 	local pipRow: Frame = Components.new("Frame", {
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 126),
-		Size = UDim2.fromOffset(Economy.craftSlots() * (PIP_SIZE + 10), PIP_SIZE),
+		Size = UDim2.fromOffset(Economy.craftInputs() * (PIP_SIZE + 10), PIP_SIZE),
 		Parent = background,
 	})
 	Components.listLayout({ Padding = UDim.new(0, 10), FillDirection = Enum.FillDirection.Horizontal }).Parent = pipRow
 
 	local pips: { Frame } = {}
-	for index = 1, Economy.craftSlots() do
+	for index = 1, Economy.craftInputs() do
 		local pip: Frame = Components.new("Frame", {
 			BackgroundColor3 = Palette.Surface,
 			BorderSizePixel = 0,
@@ -143,28 +143,59 @@ local function mountScreen(): boolean
 			return
 		end
 		local data: Types.PlayerData = snapshot.Data
-		local inputs = data.Craft.Inputs
+		local slots = snapshot.CraftSlots or 1
+		local readyAt: { number } = snapshot.CraftReadyAt or {}
+		local gameNow = Workspace:GetServerTimeNow()
+
+		-- The cabinet has one screen and the player may have two crafts, so it
+		-- shows the one they'd want to know about: something waiting to be
+		-- collected first, then whichever finishes soonest, and failing both the
+		-- slot they can still load. Cycling between them would be worse -- this
+		-- is read in passing, from across the hub.
+		local shown = Economy.readyCraftSlot(data, os.time(), slots)
+		if not shown then
+			local soonest = math.huge
+			for slot = 1, math.min(slots, #data.Craft) do
+				if Economy.craftRunning(data.Craft[slot]) then
+					local ends = readyAt[slot] or math.huge
+					if ends < soonest then
+						soonest, shown = ends, slot
+					end
+				end
+			end
+		end
+		local slot = shown or Economy.openCraftSlot(data, slots) or 1
+		local craft = data.Craft[slot]
+		if not craft then
+			return
+		end
+		local inputs = craft.Inputs
 
 		for index, pip in pips do
 			local tier = inputs[index]
 			pip.BackgroundColor3 = if tier then Config.Units[tier].Color else Palette.Surface
 		end
 
-		if Economy.craftRunning(data) then
-			local remaining = math.max((snapshot.CraftReadyAt or 0) - Workspace:GetServerTimeNow(), 0)
+		-- Named, but only when there is a second one to confuse it with.
+		local function hint(text: string): string
+			return if slots > 1 then `Slot {slot} — {text}` else text
+		end
+
+		if Economy.craftRunning(craft) then
+			local remaining = math.max((readyAt[slot] or 0) - gameNow, 0)
 			if remaining <= 0 then
 				statusLabel.Text = "Ready!"
 				statusLabel.TextColor3 = Palette.Positive
-				hintLabel.Text = "Come and collect it"
+				hintLabel.Text = hint("Come and collect it")
 			else
 				statusLabel.Text = Format.time(math.ceil(remaining))
 				statusLabel.TextColor3 = Palette.Text
-				hintLabel.Text = "Working..."
+				hintLabel.Text = hint("Working...")
 			end
 		else
-			statusLabel.Text = `{#inputs} / {Economy.craftSlots()}`
+			statusLabel.Text = `{#inputs} / {Economy.craftInputs()}`
 			statusLabel.TextColor3 = Palette.Text
-			hintLabel.Text = `Bring a {Theme.Text.Unit} over`
+			hintLabel.Text = hint(`Bring a {Theme.Text.Unit} over`)
 		end
 	end)
 

@@ -81,7 +81,10 @@ function RewardService.grant(player: Player, reward: Types.Reward): (string, Gra
 
 	if reward.UnitTierBonus then
 		local tier = math.min(Economy.dropTier(data) + reward.UnitTierBonus, Config.MaxTier)
-		if Economy.hasRoom(data) and ItemService.dropItem(player, tier, nil, true) then
+		if
+			Economy.hasRoom(data, PassService.extraGardenSpaces(player))
+			and ItemService.dropItem(player, tier, nil, true)
+		then
 			granted.Tier = tier
 			table.insert(parts, `a {Config.Units[tier].Name}`)
 		else

@@ -391,6 +391,7 @@ export type Button = {
 	setText: (string) -> (),
 	setIcon: (string) -> (),
 	setBadge: (string?) -> (),
+	setColor: (Color3) -> (),
 	setEnabled: (boolean) -> (),
 }
 
@@ -444,7 +445,8 @@ function Components.button(props: { [string]: any }, onClick: () -> ()): Button
 	Components.gradient(0.26).Parent = button
 	-- The light edge, inside the dark one. Two outlines is what a moulded
 	-- plastic part looks like: a dark seam and a lit edge just inside it.
-	Components.stroke(color:Lerp(Color3.new(1, 1, 1), 0.55), FACE_OUTLINE_THICKNESS).Parent = button
+	local faceStroke = Components.stroke(color:Lerp(Color3.new(1, 1, 1), 0.55), FACE_OUTLINE_THICKNESS)
+	faceStroke.Parent = button
 	Components.gloss(button, BUTTON_RADIUS)
 	button.Parent = wrapper
 
@@ -549,6 +551,22 @@ function Components.button(props: { [string]: any }, onClick: () -> ()): Button
 		setBadge = function(value: string?)
 			badge.Visible = value ~= nil
 			badgeLabel.Text = value or ""
+		end,
+		-- Recolours the whole moulded part rather than just the face. The lip is
+		-- a shade of the button's colour and the lit edge is a tint of it, so
+		-- moving one and not the others turns one part into three.
+		--
+		-- A disabled button keeps its grey until it is enabled again: the new
+		-- colour is what it will be, not what it shows while it can't be pressed.
+		setColor = function(value: Color3)
+			if value == color then
+				return
+			end
+			color = value
+			faceStroke.Color = value:Lerp(Color3.new(1, 1, 1), 0.55)
+			if enabled then
+				tweenColor(value)
+			end
 		end,
 		-- Grey and flat: the convention players already read as "can't use this".
 		setEnabled = function(value: boolean)

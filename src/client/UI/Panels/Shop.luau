@@ -5,9 +5,14 @@
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local Components = require(script.Parent.Parent.Components)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Economy = require(ReplicatedStorage.Shared.Economy)
+local Format = require(ReplicatedStorage.Shared.Format)
+local Types = require(ReplicatedStorage.Shared.Types)
 
 local LocalPlayer = Players.LocalPlayer
 local Monetisation = Config.Balance.Monetisation
@@ -24,8 +29,9 @@ local function fill(text: string): string
 	)
 end
 
-local function rewardText(key: string): string
-	local reward = Monetisation.ProductRewards[key]
+-- Takes the bundle rather than a product key, because the starter pack's bundle
+-- lives under Monetisation.StarterPack and is described the same way.
+local function rewardText(reward: Types.Reward): string
 	local parts = {}
 	if reward.IncomeMinutes then
 		table.insert(parts, fill(`{reward.IncomeMinutes} minutes of {Theme.Text.Currency} income`))
@@ -48,7 +54,31 @@ local PRODUCT_TITLES: { [string]: string } = {
 	GemPack = "Gem Pack",
 }
 
-local PASSES = {
+-- The offline deal with the pass and without it, pulled out so the line selling
+-- it can put the two side by side rather than asserting that one is better.
+local OFFLINE_HOURS, OFFLINE_RATE = Economy.offlineHours(false), Economy.offlineRate(false)
+local AUTO_HOURS, AUTO_RATE = Economy.offlineHours(true), Economy.offlineRate(true)
+
+-- `Offer` marks a pass that is only on sale for a while. There is one, and the
+-- server decides whether it is still on: the panel never works the window out
+-- for itself, or a clock an hour out would keep selling something expired.
+--
+-- Annotated because the entries differ in shape, and Luau would otherwise infer
+-- the whole list from the first one -- which is the one with the Offer on it.
+type PassEntry = {
+	Key: string,
+	Title: string,
+	Description: string,
+	Offer: boolean?,
+}
+
+local PASSES: { PassEntry } = {
+	{
+		Key = "StarterPack",
+		Title = "Starter Pack",
+		Description = rewardText(Monetisation.StarterPack.Reward),
+		Offer = true,
+	},
 	{
 		Key = "DoubleCash",
 		Title = fill("x{Currency} Multiplier"),
@@ -63,6 +93,26 @@ local PASSES = {
 		Key = "FastSpawn",
 		Title = "Fast Spawn",
 		Description = fill("{UnitPlural} spawn twice as fast."),
+	},
+	{
+		Key = "LuckCharm",
+		Title = "Lucky Forever",
+		Description = "The lucky charm, permanently — better drops with no clock and no Gems.",
+	},
+	{
+		Key = "AutoCollect",
+		Title = "Auto Collect",
+		Description = `Away time pays {AUTO_RATE}x for up to {AUTO_HOURS}h, not {OFFLINE_RATE}x for {OFFLINE_HOURS}h.`,
+	},
+	{
+		Key = "CraftSlot",
+		Title = "Second Slot",
+		Description = `Run {Economy.craftSlots(Monetisation.ExtraCraftSlots)} crafts at once instead of {Economy.craftSlots()}.`,
+	},
+	{
+		Key = "BiggerGarden",
+		Title = "Bigger Garden",
+		Description = `Room for {Monetisation.BiggerGardenSpaces} more {Theme.Text.UnitPlural}, past the last upgrade.`,
 	},
 }
 
@@ -109,21 +159,48 @@ function Shop.create(parent: Instance)
 				button.setText(`R$ {info.PriceInRobux}`)
 			end
 		end)
-		return button
+		return card, button
 	end
+
+	-- The timed offer's card and the line that counts it down, kept so `update`
+	-- can show, hide and re-time it. nil when the pass has no ID set up.
+	local offerCard: Frame? = nil
+	local offerNote: TextLabel? = nil
 
 	for _, pass in PASSES do
 		local id = Config.Settings.GamePasses[pass.Key]
 		if id ~= 0 then
-			passButtons[pass.Key] = addEntry(pass.Title, pass.Description, id, Enum.InfoType.GamePass, function()
+			local card, button = addEntry(pass.Title, pass.Description, id, Enum.InfoType.GamePass, function()
 				MarketplaceService:PromptGamePassPurchase(LocalPlayer, id)
 			end)
+			passButtons[pass.Key] = button
+			if pass.Offer then
+				offerCard = card
+				-- Hidden until the server says the offer is live, rather than
+				-- shown and then withdrawn: a card that appears for one frame and
+				-- vanishes reads as a bug, and an expired offer must never be
+				-- clickable at all. A UIListLayout skips invisible children, so
+				-- hiding it closes the gap too.
+				card.Visible = false
+				card.Size = UDim2.new(1, -12, 0, 104)
+				card.BackgroundColor3 = Palette.Secondary
+				offerNote = Components.label({
+					Text = "",
+					Size = UDim2.new(1, -24, 0, 24),
+					Position = UDim2.fromOffset(12, 74),
+					TextXAlignment = Enum.TextXAlignment.Left,
+					TextColor3 = Palette.Accent,
+					MaxTextSize = 18,
+					Parent = card,
+				})
+			end
 		end
 	end
 
 	for key, id in Config.Settings.Products do
 		if id ~= 0 and Monetisation.ProductRewards[key] then
-			addEntry(PRODUCT_TITLES[key] or key, rewardText(key), id, Enum.InfoType.Product, function()
+			local text = rewardText(Monetisation.ProductRewards[key])
+			addEntry(PRODUCT_TITLES[key] or key, text, id, Enum.InfoType.Product, function()
 				MarketplaceService:PromptProductPurchase(LocalPlayer, id)
 			end)
 		end
@@ -139,7 +216,24 @@ function Shop.create(parent: Instance)
 		})
 	end
 
+	local latest: { [string]: any }? = nil
+
+	-- The offer's own clock. Counted down from the server's end time in game
+	-- time, so the player's clock being wrong can't extend or shorten it, and the
+	-- card disappears the moment the window closes even if no snapshot lands.
+	local function renderOffer()
+		local snapshot = latest
+		local card, note = offerCard, offerNote
+		if not (snapshot and card and note) then
+			return
+		end
+		local remaining = math.max((snapshot.StarterEndsAt or 0) - Workspace:GetServerTimeNow(), 0)
+		card.Visible = snapshot.StarterOffered == true and remaining > 0
+		note.Text = `Your first day only — {Format.time(math.ceil(remaining))} left!`
+	end
+
 	local function update(snapshot: { [string]: any })
+		latest = snapshot
 		local passes = snapshot.Passes or {}
 		for key, button in passButtons do
 			if passes[key] then
@@ -147,6 +241,25 @@ function Shop.create(parent: Instance)
 				button.setEnabled(false)
 			end
 		end
+		renderOffer()
+	end
+
+	-- Once a second, not every frame: the only thing moving is a clock measured
+	-- in hours, and the panel is often open with nothing else changing.
+	if offerCard then
+		local elapsed = 0
+		local connection: RBXScriptConnection
+		connection = RunService.Heartbeat:Connect(function(delta)
+			if not panel.Content.Parent then
+				connection:Disconnect()
+				return
+			end
+			elapsed += delta
+			if elapsed >= 1 and panel.isOpen() then
+				elapsed = 0
+				renderOffer()
+			end
+		end)
 	end
 
 	return {

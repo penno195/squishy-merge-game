@@ -40,6 +40,8 @@ export type Action =
 	| "PrizeClaimed"
 	| "OfflineEarned"
 	| "ProductPurchased"
+	| "PassPurchased" -- a gamepass was bought in-game
+	| "StarterClaimed" -- the starter pack was handed over
 	-- Session bookends
 	| "SessionStarted"
 	| "SessionEnded"

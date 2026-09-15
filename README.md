@@ -119,7 +119,9 @@ four and a half minutes in. A published server always runs it at 1.
   deliberately small.
 - Offline earnings, a 7-day daily reward streak and global leaderboards keep
   players coming back. Offline earnings ignore the boost, so one can't be
-  banked against hours away.
+  banked against hours away. By default they pay half rate for up to eight hours;
+  the Auto Collect pass makes that full rate for twenty-four. The one-minute
+  minimum stands either way, so reconnecting after a dropout pays nobody.
 - A **playtime ladder** pays for staying, where the daily streak pays for coming
   back: eight rungs from one minute to ninety, claimed as the session runs. It
   measures the current session and resets when you leave, so it's never stored —
@@ -157,9 +159,14 @@ simply never read again.
 
 The one place in the game that makes something you can't merge your way to.
 
-- Carry a unit to the machine and load it in, up to four. They're used up
-  whatever happens, and carrying is one at a time, so a full machine is four
-  trips out of the garden.
+- Carry a unit to the machine and load it into a slot, up to four per slot.
+  They're used up whatever happens, and carrying is one at a time, so a full
+  slot is four trips out of the garden.
+- A player has **one slot**, or two with the Second Slot pass — two crafts with
+  their own loads and their own clocks, running side by side. `Balance.Craft` has
+  both numbers, and they are easy to confuse: `Slots` is how many crafts at once,
+  `Inputs` is how many units each one takes. The pass sells a second craft, never
+  a bigger one, so the odds a load can reach are the same for everybody.
 - The panel shows the odds as they're loaded, recalculated from
   `Economy.craftOutcomes` — the same function the server rolls with, so what's
   on screen is exactly what will happen.
@@ -177,7 +184,7 @@ thirty-rung ladder both shipped themes use — and the best unit in the machine
 picks which sparkle is being played for. Every input counts for
 `TierWeight ^ (tier - the bottom of that band)`, so one unit from the top of a
 band is worth four from the bottom of it, and a unit below the band counts for
-a fraction. Fill all four slots with the band's top tier and the odds reach
+a fraction. Fill all four inputs with the band's top tier and the odds reach
 that sparkle's ceiling; anything less curves away below it.
 
 So four tier 3s, playing for a 1-3 sparkle: **50% sparkle, 30% tier 6, 20%
@@ -383,6 +390,55 @@ the daily reset. The panel is built on `ClaimList`, a shared list of
 "make progress, then claim" rows — the playtime ladder and the leaderboard
 payouts are the same shape and will use it rather than growing their own.
 
+## What Robux buys
+
+Eight gamepasses and four developer products, all of them optional and none of
+them the only way to get anywhere. Every ID lives in `src/shared/Settings.luau`
+and an ID left at `0` hides that entry, so a fresh reskin shows only what it has
+actually set up.
+
+The passes, and what each one is worth:
+
+| Pass | Effect | Where the number lives |
+| --- | --- | --- |
+| x2 Currency | Doubles income, forever | `Monetisation.DoubleCashMultiplier` |
+| Auto Merge | Merges a matching pair for you as you play | `Monetisation.AutoMergeInterval` |
+| Fast Spawn | Halves the wait between drops | `Monetisation.FastSpawnMultiplier` |
+| Lucky Forever | The lucky charm permanently, no gems and no clock | `Balance.Luck.Bias` |
+| Auto Collect | Full-rate offline earnings for a day, not half for eight hours | `Monetisation.AutoCollect` |
+| Second Slot | A second craft running alongside the first | `Monetisation.ExtraCraftSlots` |
+| Bigger Garden | More room than the cash upgrade can reach | `Monetisation.BiggerGardenSpaces` |
+| Starter Pack | One bundle, a player's first day only | `Monetisation.StarterPack` |
+
+Three of them are worth knowing the shape of:
+
+- **Lucky Forever** is exactly a charm that never expires, and the code says so
+  rather than growing a second luck system: every luck-sensitive function in
+  `Economy` already takes a `bias` override so the upgrade board can quote what
+  buying a charm *would* do, and the pass is that same override, passed in
+  permanently. It follows that the charm and the pass don't stack — there is
+  nothing to stack — so the board stops offering to sell one and the server
+  refuses the sale outright rather than taking gems for nothing.
+- **Bigger Garden** adds a flat number of spaces on top of whatever Garden Space
+  has reached, rather than extra levels of it. Extra levels would have to line up
+  with `GardenCapacities`, and a flat number is worth the same to a player at
+  level 0 as at level 5 — which is the one likely to buy it.
+- **Starter Pack** is a pass rather than a product, because "one-time" has to
+  mean it when real money is involved: Roblox won't sell a pass twice. Owning it
+  and having had the bundle are separate, though — a purchase can land on a
+  server that dies before it saves — so ownership is re-checked on every join and
+  `StarterClaimed` in the save is what stops a second helping. The window only
+  ever governs the **offer**: a pass bought in its last second is still honoured
+  whenever the player next appears.
+
+No pass effect is written into `Economy`. That module stays pure and takes each
+one as an argument — a multiplier, a bias, a number of spaces — which the server
+supplies from `PassService` and the client from the `Passes` map in its snapshot.
+Where both sides have to answer the same question, the mapping from "owns it" to
+"is worth this much" lives in `Economy` too (`gardenPassSpaces`, `luckPassBias`),
+because two copies of one `if` is how the shop comes to promise something the
+server doesn't give.
+
 ## What the game measures
 
 Every verb the game has — a drop, a merge, a sale, an upgrade, a craft, a
@@ -518,7 +574,9 @@ Each Roblox experience has its own asset IDs, so per game:
 
 - Create the gamepasses and developer products in Studio, then put their IDs in
   `GamePasses` and `Products` in `src/shared/Settings.luau`. An ID left at `0`
-  simply hides that shop entry.
+  simply hides that shop entry — which means the whole of "What Robux buys" above
+  can be built and played before the experience exists, and switched on by pasting
+  eight numbers in afterwards.
 - Keep `DataStoreName` stable once the game is live — changing it wipes
   everyone's save.
 
