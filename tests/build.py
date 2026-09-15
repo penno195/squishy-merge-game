@@ -3,6 +3,10 @@ import os, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = sys.argv[1] if len(sys.argv) > 1 else HERE
+# Which file goes on the end. tests.luau asserts; sim.luau measures. Both read
+# the same modules through the same fake require tree.
+ENTRY = sys.argv[2] if len(sys.argv) > 2 else "tests.luau"
+OUT_NAME = "run.luau" if ENTRY == "tests.luau" else "sim-run.luau"
 
 MODULES = {
 	"Shared/Balance": "src/shared/Balance.luau",
@@ -22,6 +26,6 @@ for name, path in MODULES.items():
 	# --!strict is a comment, harmless inside a function body.
 	out.append(f'loaders["{name}"] = function(script, require)\n{src}\nend\n')
 out.append(open(os.path.join(HERE, "runtime.luau")).read())
-out.append(open(os.path.join(HERE, "tests.luau")).read())
-open(os.path.join(OUT, "run.luau"), "w").write("\n".join(out))
-print("built run.luau")
+out.append(open(os.path.join(HERE, ENTRY)).read())
+open(os.path.join(OUT, OUT_NAME), "w").write("\n".join(out))
+print(f"built {OUT_NAME} from {ENTRY}")

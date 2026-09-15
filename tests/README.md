@@ -40,6 +40,32 @@ the way Rojo would lay them out.
 `tests.luau` is the assertions. It prints `n / n checks passed` and exits
 non-zero if any fail.
 
+## Measuring the pace
+
+`sim.luau` shares the harness but asserts nothing. It plays a run through against
+the real `Balance` and `Economy` and prints when each tier arrived, which is the
+only honest way to answer "is this too fast" without sitting through it:
+
+```bash
+python3 tests/build.py /tmp sim.luau && /tmp/luau /tmp/sim-run.luau
+```
+
+The simulated player merges on sight and buys any upgrade the moment it's
+affordable — the fastest the game can be played, and so the one worth measuring.
+Walking costs nothing there, and it models no rebirths, crafting, quests, wheel or
+rewards; everything it leaves out makes the player richer, so read it as a floor on
+the pace rather than a prediction.
+
+Two things to know before trusting a number off it. The top of the ladder is
+variable — whether a run crosses one of the last, very long Drop Tier levels inside
+the 48-hour budget is close to a coin flip, so `>48h` there means "past the budget",
+not "impossible". And a scenario is just a mutation of `Balance`, so comparing a
+proposed number against the shipped one costs a few lines at the bottom of the file
+rather than an edit you have to remember to undo.
+
+It's what the Drop Tier numbers in `Balance.Upgrades` were chosen with, and the
+comment there records what it said.
+
 ## Worth testing here
 
 Anything where being wrong is arithmetic rather than visual. Anything visual —

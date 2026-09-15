@@ -32,7 +32,11 @@ opening Studio again. Publishing also unblocks the weekly race, which cannot be
 tested before it.
 
 `tests/README.md` explains how to run the headless checks — worth doing before
-and after any change to the shared modules.
+and after any change to the shared modules — and `tests/sim.luau`, which plays a
+run through and prints how long each tier took. Any change to `Balance.Upgrades`,
+`Income.TierGrowth` or `GardenCapacities` should be measured with it rather than
+guessed at: the first playthrough found the whole ladder took about half an hour,
+which no amount of reading the numbers had made obvious.
 
 Planned work, in dependency order. Each batch is meant to be synced to Studio
 and played before the next one starts.

@@ -197,19 +197,58 @@ return {
 	-- keep it at 0 so every entry has the same shape.
 	-- Order matters: this is the order the garden board shows them in.
 	--
-	-- Drop Tier is the ladder's pacing knob, and its Growth has to be read
-	-- against Income.TierGrowth: the cost rises by `Growth` per level while the
-	-- income that pays for it rises by `TierGrowth`, so what the player feels is
-	-- the ratio between them. At 2.8 against 2.5 each level costs about 12% more
-	-- playtime than the last -- roughly five minutes of income at the bottom of
-	-- the ladder and eighty at the top. (It was 6, which is 2.4x more playtime
-	-- per level: by level 8 that was already a ninety-hour upgrade, and over a
-	-- thirty-rung ladder it diverges into the absurd.)
+	-- Drop Tier is the pacing knob for the whole game, and its Growth only means
+	-- anything read against Income.TierGrowth: the cost rises by `Growth` per
+	-- level while the income that pays for it rises by `TierGrowth`, so what the
+	-- player feels is the ratio between them. At 2.8 against 2.5 that ratio is
+	-- 1.12 -- each level costs 12% more playtime than the last.
+	--
+	-- Keeping the ratio near 1 and moving BaseCost is deliberate, and it is the
+	-- one thing to understand before changing either. The ratio decides the
+	-- *shape* of the game and BaseCost decides its *length*, and the shape goes
+	-- bad long before it looks like it should:
+	--
+	--     ratio 1.12  ->  the ladder is   191x the first level, last level 11% of it
+	--     ratio 1.28  ->  the ladder is  3583x the first level, last level 22% of it
+	--     ratio 1.56  ->  the ladder is 456351x the first level, last level 36% of it
+	--
+	-- At 1.56 (Growth 3.9, which was tried) the tail is not a curve, it is a wall:
+	-- the sim reached tier 20 in an hour and a half on one run and not within two
+	-- days on the next, because a single level either side of the budget is most of
+	-- the game. At 1.12 the last level is a ninth of the run and the whole thing
+	-- lengthens smoothly, so BaseCost is the honest knob -- 1000 to 25000 makes the
+	-- first gate a few minutes' income instead of a few seconds'.
+	--
+	-- These numbers are measured, not guessed. `tests/sim.luau` plays a run against
+	-- this file and prints when each tier arrived. Buying nothing: first upgrade at
+	-- a minute, tier 10 -- and so the first rebirth -- at half an hour, tier 15
+	-- around an hour, tier 20 under two, and the top of the ladder a goal across
+	-- several sittings that rebirths are meant to carry. The four passes that
+	-- change the pace are worth roughly three times, which is meant to be worth
+	-- buying without being the only way up.
+	--
+	-- It was BaseCost 1000 at the same 2.8, with the other three at 1.6, 8 and
+	-- 1.45. The sim put the whole thirty-rung ladder and every upgrade maxed at
+	-- about half an hour, and twelve minutes with the passes -- which makes a
+	-- four-hour craft, a daily streak and a weekly race meaningless. The other
+	-- three got steeper for a different reason: at those numbers they were
+	-- affordable the moment they appeared for the whole game, so there was never a
+	-- choice about what to buy next, only a button to hold. Income's PerLevel came
+	-- down with it, 0.25 to 0.15, because fifty levels of a quarter each was a free
+	-- 13x on top of everything else.
+	--
+	-- Drop Tier's MaxLevel is 28 rather than 24 because `Economy.upgradeMaxLevel`
+	-- clamps it to `MaxTier - 2` anyway, which is what should govern it: at 24 on a
+	-- thirty-rung ladder drops stopped at tier 25, so the last five rungs had to be
+	-- mass-merged at the capacity ceiling. That either happened or it didn't -- the
+	-- sim reached tier 30 on one run and never on the next. Letting the clamp bind
+	-- makes the top of the ladder something you buy your way to, and makes this
+	-- entry correct for a theme of any length.
 	Upgrades = {
-		{ Id = "SpawnTier", Name = "Drop Tier", BaseCost = 1000, Growth = 2.8, MaxLevel = 24, PerLevel = 0 },
-		{ Id = "SpawnSpeed", Name = "Drop Speed", BaseCost = 100, Growth = 1.6, MaxLevel = 20, PerLevel = 0 },
-		{ Id = "GardenSpace", Name = "Max Items", BaseCost = 250, Growth = 8, MaxLevel = 5, PerLevel = 0 },
-		{ Id = "Income", Name = "Income Boost", BaseCost = 200, Growth = 1.45, MaxLevel = 50, PerLevel = 0.25 },
+		{ Id = "SpawnTier", Name = "Drop Tier", BaseCost = 25000, Growth = 2.8, MaxLevel = 28, PerLevel = 0 },
+		{ Id = "SpawnSpeed", Name = "Drop Speed", BaseCost = 120, Growth = 2.1, MaxLevel = 20, PerLevel = 0 },
+		{ Id = "GardenSpace", Name = "Max Items", BaseCost = 300, Growth = 11, MaxLevel = 5, PerLevel = 0 },
+		{ Id = "Income", Name = "Income Boost", BaseCost = 250, Growth = 1.7, MaxLevel = 50, PerLevel = 0.15 },
 	},
 
 	-- The timed earning boost, bought with gems from the garden board.
