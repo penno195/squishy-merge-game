@@ -241,13 +241,11 @@ end
 function PetService.init()
 	Net.event("EquipPet").OnServerEvent:Connect(equip)
 	Net.event("ReleasePet").OnServerEvent:Connect(release)
-	-- The panel can ask too, but the pad's prompt is the ordinary way in.
+	-- Hatching is asked for by the egg panel's button, not by the pad's prompt --
+	-- the prompt opens the panel, so the odds and what is inside are seen before any
+	-- cash changes hands. The distance check in `hatch` is what still ties it to the
+	-- pad: the panel can be left open and walked away from.
 	Net.event("HatchEgg").OnServerEvent:Connect(hatch)
-	for eggId, prompt in HubService.eggPrompts() do
-		prompt.Triggered:Connect(function(player)
-			hatch(player, eggId)
-		end)
-	end
 
 	Players.PlayerRemoving:Connect(function(player)
 		attached[player] = nil

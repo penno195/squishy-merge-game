@@ -27,6 +27,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 
 local CraftPanel = require(script.Parent.Panels.Craft)
 local DailyPanel = require(script.Parent.Panels.Daily)
+local EggPanel = require(script.Parent.Panels.Egg)
 local IndexPanel = require(script.Parent.Panels.Index)
 local LeaderboardPanel = require(script.Parent.Panels.Leaderboard)
 local PetsPanel = require(script.Parent.Panels.Pets)
@@ -66,6 +67,11 @@ local MENU_ICONS: { [string]: string } = {
 }
 local WHEEL_PANEL = "Wheel"
 local CRAFT_PANEL = "Craft"
+local EGG_PANEL = "Egg"
+-- The prompt on an egg pad, which carries an "Egg" attribute saying which pad it
+-- is. Named rather than matched on the panel map because it has to be filled in
+-- before it opens, which none of the others do.
+local EGG_PROMPT = "EggPrompt"
 -- Which panel each of the hub's own ProximityPrompts opens.
 local PROMPT_PANELS: { [string]: string } = {
 	SpinPrompt = WHEEL_PANEL,
@@ -172,7 +178,32 @@ function Hud.start()
 	local detailLabel = statLine(6, Palette.TextMuted)
 
 	-- Panels and the menu that opens them --------------------------------
-	local panels = {
+	--
+	-- Annotated because the entries differ in shape -- one is hidden from the menu
+	-- and one has a setter the others don't -- and Luau would otherwise infer the
+	-- whole list from the first one.
+	type MenuEntry = {
+		Name: string,
+		Icon: string,
+		-- Hidden entries get every snapshot but no menu button: the only way into
+		-- them is whatever else opens them.
+		Hidden: boolean?,
+		-- The three things the menu and the snapshot loop need. A panel with more
+		-- than these -- the egg panel has a setter of its own -- goes in narrowed to
+		-- this shape and is kept in a local as well, because Luau will not assign a
+		-- table with extra fields to a sealed type.
+		Panel: {
+			setOpen: (boolean) -> (),
+			isOpen: () -> boolean,
+			update: ({ [string]: any }) -> (),
+		},
+	}
+
+	-- Kept out here because the prompt handler has to fill it in before opening it,
+	-- which is more than the list's shape allows.
+	local eggPanel = EggPanel.create(screen)
+
+	local panels: { MenuEntry } = {
 		{ Name = "Upgrades", Icon = MENU_ICONS.Upgrades, Panel = UpgradesPanel.create(screen) },
 		{ Name = "Shop", Icon = MENU_ICONS.Shop, Panel = ShopPanel.create(screen) },
 		{ Name = Theme.Text.Rebirth, Icon = "🔁", Panel = RebirthPanel.create(screen) },
@@ -182,6 +213,14 @@ function Hud.start()
 		{ Name = WHEEL_PANEL, Icon = MENU_ICONS.Wheel, Panel = WheelPanel.create(screen) },
 		{ Name = CRAFT_PANEL, Icon = MENU_ICONS.Craft, Panel = CraftPanel.create(screen) },
 		{ Name = "Pets", Icon = MENU_ICONS.Pets, Panel = PetsPanel.create(screen) },
+		-- No menu button: it's about one egg pad, so the only way in is standing at
+		-- one. It rides in this list anyway so it gets every snapshot like the rest.
+		{
+			Name = EGG_PANEL,
+			Icon = "",
+			Hidden = true,
+			Panel = { setOpen = eggPanel.setOpen, isOpen = eggPanel.isOpen, update = eggPanel.update },
+		},
 		{ Name = "Ranks", Icon = MENU_ICONS.Ranks, Panel = LeaderboardPanel.create(screen) },
 		{ Name = "Index", Icon = MENU_ICONS.Index, Panel = IndexPanel.create(screen) },
 	}
@@ -197,6 +236,9 @@ function Hud.start()
 		menu
 
 	for order, entry in panels do
+		if entry.Hidden then
+			continue
+		end
 		-- 56 tall: comfortably above the size a thumb can hit reliably.
 		local button = Components.button({
 			Text = entry.Name,
@@ -220,6 +262,16 @@ function Hud.start()
 	-- menu does.
 	ProximityPromptService.PromptTriggered:Connect(function(prompt)
 		local wanted = PROMPT_PANELS[prompt.Name]
+		if prompt.Name == EGG_PROMPT then
+			local eggId = prompt:GetAttribute("Egg")
+			if typeof(eggId) ~= "string" then
+				return
+			end
+			-- Filled in before it's shown, so the first frame is already this egg's
+			-- rather than the last one's.
+			eggPanel.setEgg(eggId)
+			wanted = EGG_PANEL
+		end
 		if not wanted then
 			return
 		end

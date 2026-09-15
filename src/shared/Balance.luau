@@ -216,10 +216,10 @@ return {
 		-- No weights here. How often a rarity turns up is the egg's business, and
 		-- lives in Eggs.Weights above -- two places saying it would be two answers.
 		Rarities = {
-			{ Id = "Common", Name = "Common", Multiplier = 1.03, Perk = 1 },
-			{ Id = "Rare", Name = "Rare", Multiplier = 1.06, Perk = 1.6 },
-			{ Id = "Epic", Name = "Epic", Multiplier = 1.1, Perk = 2.3 },
-			{ Id = "Legendary", Name = "Legendary", Multiplier = 1.15, Perk = 3 },
+			{ Id = "Common", Name = "Common", Multiplier = 1.03, Perk = 1, Tone = "TextMuted" },
+			{ Id = "Rare", Name = "Rare", Multiplier = 1.06, Perk = 1.6, Tone = "Primary" },
+			{ Id = "Epic", Name = "Epic", Multiplier = 1.1, Perk = 2.3, Tone = "Secondary" },
+			{ Id = "Legendary", Name = "Legendary", Multiplier = 1.15, Perk = 3, Tone = "Accent" },
 		},
 		-- The vocabulary. A pet names one of these and the code that applies it
 		-- switches on the Id, so a theme can only choose among what exists --

@@ -398,6 +398,37 @@ function Economy.petColor(record: Types.PetRecord): Color3
 	return def.Color:Lerp(color, tint)
 end
 
+-- The colour a rarity reads as, out of the theme's palette. Here rather than in
+-- either panel, because both of them ask and a rarity that looked like two
+-- different things in two places would not be a rarity.
+function Economy.petRarityColor(rarity: Types.PetRarity): Color3
+	local palette = Config.Theme.Palette :: { [string]: Color3 }
+	return palette[rarity.Tone] or palette.Text
+end
+
+-- The rarity ladder, weakest first -- the order anything listing rarities should
+-- use, since Weights is a dictionary and has no order of its own.
+function Economy.petRarities(): { Types.PetRarity }
+	return PetBalance.Rarities :: { Types.PetRarity }
+end
+
+-- Every pet an egg could hand over, weakest rarity first. What the egg panel lists
+-- so a player can see what they are paying for before they pay it.
+function Economy.eggPool(egg: Types.PetEggDef): { Types.PetDef }
+	local pool: { Types.PetDef } = {}
+	for _, rarity in Economy.petRarities() do
+		if egg.Weights[rarity.Id] then
+			for _, id in Config.PetsByRarity[rarity.Id] do
+				local def = Config.PetById[id]
+				if def then
+					table.insert(pool, def)
+				end
+			end
+		end
+	end
+	return pool
+end
+
 function Economy.petPerkDef(id: string): Types.PetPerkDef?
 	return Config.PetPerkById[id]
 end

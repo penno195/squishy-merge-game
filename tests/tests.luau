@@ -846,6 +846,49 @@ if charmedId then
 	)
 end
 
+-- Rarity colours and the egg's pool: both are read by the two panels, and both
+-- have to answer for every rarity a theme could ship.
+for _, rarity in Economy.petRarities() do
+	check(`{rarity.Id} has a real palette tone`, (Config.Theme.Palette :: any)[rarity.Tone] ~= nil, rarity.Tone)
+	check(`{rarity.Id} resolves to a colour`, Economy.petRarityColor(rarity) ~= nil)
+end
+check(
+	"the rarity ladder is ordered weakest first",
+	Economy.petRarities()[1].Perk < Economy.petRarities()[#Economy.petRarities()].Perk
+)
+
+-- The egg panel lists what an egg can hand over, so the pool has to match the
+-- weights exactly: nothing the egg can't roll, and nothing it can roll left out.
+for _, egg in Config.Balance.Pets.Eggs do
+	local pool = Economy.eggPool(egg)
+	check(`{egg.Id}'s pool isn't empty`, #pool > 0)
+	local seen: { [string]: boolean } = {}
+	for _, def in pool do
+		check(`{egg.Id}'s pool only holds rarities it weights`, egg.Weights[def.Rarity] ~= nil, def.Rarity)
+		check(`{egg.Id}'s pool has no duplicates`, not seen[def.Id], def.Id)
+		seen[def.Id] = true
+	end
+	for rarityId in egg.Weights do
+		local found = false
+		for _, def in pool do
+			found = found or def.Rarity == rarityId
+		end
+		check(`{egg.Id}'s pool covers {rarityId}`, found)
+	end
+	-- Weakest first, so the panel reads in the same order as the odds above it.
+	local lastRank = 0
+	local rank: { [string]: number } = {}
+	for position, rarity in Economy.petRarities() do
+		rank[rarity.Id] = position
+	end
+	local ordered = true
+	for _, def in pool do
+		ordered = ordered and rank[def.Rarity] >= lastRank
+		lastRank = rank[def.Rarity]
+	end
+	check(`{egg.Id}'s pool is ordered by rarity`, ordered)
+end
+
 check("the inventory has a ceiling", Economy.maxOwnedPets() > 0)
 petData.Pets = {}
 check("an empty inventory is not full", not Economy.petsFull(petData))

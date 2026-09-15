@@ -10,7 +10,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
-local Economy = require(ReplicatedStorage.Shared.Economy)
 local Format = require(ReplicatedStorage.Shared.Format)
 local GardenService = require(script.Parent.GardenService)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -66,12 +65,13 @@ local BOARD_PIXELS_PER_STUD = 34
 -- The saved field the board ranks.
 local BOARD_STAT = "TotalEarned"
 
--- Egg pads, in a row behind the crafting station. Behind rather than beside it
--- because the wheel and the leaderboard already hold the two flanks, and a player
--- walking round the machine finds them without being sent. Facing -Z like the
--- machine, so all three landmarks read from the spawn pad.
-local EGG_ROW_Z = 18
-local EGG_SPACING = 15
+-- Egg pads, stood around the rim of the hub pad rather than in a row: the middle
+-- belongs to the crafting station and the two flanks to the wheel and the
+-- leaderboard, and the rim is the one part of the hub nothing else uses.
+--
+-- They go in the *gaps* between the paths out to the gardens. Six paths leave the
+-- ring at even angles, and a pad in front of one would be standing in the way of
+-- everyone walking home.
 local EGG_PLINTH = 1.6
 local EGG_PLINTH_WIDTH = 8
 -- Studs tall, and an egg is taller than it is wide. Big enough to read the sign
@@ -80,6 +80,9 @@ local EGG_HEIGHT = 5
 local EGG_WIDTH = 3.6
 local EGG_SIGN_HEIGHT = 3
 local EGG_PIXELS_PER_STUD = 40
+-- Clear of the walkway's inner edge by the pad's own half-width and a little more,
+-- so nobody steps off the ring into an egg.
+local EGG_RIM_MARGIN = 3
 
 local HubService = {}
 
@@ -384,7 +387,48 @@ end
 -- One pad per egg in Balance.Pets.Eggs: a plinth, an egg sat on it, and a sign
 -- saying what it costs. The prompt is the whole interaction -- hatching is instant,
 -- so there is nothing to open a panel for; the panel is for the inventory.
-local function buildEggPads(parent: Instance, origin: CFrame)
+-- Which gaps between the paths the pads stand in. The paths leave at
+-- `(i - 1) / PlotCount` of a turn, so the midpoint between two of them is at
+-- `(i - 0.5) / PlotCount` -- those are the only angles a pad can stand at without
+-- being in somebody's way.
+--
+-- There are usually more gaps than eggs, so the eggs are spread evenly around and
+-- the whole arrangement is then rotated to whichever offset leaves every pad
+-- furthest from the spawn pad. Standing on the spawn pad you should see the eggs
+-- across the hub, not have one in your face.
+local function eggAngles(count: number): { number }
+	local gaps = Balance.PlotCount
+	local turn = math.pi * 2
+	local spawnAngle = math.atan2(-Hub.SpawnOffset, 0)
+	local step = math.max(math.floor(gaps / count), 1)
+
+	local function gapAngle(gap: number): number
+		return ((gap - 0.5) % gaps) / gaps * turn
+	end
+	-- Shortest way round between two angles, so 350 degrees and 10 are 20 apart.
+	local function separation(a: number, b: number): number
+		local delta = math.abs((a - b) % turn)
+		return math.min(delta, turn - delta)
+	end
+
+	local best: { number } = {}
+	local bestScore = -1
+	for offset = 0, math.max(step - 1, 0) do
+		local angles: { number } = {}
+		local score = math.huge
+		for slot = 1, count do
+			local angle = gapAngle(1 + offset + (slot - 1) * step)
+			table.insert(angles, angle)
+			score = math.min(score, separation(angle, spawnAngle))
+		end
+		if score > bestScore then
+			best, bestScore = angles, score
+		end
+	end
+	return best
+end
+
+local function buildEggPads(parent: Instance, origin: CFrame, padRadius: number)
 	local eggs = Balance.Pets.Eggs :: { Types.PetEggDef }
 	if #eggs == 0 then
 		return
@@ -393,9 +437,15 @@ local function buildEggPads(parent: Instance, origin: CFrame)
 	pads.Name = "EggPads"
 	pads.Parent = parent
 
+	local radius = padRadius - EGG_PLINTH_WIDTH / 2 - EGG_RIM_MARGIN
+	local angles = eggAngles(#eggs)
+
 	for index, egg in eggs do
-		local offsetX = (index - (#eggs + 1) / 2) * EGG_SPACING
-		local base = origin * CFrame.new(offsetX, 0, EGG_ROW_Z)
+		local angle = angles[index] or 0
+		local spot = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+		-- Turned to face the middle of the hub, so the sign reads from where the
+		-- player is standing rather than from the fence behind it.
+		local base = origin * CFrame.lookAt(spot, Vector3.new(0, 0, 0))
 		local model = Instance.new("Model")
 		model.Name = `EggPad_{egg.Id}`
 		model.Parent = pads
@@ -429,7 +479,7 @@ local function buildEggPads(parent: Instance, origin: CFrame)
 		local signY = eggY + EGG_HEIGHT / 2 + EGG_SIGN_HEIGHT / 2 + 0.6
 		local sign = makePart(
 			"Sign",
-			Vector3.new(EGG_SPACING - 3, EGG_SIGN_HEIGHT, 0.4),
+			Vector3.new(EGG_PLINTH_WIDTH + 4, EGG_SIGN_HEIGHT, 0.4),
 			base * CFrame.new(0, signY, 0),
 			Theme.Palette.Background,
 			Enum.Material.SmoothPlastic,
@@ -445,30 +495,23 @@ local function buildEggPads(parent: Instance, origin: CFrame)
 		label.BackgroundTransparency = 1
 		label.Size = UDim2.fromScale(1, 1)
 		label.FontFace = Theme.Font
-		-- Odds on the sign, not in a panel. This is where the decision to hatch is
-		-- made, and a gacha that hides its chances somewhere else is hiding them.
-		-- Ordered by the rarity ladder rather than by the Weights table, which is a
-		-- dictionary and so has no order at all.
-		local odds: { string } = {}
-		local chances = Economy.eggChances(egg)
-		for _, rarity in Balance.Pets.Rarities :: { Types.PetRarity } do
-			local chance = chances[rarity.Id]
-			if chance and chance > 0 then
-				table.insert(odds, `{string.format("%.4g", chance * 100)}% {rarity.Name}`)
-			end
-		end
-		label.Text = `{egg.Name}\n{Format.number(egg.Cost)} {Theme.Text.Currency}\n{table.concat(odds, "  ")}`
+		-- The name and the price, and nothing else. The odds and what each pet does
+		-- are a wall of text at this size, and they belong where the decision is
+		-- actually made -- in the panel the prompt opens, which has room to lay them
+		-- out and is read standing still.
+		label.Text = `{egg.Name}\n{Format.number(egg.Cost)} {Theme.Text.Currency}`
 		label.TextColor3 = Theme.Palette.Text
 		label.TextScaled = true
 		label.Parent = surface
 
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.Name = "EggPrompt"
-		prompt.ActionText = "Hatch"
+		prompt.ActionText = "Look"
 		prompt.ObjectText = egg.Name
 		prompt.HoldDuration = 0
 		prompt.MaxActivationDistance = Balance.Pets.PadRadius
 		prompt.RequiresLineOfSight = false
+		prompt:SetAttribute("Egg", egg.Id)
 		prompt.Parent = shell
 
 		eggPositions[egg.Id] = (base * CFrame.new(0, eggY, 0)).Position
@@ -662,7 +705,7 @@ function HubService.init()
 	-- for the same reason: a flat face read at an angle is a hard read.
 	local boardPosition = Vector3.new(BOARD_OFFSET, 0, 0)
 	buildLeaderboard(hub, CFrame.lookAt(boardPosition, Vector3.new(0, 0, -Hub.SpawnOffset)))
-	buildEggPads(hub, CFrame.identity)
+	buildEggPads(hub, CFrame.identity, padDiameter / 2)
 end
 
 return HubService

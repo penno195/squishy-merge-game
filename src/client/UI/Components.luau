@@ -694,6 +694,10 @@ export type Panel = {
 	Content: Frame,
 	setOpen: (boolean) -> (),
 	isOpen: () -> boolean,
+	-- Most panels are one thing and keep the title they were built with. A panel
+	-- standing in for several of something -- one egg pad out of three -- renames
+	-- itself as it opens.
+	setTitle: (string) -> (),
 }
 
 -- A centred pop-up panel with a title bar and close button. The X sits top
@@ -730,7 +734,7 @@ function Components.panel(title: string, size: UDim2, parent: Instance): Panel
 		Parent = root,
 	})
 	Components.gloss(header, RADIUS)
-	Components.label({
+	local titleLabel = Components.label({
 		Text = title,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = Palette.Text,
@@ -779,6 +783,9 @@ function Components.panel(title: string, size: UDim2, parent: Instance): Panel
 		end,
 		isOpen = function(): boolean
 			return root.Visible
+		end,
+		setTitle = function(value: string)
+			titleLabel.Text = value
 		end,
 	}
 end

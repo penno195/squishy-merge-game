@@ -399,12 +399,18 @@ accumulate. So the **perk is the reason to own one**, and the cash multiplier is
 nudge — 3% to 15% across the entire rarity ladder. A pet that paid double would be
 welded on forever and there would be nothing left to choose.
 
-- **Hatching** happens at the egg pads in a row behind the crafting station. Walk
-  up, press the prompt, pay cash, and the roll hands you a pet straight away.
-  There is no timer: the machine already owns the long wait, and two systems
-  competing for the same patience is one too many. The pad's sign carries the
-  price *and the odds* — this is where the decision is made, and a gacha that
-  hides its chances somewhere else is hiding them.
+- **Hatching** happens at the egg pads stood around the rim of the hub. They sit in
+  the *gaps* between the six paths out to the gardens, and the whole arrangement is
+  rotated to whichever offset leaves every pad furthest from the spawn pad — a pad
+  in front of a path would be standing in the way of everyone walking home, and one
+  on the spawn pad would be in your face the moment you appear.
+- The pad's sign carries the **name and price only**. Its prompt opens a panel with
+  the odds, every pet the egg can hand over and what each one does, and the Hatch
+  button. Showing that before any cash changes hands is deliberate: a gacha that
+  hides its odds is hiding them, and since a pet's whole value is its perk, choosing
+  between a cheap egg and a dear one is really choosing between two lists of perks.
+  There is no timer either — the machine already owns the long wait, and two systems
+  competing for the same patience is one too many.
 - **Six perks**, in `Balance.Pets.Perks`: Merge Payout, Gem Finder, Lucky Crafter,
   Haggler, Charmed and Gardener. They map onto things a player is *doing* — so the
   Lucky Crafter goes on before opening the machine, the Gardener when the garden
@@ -431,6 +437,11 @@ and the service that owns the affected thing applies it, exactly as the gamepass
 work: the bin asks for `SellBonus`, the machine asks for `CraftLuck`, the drop loop
 asks for `DropLuck` and `Space`. Adding a perk is one entry in `Balance` and one
 number read in one service.
+
+The inventory panel sorts strongest first with whatever is equipped above it, and
+rings each pet's swatch in its rarity's colour — taken from the theme's palette, so
+a skin's rarest pet is its own accent. A list in hatch order buries the pet you want
+under twenty commons, and the panel exists to make the swap quick.
 
 Two consequences worth knowing. The equipped pet is read **at the moment of
 collection** for a craft rather than when the craft was started — swapping a Lucky

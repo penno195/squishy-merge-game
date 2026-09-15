@@ -113,6 +113,10 @@ export type PetRarity = {
 	Multiplier: number,
 	-- Scales the perk's own Amount. This is where rarity is allowed to matter.
 	Perk: number,
+	-- Names a Palette entry, so a rarity reads as a colour everywhere it appears --
+	-- the chip on an inventory row, the odds in the egg panel. The theme's palette
+	-- rather than fixed colours, so a skin's rarest pet is its own accent.
+	Tone: string,
 }
 
 -- What a perk does, and how much of it one unit of strength is worth. The Id is
