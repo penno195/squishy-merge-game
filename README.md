@@ -77,7 +77,7 @@ four and a half minutes in. A published server always runs it at 1.
   needed; a theme that wants its own can set `Images.Wheel` to an asset ID
   (a circle split into as many equal segments as there are prizes, segment 1
   centred at the top) and the labels are still drawn over it.
-- The crafting station stands in the middle of the hub. Carry ordinary units
+- The crafting station stands on the hub's rim, opposite the spawn pad. Carry ordinary units
   over and load up to four of them in, and after a wait it makes something
   back. See below.
 - Units fall from the sky into the garden every few seconds; players can also
@@ -399,11 +399,9 @@ accumulate. So the **perk is the reason to own one**, and the cash multiplier is
 nudge — 3% to 15% across the entire rarity ladder. A pet that paid double would be
 welded on forever and there would be nothing left to choose.
 
-- **Hatching** happens at the egg pads stood around the rim of the hub. They sit in
-  the *gaps* between the six paths out to the gardens, and the whole arrangement is
-  rotated to whichever offset leaves every pad furthest from the spawn pad — a pad
-  in front of a path would be standing in the way of everyone walking home, and one
-  on the spawn pad would be in your face the moment you appear.
+- **Hatching** happens at three egg pads side by side, one of the four stations
+  around the hub's rim (see "The hub" below). They stand in the gap beside the spawn
+  pad, because a shop by the entrance is a shop people find.
 - The pad's sign carries the **name and price only**. Its prompt opens a panel with
   the odds, every pet the egg can hand over and what each one does, and the Hatch
   button. Showing that before any cash changes hands is deliberate: a gacha that
@@ -449,6 +447,33 @@ Crafter on before opening the machine is meant to pay, because rewarding the swa
 is the point of having an inventory. And the model is built on the **server** and
 welded to the player, so everyone sees everyone's pet with nothing to keep in
 sync; it's rebuilt on respawn for the same reason a carried unit is.
+
+### The hub
+
+The middle of the hub is open ground, and all four of its landmarks — the crafting
+machine, the prize wheel, the leaderboard and the egg pads — stand around the rim
+facing inward. A landmark in the centre is something to walk round rather than up
+to, and with four of them the middle was becoming a maze; from the rim each one has
+a face turned inward, so a player standing anywhere in the hub can see all four and
+walk straight at the one they want. It also fixes a read: a flat face — the wheel's
+dial, the board's rows, the machine's screen — is hard to read at an angle, and from
+the rim the whole open middle is square on to every one of them.
+
+They stand in the **gaps between the paths**. Six paths leave the walkway at even
+angles, so the midpoint between two of them — `(i - 0.5) / PlotCount` of a turn — is
+the only place a building isn't in the way of someone walking home. Positions are
+written in `STATION_GAPS` as offsets from the spawn pad's own gap rather than as
+angles, so the arrangement holds if `PlotCount` changes:
+
+- The spawn's own gap stays **clear** — it's where players arrive.
+- The **machine** takes the gap opposite it, so it's what you see on arrival.
+- The **wheel** and the **leaderboard** flank the machine, the mirror they always had.
+- The **egg pads** take the gap beside the spawn, three of them side by side.
+
+With six gardens that puts the machine 180° from the spawn, the wheel and board 120°
+either side, and the eggs 60° away, leaving two gaps empty. `STATION_INSET` is how
+far in from the walkway they stand — set by the deepest of them, the machine's
+plinth, with room to walk round the back.
 
 ## What Robux buys
 

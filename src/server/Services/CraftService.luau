@@ -101,7 +101,7 @@ local function slotFor(player: Player, slot: unknown): (Types.PlayerData?, Types
 end
 
 -- Feeding it. The unit has to be carried here in person: that walk is the
--- machine's whole reason for standing in the middle of the map.
+-- machine's whole reason for standing out in the hub rather than in the garden.
 local function add(player: Player, slot: unknown)
 	local data, craft = slotFor(player, slot)
 	if not (data and craft) then

@@ -5,7 +5,7 @@
 --
 -- The screen is drawn client-side, like the garden's upgrade board, so the
 -- machine shows every player their own slots and their own clock even though
--- there is only one of it in the middle of the hub.
+-- there is only one of it stood on the hub's rim.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

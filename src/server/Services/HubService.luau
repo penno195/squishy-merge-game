@@ -1,8 +1,14 @@
 --!strict
--- The middle of the map: the pad players spawn on, the moving walkway that
--- rings it, the paths out to each garden gate, the crafting station in the
--- middle, the prize wheel to one side of it, the leaderboard to the other, and the
--- egg pads in a row behind it.
+-- The middle of the map: the pad players spawn on, the moving walkway that rings
+-- it, the paths out to each garden gate, and the four stations -- the crafting
+-- machine, the prize wheel, the leaderboard and the egg pads -- stood around the
+-- rim of the hub pad.
+--
+-- Everything is on the rim and the middle is left open. A landmark in the centre is
+-- something to walk round rather than up to, and with four of them the middle was
+-- becoming a maze; on the rim each one has a face turned inward, so a player
+-- standing anywhere in the hub can see all four at once and walk straight at the one
+-- they want.
 --
 -- Built after GardenService, which owns the World folder and decides how far
 -- out the gardens sit.
@@ -25,19 +31,18 @@ local KERB_WIDTH = 1.2
 -- Segments overlap slightly so the walkway has no seams to trip on.
 local SEGMENT_OVERLAP = 1.06
 
--- The wheel is a side attraction now that the crafting station has the middle,
--- so it's stood off to one side rather than looming over the hub -- but big
--- enough to read its own face from the spawn pad: about 10 studs across, twice
--- a player's height. The disc's bottom edge stays put as the radius changes,
--- so the centre is the radius plus that clearance.
+-- The wheel: about 10 studs across, twice a player's height, which is big enough to
+-- read its own face from across the open middle. The disc's bottom edge stays put as
+-- the radius changes, so the centre is the radius plus that clearance. Where it
+-- stands is STATION_GAPS' business, not a constant here.
 local WHEEL_RADIUS = 5.2
 local WHEEL_CENTRE_Y = 8.2
 local WHEEL_THICKNESS = 1.25
-local WHEEL_OFFSET = 19
 -- How much of the disc behind shows as a rim around the drawn face.
 local FACE_INSET = 0.94
 
--- The crafting station, facing the spawn pad from the middle of the hub.
+-- The crafting station. The deepest of the four stations, which is what sets
+-- STATION_INSET.
 local MACHINE_WIDTH = 14
 local MACHINE_HEIGHT = 8
 local MACHINE_DEPTH = 7
@@ -45,8 +50,8 @@ local MACHINE_PLINTH = 1.2
 -- How much of the frame shows around the screen on the front of it.
 local SCREEN_EDGE = 1
 
--- The leaderboard, mirroring the wheel on the other side of the machine. Raised
--- on a post so the reading surface sits at eye level rather than at the ankles.
+-- The leaderboard, mirroring the wheel across the machine. Raised on a post so the
+-- reading surface sits at eye level rather than at the ankles.
 --
 -- One face, one ranking. A board nobody can see both sides of at once can't be
 -- compared, and a combined score of cash and rebirths is a number no player can
@@ -54,13 +59,12 @@ local SCREEN_EDGE = 1
 -- carries each player's rebirth count as a badge on their row, which is both
 -- facts in one ranking. A second metric, if it ever wants ranking properly,
 -- belongs on a second board standing beside this one.
-local BOARD_OFFSET = 19
 local BOARD_WIDTH = 14
 local BOARD_HEIGHT = 11
 local BOARD_THICKNESS = 1.2
 local BOARD_POST = 4
 local BOARD_EDGE = 0.7
--- Enough that a name is legible from the spawn pad, 22 studs away.
+-- Enough that a name is legible from the middle of the hub, about 30 studs away.
 local BOARD_PIXELS_PER_STUD = 34
 -- The saved field the board ranks.
 local BOARD_STAT = "TotalEarned"
@@ -73,16 +77,16 @@ local BOARD_STAT = "TotalEarned"
 -- ring at even angles, and a pad in front of one would be standing in the way of
 -- everyone walking home.
 local EGG_PLINTH = 1.6
-local EGG_PLINTH_WIDTH = 8
+-- Three of these have to fit across one gap, which at the station radius is about
+-- 29 studs of clear arc once the path width is taken off it.
+local EGG_PLINTH_WIDTH = 7
+local EGG_SPACING = 9.5
 -- Studs tall, and an egg is taller than it is wide. Big enough to read the sign
 -- over it from the machine, small enough not to hide what's behind it.
 local EGG_HEIGHT = 5
 local EGG_WIDTH = 3.6
 local EGG_SIGN_HEIGHT = 3
 local EGG_PIXELS_PER_STUD = 40
--- Clear of the walkway's inner edge by the pad's own half-width and a little more,
--- so nobody steps off the ring into an egg.
-local EGG_RIM_MARGIN = 3
 
 local HubService = {}
 
@@ -387,48 +391,56 @@ end
 -- One pad per egg in Balance.Pets.Eggs: a plinth, an egg sat on it, and a sign
 -- saying what it costs. The prompt is the whole interaction -- hatching is instant,
 -- so there is nothing to open a panel for; the panel is for the inventory.
--- Which gaps between the paths the pads stand in. The paths leave at
+-- Where a station can stand. The paths out to the gardens leave at
 -- `(i - 1) / PlotCount` of a turn, so the midpoint between two of them is at
--- `(i - 0.5) / PlotCount` -- those are the only angles a pad can stand at without
--- being in somebody's way.
---
--- There are usually more gaps than eggs, so the eggs are spread evenly around and
--- the whole arrangement is then rotated to whichever offset leaves every pad
--- furthest from the spawn pad. Standing on the spawn pad you should see the eggs
--- across the hub, not have one in your face.
-local function eggAngles(count: number): { number }
+-- `(i - 0.5) / PlotCount` -- those gaps are the only angles anything can stand at
+-- without being in the way of somebody walking home.
+local function gapAngle(gap: number): number
 	local gaps = Balance.PlotCount
-	local turn = math.pi * 2
-	local spawnAngle = math.atan2(-Hub.SpawnOffset, 0)
-	local step = math.max(math.floor(gaps / count), 1)
-
-	local function gapAngle(gap: number): number
-		return ((gap - 0.5) % gaps) / gaps * turn
-	end
-	-- Shortest way round between two angles, so 350 degrees and 10 are 20 apart.
-	local function separation(a: number, b: number): number
-		local delta = math.abs((a - b) % turn)
-		return math.min(delta, turn - delta)
-	end
-
-	local best: { number } = {}
-	local bestScore = -1
-	for offset = 0, math.max(step - 1, 0) do
-		local angles: { number } = {}
-		local score = math.huge
-		for slot = 1, count do
-			local angle = gapAngle(1 + offset + (slot - 1) * step)
-			table.insert(angles, angle)
-			score = math.min(score, separation(angle, spawnAngle))
-		end
-		if score > bestScore then
-			best, bestScore = angles, score
-		end
-	end
-	return best
+	return ((gap - 0.5) % gaps) / gaps * math.pi * 2
 end
 
-local function buildEggPads(parent: Instance, origin: CFrame, padRadius: number)
+-- Shortest way round between two angles, so 350 degrees and 10 are 20 apart.
+local function separation(a: number, b: number): number
+	local turn = math.pi * 2
+	local delta = math.abs((a - b) % turn)
+	return math.min(delta, turn - delta)
+end
+
+-- The gap the spawn pad points at. Everything else is placed relative to it, so the
+-- arrangement holds whatever PlotCount is and wherever the spawn ends up.
+local function spawnGap(): number
+	local spawnAngle = math.atan2(-Hub.SpawnOffset, 0)
+	local best, bestGap = math.huge, 1
+	for gap = 1, Balance.PlotCount do
+		local distance = separation(gapAngle(gap), spawnAngle)
+		if distance < best then
+			best, bestGap = distance, gap
+		end
+	end
+	return bestGap
+end
+
+-- Which gap each station takes, counted round from the spawn pad's own gap. Written
+-- as offsets rather than angles so the layout survives a change to PlotCount.
+--
+-- Gap 0 -- the spawn's own -- stays clear: it is where players arrive and walk in,
+-- and a building there would be the first thing they bump into. The machine goes
+-- opposite it, so it is what you see on arrival, with the wheel and the leaderboard
+-- flanking it the way they always did. The eggs take the gap beside the spawn,
+-- because a shop by the entrance is a shop people find.
+local STATION_GAPS: { [string]: number } = {
+	Eggs = 1,
+	Wheel = 2,
+	Machine = 3,
+	Board = 4,
+}
+-- How far in from the walkway's inner edge a station stands. Enough to clear the
+-- deepest of them -- the machine's plinth, at nine studs -- with room to walk round
+-- the back.
+local STATION_INSET = 9
+
+local function buildEggPads(parent: Instance, origin: CFrame)
 	local eggs = Balance.Pets.Eggs :: { Types.PetEggDef }
 	if #eggs == 0 then
 		return
@@ -437,15 +449,12 @@ local function buildEggPads(parent: Instance, origin: CFrame, padRadius: number)
 	pads.Name = "EggPads"
 	pads.Parent = parent
 
-	local radius = padRadius - EGG_PLINTH_WIDTH / 2 - EGG_RIM_MARGIN
-	local angles = eggAngles(#eggs)
-
 	for index, egg in eggs do
-		local angle = angles[index] or 0
-		local spot = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-		-- Turned to face the middle of the hub, so the sign reads from where the
-		-- player is standing rather than from the fence behind it.
-		local base = origin * CFrame.lookAt(spot, Vector3.new(0, 0, 0))
+		-- Side by side across the station, spread along its own tangent, so the three
+		-- read as one shop rather than three landmarks. Cheapest on the left, which
+		-- is the order Balance lists them in.
+		local offsetX = (index - (#eggs + 1) / 2) * EGG_SPACING
+		local base = origin * CFrame.new(offsetX, 0, 0)
 		local model = Instance.new("Model")
 		model.Name = `EggPad_{egg.Id}`
 		model.Parent = pads
@@ -479,7 +488,7 @@ local function buildEggPads(parent: Instance, origin: CFrame, padRadius: number)
 		local signY = eggY + EGG_HEIGHT / 2 + EGG_SIGN_HEIGHT / 2 + 0.6
 		local sign = makePart(
 			"Sign",
-			Vector3.new(EGG_PLINTH_WIDTH + 4, EGG_SIGN_HEIGHT, 0.4),
+			Vector3.new(EGG_SPACING - 1.5, EGG_SIGN_HEIGHT, 0.4),
 			base * CFrame.new(0, signY, 0),
 			Theme.Palette.Background,
 			Enum.Material.SmoothPlastic,
@@ -693,19 +702,24 @@ function HubService.init()
 
 	buildWalkway(hub, ringRadius)
 	buildPaths(hub, ringRadius, plotRadius)
-	buildMachine(hub, CFrame.identity)
-	-- Turned to look at the spawn pad rather than left facing -Z like the
-	-- machine it stands beside. A flat disc 19 studs to one side of a pad 22
-	-- studs out is viewed at about 41 degrees, and a circle seen at 41 degrees
-	-- is an ellipse three quarters as wide as it is tall -- which reads as a
-	-- warped wheel rather than an angled one.
-	local wheelPosition = Vector3.new(-WHEEL_OFFSET, 0, 0)
-	buildWheel(hub, CFrame.lookAt(wheelPosition, Vector3.new(0, 0, -Hub.SpawnOffset)))
-	-- Mirrored across the machine from the wheel, and turned to the spawn pad
-	-- for the same reason: a flat face read at an angle is a hard read.
-	local boardPosition = Vector3.new(BOARD_OFFSET, 0, 0)
-	buildLeaderboard(hub, CFrame.lookAt(boardPosition, Vector3.new(0, 0, -Hub.SpawnOffset)))
-	buildEggPads(hub, CFrame.identity, padDiameter / 2)
+
+	-- Every station on the rim, in a gap between the paths, turned to face the middle
+	-- of the hub. Facing inward rather than at the spawn pad is what the move buys:
+	-- a flat face -- the wheel's dial, the board's rows, the machine's screen -- is a
+	-- hard read at an angle, and from the rim the whole open middle is square on to
+	-- all four of them.
+	local radius = padDiameter / 2 - STATION_INSET
+	local centre = Vector3.new(0, 0, 0)
+	local function station(name: string): CFrame
+		local angle = gapAngle(spawnGap() + STATION_GAPS[name])
+		local spot = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+		return CFrame.lookAt(spot, centre)
+	end
+
+	buildMachine(hub, station("Machine"))
+	buildWheel(hub, station("Wheel"))
+	buildLeaderboard(hub, station("Board"))
+	buildEggPads(hub, station("Eggs"))
 end
 
 return HubService

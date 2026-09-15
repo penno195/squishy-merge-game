@@ -465,7 +465,8 @@ return {
 		},
 	},
 
-	-- The prize wheel in the middle of the hub. One free spin a day, more for
+	-- The prize wheel, one of the four stations round the hub's rim. One free spin
+	-- a day, more for
 	-- gems. `Reward` is the same shape as a daily reward, so RewardService
 	-- grants wheel prizes with no special cases.
 	Wheel = {
@@ -489,7 +490,8 @@ return {
 		} :: { Types.WheelPrize },
 	},
 
-	-- The crafting station standing in the middle of the hub. Feed it ordinary
+	-- The crafting station, stood on the hub's rim opposite the spawn pad. Feed it
+	-- ordinary
 	-- units, wait, and it makes something back -- usually a few tiers up, and
 	-- sometimes one of the theme's sparkles.
 	--
