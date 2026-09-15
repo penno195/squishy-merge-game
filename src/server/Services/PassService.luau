@@ -4,6 +4,7 @@
 
 local MarketplaceService = game:GetService("MarketplaceService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local ActionService = require(script.Parent.ActionService)
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -29,12 +30,33 @@ for name, id in Config.Settings.GamePasses do
 	end
 end
 
+-- Passes Settings.StudioPasses hands over, worked out once. Empty on a live
+-- server whatever the list says, so there is no way for it to leak into one.
+--
+-- A name that isn't a pass is warned about rather than skipped quietly: a typo
+-- here looks exactly like a pass whose effect doesn't work, which is a bad
+-- afternoon.
+local studioPasses: { [string]: boolean } = {}
+if RunService:IsStudio() then
+	for _, name in Config.Settings.StudioPasses do
+		if Config.Settings.GamePasses[name] == nil then
+			warn(`Settings.StudioPasses names "{name}", which is not a pass in Settings.GamePasses`)
+		else
+			studioPasses[name] = true
+		end
+	end
+end
+
 -- Yields while ownership is checked.
 function PassService.load(player: Player)
 	local passes = {}
 	owned[player] = passes
 	for name, id in Config.Settings.GamePasses do
-		if id ~= 0 then
+		if studioPasses[name] then
+			-- Granted outright, which also skips a network call that would only
+			-- be asking about an ID of 0.
+			passes[name] = true
+		elseif id ~= 0 then
 			local ok, result = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, id)
 			passes[name] = ok and result == true
 		end

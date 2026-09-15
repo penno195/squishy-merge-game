@@ -431,6 +431,26 @@ Three of them are worth knowing the shape of:
   ever governs the **offer**: a pass bought in its last second is still honoured
   whenever the player next appears.
 
+### Playing the passes before they exist
+
+An ID of `0` is never checked against anything, so until the experience is
+published every pass effect sits behind a purchase that cannot happen. Two
+Studio-only settings close that gap, both ignored outright by a live server:
+
+- `Settings.StudioPasses` lists passes treated as owned. It adds to real
+  ownership rather than replacing it, so once the IDs exist a Studio session shows
+  what the player actually owns plus whatever is being tested. A name that isn't a
+  pass is warned about, because a typo there looks exactly like an effect that
+  doesn't work.
+- In Studio the shop also draws entries whose ID is still `0`, greyed out and
+  captioned "No ID yet". Otherwise that panel reads "nothing for sale yet" for the
+  whole of development and none of its layout is seen until the day it goes live.
+
+`StarterPack` is deliberately not in the default list: owning it is what withdraws
+the offer, so listing it hides the timed card and its countdown. Add it to watch
+the bundle land on join instead. You can't see both in one session, which is the
+point of a one-time offer.
+
 No pass effect is written into `Economy`. That module stays pure and takes each
 one as an argument — a multiplier, a bias, a number of spaces — which the server
 supplies from `PassService` and the client from the `Passes` map in its snapshot.

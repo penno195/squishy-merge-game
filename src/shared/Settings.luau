@@ -8,6 +8,7 @@ export type Settings = {
 	LeaderboardPrefix: string,
 	StudioGems: number,
 	StudioPlaytimeSpeed: number,
+	StudioPasses: { string },
 	GamePasses: { [string]: number },
 	Products: { [string]: number },
 }
@@ -29,6 +30,37 @@ local settings: Settings = {
 	-- ninety-minute rung lands four and a half minutes in. A live server always
 	-- runs it at 1. Set to 1 to test the real pace.
 	StudioPlaytimeSpeed = 20,
+
+	-- Passes treated as owned **in Studio only**, named as they're keyed below.
+	-- A live server ignores this list entirely.
+	--
+	-- Without it no pass can be played at all until the experience is published
+	-- and its IDs are filled in, because an ID of 0 is never checked against
+	-- anything -- so every pass effect would sit untested behind a purchase that
+	-- cannot happen yet. This grants the effect without the purchase.
+	--
+	-- It adds to real ownership rather than replacing it, so once the IDs exist a
+	-- Studio session shows what the player actually owns plus whatever is listed
+	-- here. Two things to remember while it's non-empty: the shop still hides any
+	-- entry whose ID is 0, so this tests the *effects* and not the buying; and
+	-- some of them change the baseline -- LuckCharm tilts every drop, so the mix
+	-- you see is not the one a new player sees.
+	--
+	-- Set to {} to play as someone who has bought nothing.
+	--
+	-- "StarterPack" is left out on purpose. Owning it is what withdraws the offer,
+	-- so listing it hides the timed card and its countdown -- the one piece of
+	-- shop UI worth looking at. Add it to watch the bundle land on join instead;
+	-- you can't see both in one session, because that is the point of it.
+	StudioPasses = {
+		"DoubleCash",
+		"AutoMerge",
+		"FastSpawn",
+		"LuckCharm",
+		"AutoCollect",
+		"CraftSlot",
+		"BiggerGarden",
+	},
 
 	-- Asset IDs are unique to each Roblox experience, so every reskin needs its own.
 	-- 0 means "not set up yet": the matching shop button is hidden.

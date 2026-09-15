@@ -19,10 +19,17 @@ between sessions.)
 
 Batch 3 turned out not to need publishing to build after all. The `id ~= 0` check
 was already threaded through `PassService`, `ProductService` and the shop panel,
-so all five items are written with their IDs at `0`: the effects are live and
-testable in Studio right now, and the only thing publishing adds is the ability to
-charge for them. What is left is to create eight passes and four products in
-Studio and paste the IDs into `src/shared/Settings.luau`.
+so all five items are written with their IDs at `0`. `Settings.StudioPasses` then
+makes the effects playable without any ID, and in Studio the shop draws its unset
+entries greyed out, so the panel can be reviewed too -- see "Playing the passes
+before they exist" in the README.
+
+What publishing adds is the ability to charge. The remaining steps are: publish
+from Studio (File -> Publish to Roblox As), create eight passes and four products
+on the Creator Dashboard, paste the IDs into `src/shared/Settings.luau`, and fill
+in `.env` from `.env.example` so `scripts/publish.sh` can push builds without
+opening Studio again. Publishing also unblocks the weekly race, which cannot be
+tested before it.
 
 `tests/README.md` explains how to run the headless checks — worth doing before
 and after any change to the shared modules.

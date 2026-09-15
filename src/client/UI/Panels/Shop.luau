@@ -1,6 +1,12 @@
 --!strict
 -- Robux shop: gamepasses and developer products. Entries whose ID is still 0
 -- in Settings are hidden, so a new reskin shows only what it has set up.
+--
+-- Except in Studio, where they're shown greyed out instead. An unpublished place
+-- has no IDs at all, so the rule above means this panel reads "nothing for sale
+-- yet" for the whole of development and none of its layout is ever seen until the
+-- day it goes live. A disabled card is honest about what it is and makes the panel
+-- reviewable; nothing about it is reachable on a real server.
 
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
@@ -18,6 +24,10 @@ local LocalPlayer = Players.LocalPlayer
 local Monetisation = Config.Balance.Monetisation
 local Palette = Components.Palette
 local Theme = Config.Theme
+
+-- Whether an entry with no ID is drawn at all. See the note at the top.
+local SHOW_UNSET = RunService:IsStudio()
+local UNSET_TEXT = "No ID yet"
 
 local Shop = {}
 
@@ -152,6 +162,14 @@ function Shop.create(parent: Instance)
 			Parent = card,
 		}, onBuy)
 
+		if id == 0 then
+			-- Nothing to ask Roblox about and nothing to prompt, so the button
+			-- says so rather than opening a purchase for asset 0.
+			button.setText(UNSET_TEXT)
+			button.setEnabled(false)
+			return card, button
+		end
+
 		-- Show the real Robux price once Roblox answers.
 		task.spawn(function()
 			local ok, info = pcall(MarketplaceService.GetProductInfo, MarketplaceService, id, infoType)
@@ -169,7 +187,7 @@ function Shop.create(parent: Instance)
 
 	for _, pass in PASSES do
 		local id = Config.Settings.GamePasses[pass.Key]
-		if id ~= 0 then
+		if id ~= 0 or SHOW_UNSET then
 			local card, button = addEntry(pass.Title, pass.Description, id, Enum.InfoType.GamePass, function()
 				MarketplaceService:PromptGamePassPurchase(LocalPlayer, id)
 			end)
@@ -198,7 +216,7 @@ function Shop.create(parent: Instance)
 	end
 
 	for key, id in Config.Settings.Products do
-		if id ~= 0 and Monetisation.ProductRewards[key] then
+		if (id ~= 0 or SHOW_UNSET) and Monetisation.ProductRewards[key] then
 			local text = rewardText(Monetisation.ProductRewards[key])
 			addEntry(PRODUCT_TITLES[key] or key, text, id, Enum.InfoType.Product, function()
 				MarketplaceService:PromptProductPurchase(LocalPlayer, id)
@@ -236,7 +254,9 @@ function Shop.create(parent: Instance)
 		latest = snapshot
 		local passes = snapshot.Passes or {}
 		for key, button in passButtons do
-			if passes[key] then
+			-- "Owned" would be a lie on an entry with no ID -- in Studio that's
+			-- Settings.StudioPasses talking, not a purchase.
+			if passes[key] and Config.Settings.GamePasses[key] ~= 0 then
 				button.setText("Owned")
 				button.setEnabled(false)
 			end
