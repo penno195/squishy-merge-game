@@ -79,14 +79,19 @@ end
 
 -- The top page of a week's board, ranked. One page covers every place that
 -- pays, since Prizes is far shorter than Size.
-local function readWeek(week: number): { Entry }
+--
+-- `nil` means the board could not be read -- no DataStore access, or the request
+-- failed -- and an empty table means it was read and nobody is on it. Collapsing
+-- those two into one empty table is what let a failed read be reported to
+-- players as "you didn't place", which then marked the week paid.
+local function readWeek(week: number): { Entry }?
 	local store = weekStore(week)
 	if not store then
-		return {}
+		return nil
 	end
 	local ok, pages = pcall(store.GetSortedAsync, store, false, LeaderboardBalance.Size)
 	if not ok then
-		return {}
+		return nil
 	end
 	local entries: { Entry } = {}
 	for _, item in pages:GetCurrentPage() do
@@ -193,14 +198,25 @@ local function refresh()
 	-- has been up since before the weekend would otherwise pay out on a week
 	-- that is now two weeks old.
 	if standingsWeek ~= thisWeek - 1 then
-		standings = readWeek(thisWeek - 1)
-		standingsWeek = thisWeek - 1
-		for _, player in Players:GetPlayers() do
-			StateService.markDirty(player)
+		local lastWeek = readWeek(thisWeek - 1)
+		-- Left alone if the read failed, so this runs again on the next refresh.
+		-- Adopting the week regardless is what made one failure permanent.
+		if lastWeek then
+			standings = lastWeek
+			standingsWeek = thisWeek - 1
+			for _, player in Players:GetPlayers() do
+				StateService.markDirty(player)
+			end
 		end
 	end
 	if weekly then
-		latest[WEEKLY_BOARD] = readWeek(thisWeek)
+		-- A failed read leaves the last good page up. The race board is only ever
+		-- a minute out of date anyway, and stale rankings beat a board that
+		-- blinks empty whenever a request drops.
+		local thisWeekEntries = readWeek(thisWeek)
+		if thisWeekEntries then
+			latest[WEEKLY_BOARD] = thisWeekEntries
+		end
 	end
 
 	for stat, store in stores do
@@ -330,10 +346,13 @@ function LeaderboardService.init()
 	-- a player who won last week may well be joining in the first minute.
 	task.spawn(function()
 		local lastWeek = Economy.currentWeek(os.time()) - 1
-		standings = readWeek(lastWeek)
-		standingsWeek = lastWeek
-		for _, player in Players:GetPlayers() do
-			StateService.markDirty(player)
+		local entries = readWeek(lastWeek)
+		if entries then
+			standings = entries
+			standingsWeek = lastWeek
+			for _, player in Players:GetPlayers() do
+				StateService.markDirty(player)
+			end
 		end
 	end)
 
