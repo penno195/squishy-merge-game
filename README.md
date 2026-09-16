@@ -688,9 +688,12 @@ A few things worth knowing:
 
 ## Publishing a new game from this base
 
+`docs/launch-plan.md` walks through the whole of it step by step, from the first
+publish to playtesting and switching the shop on.
+
 Each Roblox experience has its own asset IDs, so per game:
 
-- Create the gamepasses and developer products in Studio, then put their IDs in
+- Create the gamepasses and developer products on Creator Hub, then put their IDs in
   `GamePasses` and `Products` in `src/shared/Settings.luau`. An ID left at `0`
   simply hides that shop entry — which means the whole of "What Robux buys" above
   can be built and played before the experience exists, and switched on by pasting
