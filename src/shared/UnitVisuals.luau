@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(script.Parent.Config)
 local Economy = require(script.Parent.Economy)
 local Format = require(script.Parent.Format)
+local Tint = require(script.Parent.Tint)
 local Types = require(script.Parent.Types)
 
 local Theme = Config.Theme
@@ -28,6 +29,13 @@ local SPARKLE_TEXTURE = "rbxasset://textures/particles/sparkles_main.dds"
 local UnitVisuals = {}
 
 UnitVisuals.Tag = "MergeUnit"
+
+-- The blob's proportions: width over height, and where its face sits as a
+-- fraction of its height. The feature vocabulary below is laid out against
+-- these, which is also what lets it be moved onto a model of another shape.
+local BLOB_WIDTH = 1.25
+local BLOB_EYE_HEIGHT = 0.6
+local BLOB_MOUTH_HEIGHT = 0.36
 
 function UnitVisuals.blobHeight(tier: number): number
 	return 2.6 + (tier - 1) * 0.18
@@ -129,7 +137,7 @@ local function addSmile(model: Model, width: number, height: number, spread: num
 	for index = 1, SMILE_SEGMENTS do
 		local across = (index - 1) / (SMILE_SEGMENTS - 1) * 2 - 1
 		local x = spread * across
-		local y = height * 0.36 + curve * across * across
+		local y = height * BLOB_MOUTH_HEIGHT + curve * across * across
 		-- The body is an ellipsoid `width` across and `height` tall centred at
 		-- half its height, so this is where its front surface sits under (x, y).
 		-- Sunk by a third of its own depth, which leaves the segment proud of
@@ -501,7 +509,7 @@ local function buildBlob(def: Types.UnitDef, tier: number, heightOverride: numbe
 	local model = Instance.new("Model")
 	local color = def.Color
 	local height = heightOverride or UnitVisuals.blobHeight(tier)
-	local width = height * 1.25
+	local width = height * BLOB_WIDTH
 
 	local body = makeBall("Body", Vector3.new(width, height, width), CFrame.new(0, height / 2, 0), color, model)
 	model.PrimaryPart = body
@@ -509,7 +517,7 @@ local function buildBlob(def: Types.UnitDef, tier: number, heightOverride: numbe
 	-- Eyes on the -Z (front) face, each with a small highlight.
 	local eyeSize = width * 0.14
 	for _, side in { -1, 1 } do
-		local eye = CFrame.new(side * width * 0.18, height * 0.6, -width * 0.44)
+		local eye = CFrame.new(side * width * 0.18, height * BLOB_EYE_HEIGHT, -width * 0.44)
 		makeBall("Eye", Vector3.one * eyeSize, eye, DARK, model)
 		makeBall(
 			"Shine",
@@ -529,6 +537,163 @@ local function buildBlob(def: Types.UnitDef, tier: number, heightOverride: numbe
 
 	addFeatures(model, def, width, height)
 
+	return model
+end
+
+-- A theme's own model can wear the same features as the blob, so long as it
+-- says what shape it is. Without that there's no telling where its head is, and
+-- ears bolted on by guesswork would float beside it, so a model that doesn't say
+-- simply goes without. The model carries, as attributes:
+--
+--   BodyProfile  half-widths of its "Body" part, as fractions of that part's full
+--                width, at evenly spaced heights from its base to its top
+--   EyeHeight    the middle of its eyes, as a fraction of the body's height
+--   MouthHeight  the middle of its mouth, the same way
+--
+-- scripts/export-design-model.mjs measures all three off the mesh. The model
+-- must stand upright facing -Z, like everything else in ThemeAssets.
+type Outline = {
+	Body: BasePart,
+	Profile: { number },
+	EyeHeight: number,
+	MouthHeight: number,
+}
+
+local function readOutline(model: Model): Outline?
+	local body = model:FindFirstChild("Body")
+	local profileText = model:GetAttribute("BodyProfile")
+	local eyeHeight = model:GetAttribute("EyeHeight")
+	local mouthHeight = model:GetAttribute("MouthHeight")
+	if
+		not (body and body:IsA("BasePart"))
+		or typeof(profileText) ~= "string"
+		or typeof(eyeHeight) ~= "number"
+		or typeof(mouthHeight) ~= "number"
+	then
+		return nil
+	end
+	local profile = {}
+	for _, text in string.split(profileText, ",") do
+		local value = tonumber(text)
+		if not value then
+			return nil
+		end
+		table.insert(profile, value)
+	end
+	if #profile < 2 or not (0 < mouthHeight and mouthHeight < eyeHeight and eyeHeight < 1) then
+		return nil
+	end
+	return { Body = body, Profile = profile, EyeHeight = eyeHeight, MouthHeight = mouthHeight }
+end
+
+-- Where a height on the blob lands on the model: the base, the mouth, the eyes
+-- and the crown are pinned to the model's own, and everything between is spread
+-- evenly. Past the crown or below the base it carries straight on, so a crown
+-- or a star still floats as far above the head as it did on the blob.
+local function outlineHeight(outline: Outline, t: number): number
+	local mouth, eye = outline.MouthHeight, outline.EyeHeight
+	if t <= 0 or t >= 1 then
+		return t
+	elseif t < BLOB_MOUTH_HEIGHT then
+		return t / BLOB_MOUTH_HEIGHT * mouth
+	elseif t < BLOB_EYE_HEIGHT then
+		return mouth + (t - BLOB_MOUTH_HEIGHT) / (BLOB_EYE_HEIGHT - BLOB_MOUTH_HEIGHT) * (eye - mouth)
+	end
+	return eye + (t - BLOB_EYE_HEIGHT) / (1 - BLOB_EYE_HEIGHT) * (1 - eye)
+end
+
+local function outlineHalfWidth(outline: Outline, t: number): number
+	local profile = outline.Profile
+	local position = math.clamp(t, 0, 1) * (#profile - 1) + 1
+	local below = math.min(math.floor(position), #profile - 1)
+	return profile[below] + (profile[below + 1] - profile[below]) * (position - below)
+end
+
+-- Moves a point built against the blob onto the model: up or down to the
+-- matching height, then in or out by how much wider the model is than the blob
+-- there, so something sitting on the blob's surface sits on the model's. Both
+-- are measured from the base centre, in fractions of the same width and height.
+--
+-- The widths are compared inside the body only. Right at the crown or the base
+-- a ball narrows to a point that a bun or a box doesn't, and the ratio there
+-- would fling a pair of ears apart or crush them together; what sits beyond is
+-- spread like the shoulders under it.
+local WIDTH_MATCH_RANGE = { 0.1, 0.9 }
+
+local function onOutline(outline: Outline, point: Vector3, height: number): Vector3
+	local t = point.Y / height
+	local matched = math.clamp(t, WIDTH_MATCH_RANGE[1], WIDTH_MATCH_RANGE[2])
+	local ballHalfWidth = 0.5 * math.sqrt(1 - (2 * matched - 1) ^ 2)
+	local spread = outlineHalfWidth(outline, outlineHeight(outline, matched)) / ballHalfWidth
+	return Vector3.new(point.X * spread, outlineHeight(outline, t) * height, point.Z * spread)
+end
+
+local function dressModel(model: Model, def: Types.UnitDef)
+	local names: { string } = def.Features or {}
+	if #names == 0 then
+		return
+	end
+	local outline = readOutline(model)
+	if not outline then
+		return
+	end
+	local body = outline.Body
+	local width, height = body.Size.X, body.Size.Y
+	local base = body.Position - Vector3.new(0, height / 2, 0)
+
+	-- Built against a blob of the body's size at the origin, exactly as the blob
+	-- would be, then each part moved onto the model. A stand-in mouth goes in
+	-- first, where the blob's would be, so a snout can take it out onto the end
+	-- of the muzzle; the model's real mouth then follows it.
+	local scratch = Instance.new("Model")
+	local mouthFrom = Vector3.new(0, height * BLOB_MOUTH_HEIGHT, -width * 0.48)
+	local standIn = makePart("Mouth", Vector3.one * 0.1, CFrame.new(mouthFrom), DARK, Enum.PartType.Block, scratch)
+	addFeatures(scratch, def, width, height)
+	local mouthTo = standIn.Position
+	standIn:Destroy()
+
+	for _, part in scratch:GetChildren() do
+		if part:IsA("BasePart") then
+			part.CFrame = part.CFrame.Rotation + base + onOutline(outline, part.Position, height)
+			part.Parent = model
+		end
+	end
+	scratch:Destroy()
+
+	local mouthShift = onOutline(outline, mouthTo, height) - onOutline(outline, mouthFrom, height)
+	local wide = table.find(names, "WideMouth") ~= nil
+	for _, child in model:GetChildren() do
+		if child.Name == "Mouth" and child:IsA("BasePart") then
+			child.CFrame += mouthShift
+			if wide then
+				-- The blob's wide grin is half again as wide and a touch deeper.
+				-- A modelled mouth can't be relaid, but stretching it gets there.
+				child.Size *= Vector3.new(SMILES.Wide.Spread / SMILES.Default.Spread, 1.3, 1)
+			end
+		end
+	end
+end
+
+-- A theme's own model, standing in for a blob `blobHeight` tall. With no `Scale`
+-- it's sized to be as wide as that blob would be, so the ladder grows the same
+-- way whichever it's built from and garden spacing tuned for blobs still holds.
+local function buildFromTemplate(template: Model, def: Types.UnitDef, color: Color3, blobHeight: number): Model
+	local model = template:Clone()
+	local body = model:FindFirstChild("Body")
+	if def.Scale then
+		model:ScaleTo(def.Scale)
+	elseif body and body:IsA("BasePart") then
+		model:ScaleTo(blobHeight * BLOB_WIDTH / body.Size.X)
+	end
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanCollide = false
+			descendant.CanTouch = false
+		end
+	end
+	Tint.apply(model, color)
+	dressModel(model, def)
 	return model
 end
 
@@ -664,22 +829,10 @@ function UnitVisuals.buildPet(record: Types.PetRecord): Model?
 	local color = Economy.petColor(record)
 	local template = findThemeModel(def.Model)
 
-	local model: Model
-	if template then
-		model = template:Clone()
-		if def.Scale then
-			model:ScaleTo(def.Scale)
-		end
-		for _, descendant in model:GetDescendants() do
-			if descendant:IsA("BasePart") then
-				descendant.Anchored = true
-				descendant.CanCollide = false
-				descendant.CanTouch = false
-			end
-		end
-	else
-		model = buildBlob({ Name = def.Name, Color = color, Features = def.Features }, 1, PET_HEIGHT)
-	end
+	local dressing: Types.UnitDef = { Name = def.Name, Color = color, Features = def.Features, Scale = def.Scale }
+	local model = if template
+		then buildFromTemplate(template, dressing, color, PET_HEIGHT)
+		else buildBlob(dressing, 1, PET_HEIGHT)
 
 	-- A variant pet glows if the theme's styling says that variant glows, which is
 	-- the same rule a variant unit follows.
@@ -733,24 +886,9 @@ function UnitVisuals.build(tier: number): Model
 	local def = Config.Units[tier]
 	local template = findThemeModel(def.Model)
 
-	local model: Model
-	if template then
-		model = template:Clone()
-		if def.Scale then
-			model:ScaleTo(def.Scale)
-		end
-		for _, descendant in model:GetDescendants() do
-			if descendant:IsA("BasePart") then
-				descendant.Anchored = true
-				descendant.CanCollide = false
-				descendant.CanTouch = false
-			end
-		end
-	else
-		-- Features are only for the built blob. A supplied model already is the
-		-- artwork, and bolting procedural ears onto it would fight it.
-		model = buildBlob(def, def.Tier or tier)
-	end
+	local model = if template
+		then buildFromTemplate(template, def, def.Color, UnitVisuals.blobHeight(def.Tier or tier))
+		else buildBlob(def, def.Tier or tier)
 
 	if def.Sparkle or def.Shine then
 		addShine(model, def.Color)

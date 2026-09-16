@@ -1,0 +1,57 @@
+# SakuraSquishyBun, exported from squishy-bun.js by scripts/export-design-model.mjs
+
+newmtl Body
+Kd 0.4314 0.8039 0.9412
+Ks 0.2000 0.2000 0.2000
+Ns 124
+d 1.0000
+
+newmtl Knot
+Kd 0.3608 0.7608 0.9176
+Ks 0.2000 0.2000 0.2000
+Ns 116
+d 1.0000
+
+newmtl Eyes
+Kd 0.0824 0.0706 0.1020
+Ks 0.2000 0.2000 0.2000
+Ns 116
+d 1.0000
+
+newmtl EyeShine
+Kd 1.0000 1.0000 1.0000
+Ks 0.2000 0.2000 0.2000
+Ns 110
+d 1.0000
+
+newmtl Mouth
+Kd 0.1020 0.0627 0.0863
+Ks 0.2000 0.2000 0.2000
+Ns 140
+d 1.0000
+
+newmtl Blush
+Kd 1.0000 0.4353 0.6118
+Ks 0.2000 0.2000 0.2000
+Ns 90
+d 1.0000
+
+# Studio setup -- select the imported model, then paste into the command bar:
+#
+#   local model = game.Selection:Get()[1]
+#   model.Name = "SakuraSquishyBun"
+#   local parts = {
+#     Body = { Color = Color3.fromRGB(110, 205, 240), Tint = 0 }, -- #6ecdf0
+#     Knot = { Color = Color3.fromRGB(92, 194, 234), Tint = 0.07 }, -- #5cc2ea
+#     Eyes = { Color = Color3.fromRGB(21, 18, 26), Tint = nil }, -- #15121a
+#     EyeShine = { Color = Color3.fromRGB(255, 255, 255), Tint = nil }, -- #ffffff
+#     Mouth = { Color = Color3.fromRGB(26, 16, 22), Tint = nil }, -- #1a1016
+#     Blush = { Color = Color3.fromRGB(255, 111, 156), Tint = nil }, -- #ff6f9c
+#   }
+#   for _, p in model:GetDescendants() do
+#     local spec = p:IsA("BasePart") and parts[p.Name]
+#     if spec then p.Color = spec.Color; p.Material = Enum.Material.SmoothPlastic; p:SetAttribute("Tint", spec.Tint) end
+#   end
+#   model:SetAttribute("BodyProfile", "0.168,0.342,0.402,0.436,0.458,0.473,0.484,0.489,0.494,0.492,0.489,0.486,0.473,0.461,0.441,0.418,0.385,0.345,0.286,0.202,0.040")
+#   model:SetAttribute("EyeHeight", 0.502)
+#   model:SetAttribute("MouthHeight", 0.257)

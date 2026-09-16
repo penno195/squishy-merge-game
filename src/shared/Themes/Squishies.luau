@@ -65,6 +65,11 @@ local theme: Types.Theme = {
 	-- a theme that omits `Props` simply gets a bare map. Giant versions of the
 	-- toys the game is made of -- butter sticks, blobs and donuts -- so the
 	-- skyline is obviously part of the same world as the things in the gardens.
+	--
+	-- The squishies among them are the same bun the gardens are full of, in the
+	-- colours the blobs had. A bun is wider for its height than a blob, so each
+	-- is about a sixth shorter than the blob it replaced, which keeps the same
+	-- footprint and the same clearance round it.
 	Props = {
 		-- Ornament scale, in front of the gardens: these are things you walk
 		-- past on the way in, so nothing here is taller than a couple of
@@ -77,38 +82,22 @@ local theme: Types.Theme = {
 				Color = Color3.fromRGB(255, 226, 150),
 				Accent = Color3.fromRGB(255, 252, 240),
 			},
-			{
-				Shape = "Blob",
-				Height = 8,
-				Color = Color3.fromRGB(255, 160, 190),
-				Accent = Color3.fromRGB(255, 255, 255),
-			},
-			{
-				Shape = "Blob",
-				Height = 7,
-				Color = Color3.fromRGB(150, 220, 255),
-				Accent = Color3.fromRGB(255, 255, 255),
-			},
+			{ Model = "SakuraSquishyBun", Height = 6.5, Color = Color3.fromRGB(255, 160, 190) },
+			{ Model = "SakuraSquishyBun", Height = 6, Color = Color3.fromRGB(150, 220, 255) },
 			{
 				Shape = "Donut",
 				Height = 8,
 				Color = Color3.fromRGB(235, 195, 145),
 				Accent = Color3.fromRGB(255, 140, 200),
 			},
-			-- A real model rather than a built shape. `Height` does nothing
-			-- here -- a supplied model is sized by `Scale` alone, off whatever
-			-- it was modelled at, which for this one is 6.4 studs long.
+			-- Sized by `Scale` rather than `Height`, off whatever it was
+			-- modelled at, which for this one is 6.4 studs long.
 			{ Model = "ButterSquishy", Scale = 1.6, Color = Color3.fromRGB(250, 206, 80) },
 		},
 		-- Out in the open ground between the walkway and the gardens, at the
 		-- size of a thing you'd stop and look at on the way home.
 		Approach = {
-			{
-				Shape = "Blob",
-				Height = 12,
-				Color = Color3.fromRGB(255, 200, 120),
-				Accent = Color3.fromRGB(255, 255, 255),
-			},
+			{ Model = "SakuraSquishyBun", Height = 10, Color = Color3.fromRGB(255, 200, 120) },
 			{
 				Shape = "Butter",
 				Height = 10,
@@ -139,18 +128,8 @@ local theme: Types.Theme = {
 				Color = Color3.fromRGB(255, 222, 130),
 				Accent = Color3.fromRGB(255, 250, 235),
 			},
-			{
-				Shape = "Blob",
-				Height = 20,
-				Color = Color3.fromRGB(190, 160, 255),
-				Accent = Color3.fromRGB(255, 255, 255),
-			},
-			{
-				Shape = "Blob",
-				Height = 19,
-				Color = Color3.fromRGB(140, 230, 150),
-				Accent = Color3.fromRGB(255, 255, 255),
-			},
+			{ Model = "SakuraSquishyBun", Height = 16.5, Color = Color3.fromRGB(190, 160, 255) },
+			{ Model = "SakuraSquishyBun", Height = 15.5, Color = Color3.fromRGB(140, 230, 150) },
 		},
 		-- The skyline out past the gardens, where only the silhouette carries
 		-- and nothing is in anyone's way. Capped at about 26 studs across so
@@ -163,12 +142,7 @@ local theme: Types.Theme = {
 				Color = Color3.fromRGB(235, 195, 145),
 				Accent = Color3.fromRGB(150, 225, 255),
 			},
-			{
-				Shape = "Blob",
-				Height = 22,
-				Color = Color3.fromRGB(255, 180, 210),
-				Accent = Color3.fromRGB(255, 255, 255),
-			},
+			{ Model = "SakuraSquishyBun", Height = 18, Color = Color3.fromRGB(255, 180, 210) },
 			{
 				Shape = "Butter",
 				Height = 16,
@@ -185,10 +159,14 @@ local theme: Types.Theme = {
 		},
 	},
 
-	-- `Features` dresses the blob from the vocabulary in UnitVisuals, so a thing
+	-- Every squishy is the one bun from the design, in its own colour and wearing
+	-- its own features. Delete this line and they are all blobs again.
+	CreatureModel = "SakuraSquishyBun",
+
+	-- `Features` dresses the body from the vocabulary in UnitVisuals, so a thing
 	-- called a Pup has ears and a snout and a thing called an Octo has arms. The
 	-- first rungs are named after sweets rather than animals, and they stay plain
-	-- blobs on purpose: it's what makes the first animal, six merges in, feel
+	-- on purpose: it's what makes the first animal, six merges in, feel
 	-- like it was worth getting to.
 	Units = {
 		{ Name = "Droplet", Color = Color3.fromRGB(150, 220, 255) },

@@ -14,6 +14,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Tint = require(script.Parent.Tint)
 local Types = require(script.Parent.Types)
 
 local PropVisuals = {}
@@ -328,17 +329,22 @@ local SHAPES: { [string]: Builder } = {
 	Donut = buildDonut,
 }
 
+-- Props first, then Units: a giant version of a creature from the garden is
+-- the same model stood somewhere else, and shouldn't need a second copy kept
+-- in step with the first.
 local function findThemeModel(name: string?): Model?
 	if not name then
 		return nil
 	end
 	local assets = ReplicatedStorage:FindFirstChild("ThemeAssets")
-	local props = assets and assets:FindFirstChild("Props")
-	local model = props and props:FindFirstChild(name)
-	if model and model:IsA("Model") then
-		return model
+	for _, folderName in { "Props", "Units" } do
+		local folder = assets and assets:FindFirstChild(folderName)
+		local model = folder and folder:FindFirstChild(name)
+		if model and model:IsA("Model") then
+			return model
+		end
 	end
-	warn(`Theme prop "{name}" not found in ReplicatedStorage.ThemeAssets.Props; building a shape instead`)
+	warn(`Theme prop "{name}" not found in ReplicatedStorage.ThemeAssets.Props or .Units; building a shape instead`)
 	return nil
 end
 
@@ -350,12 +356,20 @@ function PropVisuals.build(def: Types.PropDef, base: CFrame, parent: Instance): 
 		local model = template:Clone()
 		if def.Scale then
 			model:ScaleTo(def.Scale)
+		elseif def.Height then
+			local _, size = model:GetBoundingBox()
+			model:ScaleTo(def.Height / size.Y)
 		end
+		-- Solid, like the built shapes, whose parts collide by default. A theme
+		-- model often arrives with collision off, because the same file also
+		-- serves as a unit that players walk over.
 		for _, descendant in model:GetDescendants() do
 			if descendant:IsA("BasePart") then
 				descendant.Anchored = true
+				descendant.CanCollide = true
 			end
 		end
+		Tint.apply(model, def.Color)
 		-- Supplied models are pivoted wherever the modeller left them, so drop
 		-- the model by however far its lowest point sits below the pivot.
 		local boxCFrame, boxSize = model:GetBoundingBox()

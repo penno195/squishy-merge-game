@@ -8,12 +8,14 @@ export type UnitDef = {
 	-- Name of a Model under ReplicatedStorage.ThemeAssets.Units. When nil or not
 	-- found, a procedural squishy blob in `Color` is built instead.
 	Model: string?,
+	-- Size of a supplied `Model`, off whatever it was modelled at. Left unset,
+	-- a model with a "Body" part is sized as wide as the blob it replaces.
 	Scale: number?,
 	-- Namesake features built onto the procedural blob, from the vocabulary in
-	-- UnitVisuals.Features: "CatEars", "Snout", "Tail" and so on. A unit with a
-	-- supplied `Model` ignores them -- the model is already the artwork. An
-	-- unknown name is warned about and skipped, so a typo costs one unit's ears
-	-- rather than the game.
+	-- UnitVisuals.Features: "CatEars", "Snout", "Tail" and so on. A supplied
+	-- `Model` wears them only if it publishes its outline (see UnitVisuals);
+	-- otherwise it goes without. An unknown name is warned about and skipped,
+	-- so a typo costs one unit's ears rather than the game.
 	Features: { string }?,
 	-- Set by Config on the units it appends for the theme's sparkles, so the
 	-- visuals know to build a glowing one. Themes don't set this.
@@ -165,7 +167,8 @@ export type PropDef = {
 	Color: Color3,
 	-- Second colour, for stripes and trim. Defaults to white.
 	Accent: Color3?,
-	-- Studs tall. Ignored by supplied models, which use `Scale` instead.
+	-- Studs tall. A supplied model is sized to it too, unless it sets `Scale`,
+	-- which wins.
 	Height: number?,
 	Scale: number?,
 }
@@ -247,6 +250,12 @@ export type Theme = {
 	},
 	-- Index = tier. Tier 1 spawns first; merging two tier N units makes tier N + 1.
 	Units: { UnitDef },
+	-- A Model under ReplicatedStorage.ThemeAssets.Units that every unit, sparkle
+	-- and pet is built from unless it names a `Model` of its own -- for a skin
+	-- whose whole cast is one body in different colours. Each is tinted to its
+	-- own `Color`, and wears its `Features` if the model publishes an outline
+	-- (see UnitVisuals). Left unset, anything without a Model is a blob.
+	CreatureModel: string?,
 	-- The crafting station's prizes, lowest band first. A theme with none still
 	-- gets a working machine: it just trades units up a few tiers.
 	Sparkles: { SparkleDef }?,

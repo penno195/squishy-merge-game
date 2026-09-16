@@ -43,6 +43,7 @@ local units: { Types.UnitDef } = {}
 for tier, unit in theme.Units do
 	local entry = table.clone(unit)
 	entry.Tier = tier
+	entry.Model = unit.Model or theme.CreatureModel
 	units[tier] = entry
 end
 
@@ -55,7 +56,7 @@ for position, sparkle in sparkles do
 	units[maxTier + position] = {
 		Name = sparkle.Name,
 		Color = sparkle.Color,
-		Model = sparkle.Model,
+		Model = sparkle.Model or theme.CreatureModel,
 		Scale = sparkle.Scale,
 		Sparkle = true,
 	}
@@ -91,7 +92,7 @@ for position, variant in variantDefs do
 	local base = variantBase + (position - 1) * maxTier
 
 	for tier = 1, maxTier do
-		local unit = theme.Units[tier]
+		local unit = units[tier]
 		units[base + tier] = {
 			Name = `{prefix} {unit.Name}`,
 			Color = unit.Color:Lerp(color, tint),
@@ -115,7 +116,13 @@ assert(
 -- doesn't exist is a hard error rather than a warning: unlike a unit's missing
 -- ears, there is no sensible thing to fall back to, and a pet with no perk is a
 -- pet with no reason to be owned.
-local pets: { Types.PetDef } = theme.Pets or {}
+local themePets: { Types.PetDef } = theme.Pets or {}
+local pets: { Types.PetDef } = {}
+for _, pet in themePets do
+	local entry = table.clone(pet)
+	entry.Model = pet.Model or theme.CreatureModel
+	table.insert(pets, entry)
+end
 local petRarities = balance.Pets.Rarities :: { Types.PetRarity }
 local petPerks = balance.Pets.Perks :: { Types.PetPerkDef }
 
