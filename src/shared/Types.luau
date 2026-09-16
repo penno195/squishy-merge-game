@@ -171,6 +171,10 @@ export type PropDef = {
 	-- which wins.
 	Height: number?,
 	Scale: number?,
+	-- Squashes on the spot like a unit in the garden. Supplied models only: a
+	-- built shape is made of balls and cylinders, which can't be stretched
+	-- unevenly.
+	Squish: boolean?,
 }
 
 export type Palette = {
@@ -209,6 +213,7 @@ export type Theme = {
 		SpawnSpeed: string?,
 		GardenSpace: string?,
 		Luck: string?,
+		AutoMerge: string?,
 		Income: string?,
 		Craft: string?,
 	},
@@ -334,6 +339,8 @@ export type PlayerData = {
 	-- never been bought. Real time, so neither pauses while the player is away.
 	BoostEndsAt: number,
 	LuckEndsAt: number,
+	-- When the gem-bought auto merge stops. The pass doesn't use this: it never does.
+	AutoMergeEndsAt: number,
 	-- Tiers of the items lying in the garden. These earn income; order is not meaningful.
 	Items: { number },
 	-- Tier the player is carrying, or 0 for empty-handed. Carried items don't earn.
@@ -351,8 +358,8 @@ export type PlayerData = {
 	-- Whether the starter pack has been handed over. The pass is what is bought,
 	-- and this is what stops it being granted again on every join.
 	StarterClaimed: boolean,
-	-- Pets owned, in the order they hatched, and which one is on the player's
-	-- shoulder as an index into it. 0 is none equipped, which is also what a
+	-- Pets owned, in the order they hatched, and which one is at the player's
+	-- heels as an index into it. 0 is none equipped, which is also what a
 	-- player who releases the pet they had ends up with.
 	Pets: { PetRecord },
 	EquippedPet: number,

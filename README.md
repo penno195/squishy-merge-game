@@ -70,8 +70,10 @@ four and a half minutes in. A published server always runs it at 1.
   See below.
 - A prize wheel stands beside the crafting station, a little taller than the
   players queuing at it. Everyone gets one free spin a day and can buy more
-  with gems; prizes are cash, gems and bonus units. Walk up to it or use the
-  menu button. Prizes are plain reward bundles in
+  with gems; prizes are cash, gems and bonus units. Walk up to it or open it
+  from Rewards in the menu. With more than one spin saved up, an **Auto** button
+  beside Spin keeps spinning until they're all spent, pausing on each prize long
+  enough to read it. Prizes are plain reward bundles in
   `Balance.Wheel.Prizes`, so re-theming the wheel means editing that list and
   nothing else. The wheel face is drawn from the palette, with no artwork
   needed; a theme that wants its own can set `Images.Wheel` to an asset ID
@@ -93,19 +95,28 @@ four and a half minutes in. A published server always runs it at 1.
 - Cash accrues every second from every unit lying in the garden, multiplied by
   the income upgrade, rebirths, gamepasses, any running earning boost and every
   sparkle on your plinths. Whatever you're carrying doesn't earn.
-- The board across the back of the garden sells Drop Tier, Drop Speed and Max
-  Items for cash, and the two timed things for gems: the Earning Boost and a
-  Lucky Charm. Luck tilts the drop pyramid upward while it runs — every rung
+- The board across the back of the garden sells every upgrade for cash (Drop
+  Tier over Drop Speed, Max Items over Income Boost) and the three timed things
+  for gems (the Earning Boost, a Lucky Charm and Auto Merge), with Rebirth taking its
+  whole last column. Luck tilts the drop pyramid upward while it runs — every rung
   is multiplied by `(1 + bias)` more than the one below it, taking the top of
   the drop window from about 5% of drops to about 43% without ever making a
   tier impossible. Ten minutes for 10 gems; the tile quotes what buying one
   would do, not the odds you already have. Rebirth trades everything for a
-  permanent multiplier, and needs two things rather than one: the cash, and a
+  permanent multiplier, takes two presses on the board so a stray click can't
+  throw a garden away, and needs two things rather than one: the cash, and a
   unit on the ground at or above a required rung. Cash alone made it a waiting
   game — park a full garden, come back, press the button — where a rung has to
   be merged for. The requirement starts at tier 10 and climbs by one per
   rebirth, stopping two short of the top of the ladder so the late ones stay
   reachable; `Balance.Rebirth.BaseTier` and `TierPerRebirth` are the knobs.
+- The menu on the left is five buttons: Upgrades, Shop and Ranks open their
+  panel directly, and Rewards (daily, playtime, quests, the wheel) and
+  Collection (pets, the crafting station, the index) open a tray of their panels
+  beside the grid. A group's button carries a count of everything inside it
+  that's ready to collect, so grouping never hides a reward. The boost and luck
+  timers sit beside the gem count as chips rather than stacking up above the
+  menu.
 - A bin sits in the front-left corner of each garden — somewhere to dump tiers
   that have dropped out of the window and can no longer find a partner. What a
   unit is worth shows on the carry line the moment you pick it up, and running
@@ -392,12 +403,17 @@ payouts are the same shape and will use it rather than growing their own.
 
 ## Pets
 
-One pet rides on your shoulder and the rest wait in the inventory, swappable
+One pet follows at your heels and the rest wait in the inventory, swappable
 whenever you like. That single decision is what the whole system is built around:
 a pet is a **tool you pick for what you are about to do**, not a number you
 accumulate. So the **perk is the reason to own one**, and the cash multiplier is a
 nudge — 3% to 15% across the entire rarity ladder. A pet that paid double would be
-welded on forever and there would be nothing left to choose.
+worn forever and there would be nothing left to choose.
+
+The pet walks along the ground behind you with a little hop. The server puts it in
+the world and never moves it; every client moves every pet itself each frame
+(`PetController`), which is what keeps it smooth, and it stays on the floor when
+you jump.
 
 - **Hatching** happens at three egg pads side by side, one of the four stations
   around the hub's rim (see "The hub" below). They stand in the gap beside the spawn
@@ -477,7 +493,7 @@ plinth, with room to walk round the back.
 
 ## What Robux buys
 
-Eight gamepasses and four developer products, all of them optional and none of
+Nine gamepasses and four developer products, all of them optional and none of
 them the only way to get anywhere. Every ID lives in `src/shared/Settings.luau`
 and an ID left at `0` hides that entry, so a fresh reskin shows only what it has
 actually set up.
@@ -494,6 +510,22 @@ The passes, and what each one is worth:
 | Second Slot | A second craft running alongside the first | `Monetisation.ExtraCraftSlots` |
 | Bigger Garden | More room than the cash upgrade can reach | `Monetisation.BiggerGardenSpaces` |
 | Starter Pack | One bundle, a player's first day only | `Monetisation.StarterPack` |
+| Admin Panel | Trolling commands to use on other players | `src/shared/AdminCommands.luau` |
+
+Auto Merge can also be had for a while with gems, from the garden board
+(`Balance.AutoMerge`), the way Lucky Forever is a permanent Lucky Charm: an owner of
+the pass isn't offered it and the server won't sell it to them.
+
+The **Admin Panel** is opened from its card in the shop. It picks a player and does
+something to them — squish them under a giant squishy, freeze, jail, fling, rocket,
+trip, shrink or slow them — or to yourself (speed, super jump, giant), or rains
+squishies on the whole server. It's the troll-admin pass other games sell, with two
+lines drawn: **nothing touches progress** (no stealing, deleting or kicking; every
+effect wears off in seconds and none of it can reach saved data), and **no
+flashbangs** or screen flashes. A cooldown between an admin's commands and a spell
+of protection for anyone just hit stop one admin from pinning a player down all
+session. Everyone in Studio is an admin, and so is the experience's creator on a
+live server.
 
 Three of them are worth knowing the shape of:
 
@@ -549,6 +581,41 @@ Where both sides have to answer the same question, the mapping from "owns it" to
 "is worth this much" lives in `Economy` too (`gardenPassSpaces`, `luckPassBias`),
 because two copies of one `if` is how the shop comes to promise something the
 server doesn't give.
+
+## The staff panel
+
+The game's own admin tool, separate from the Admin Panel pass. A 👑 **Staff** button
+appears in the menu for staff only, and every command is checked again on the server
+(`StaffService`), so hiding the button is not what keeps anyone out.
+
+**Who is staff:** the experience's creator if a person owns it; anyone at or above
+`Settings.StaffGroupRank` (255, the owner) if a group does; anyone whose user id is
+in `Settings.StaffUserIds`; and everyone in Studio.
+
+- **Events** run on every server at once, and on servers that start while one is on.
+  Pick a length (15 minutes to 4 hours) and a strength: **Drop Luck** (x2 is a Lucky
+  Charm for everyone), **Variant Luck**, **Hatch Luck**, **Craft Luck**, **Cash
+  Boost** and **Fast Drops**. They stack with charms, passes and pets. Players see a
+  chip with the clock in the top right, and the egg panel shows the boosted odds. The
+  list is `src/shared/LiveEvents.luau`; `EventService` keeps it in a DataStore, pushes
+  changes by MessagingService and re-reads every minute in case a message was lost.
+- **Gifts:** any unit on the ladder, variants and sparkles included, x1 to x25, to
+  yourself, one player or everyone in the server, up to the room in each garden. Or
+  any amount of currency or gems.
+- **Players:** go to, bring, kick, or ban for a day, a week or for good. Bans cover
+  every server and alt accounts, and are undone from the Creator Hub under Moderation.
+  Reasons are a fixed list, so nothing typed reaches the player unfiltered. Staff
+  can't kick or ban each other.
+- **Message:** up to 200 characters to every player in every server, shown as a
+  banner. It goes through Roblox's text filter first, as it must.
+
+Staff also get the Admin Panel's commands with no cooldown and no protection window,
+for running an admin-abuse event. In Studio those rules still apply, since everyone
+there is staff.
+
+Cross-server events, messages and bans only work on a published game with API access
+on. In Studio an event still runs on the Studio server, which is enough to test what
+it does.
 
 ## What the game measures
 

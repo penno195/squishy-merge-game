@@ -9,6 +9,8 @@ export type Settings = {
 	StudioGems: number,
 	StudioPlaytimeSpeed: number,
 	StudioPasses: { string },
+	StaffUserIds: { number },
+	StaffGroupRank: number,
 	GamePasses: { [string]: number },
 	Products: { [string]: number },
 }
@@ -71,6 +73,14 @@ local settings: Settings = {
 	-- to look at.
 	StudioPasses = {},
 
+	-- Who else gets the staff panel, by Roblox user id. Whoever owns the experience
+	-- has it already -- the creator when a person owns it, and anyone at or above
+	-- StaffGroupRank when a group does -- so this is for the other admins.
+	-- A user id is the number in the address of their profile page.
+	StaffUserIds = {},
+	-- 255 is the group's owner. Lower it to let a trusted rank in too.
+	StaffGroupRank = 255,
+
 	-- Asset IDs are unique to each Roblox experience, so every reskin needs its own.
 	-- 0 means "not set up yet": the matching shop button is hidden.
 	GamePasses = {
@@ -85,6 +95,10 @@ local settings: Settings = {
 		CraftSlot = 0,
 		-- More room in the garden than the cash upgrade can reach.
 		BiggerGarden = 0,
+		-- The admin panel: trolling commands to use on other players. Needs no
+		-- entry in StudioPasses -- everyone in Studio is an admin, and so is the
+		-- experience's creator on a live server.
+		Admin = 0,
 		-- The one-off bundle, offered for a player's first day only. A pass
 		-- rather than a product because a pass can only be bought once, which is
 		-- what "one-time" has to mean when real money is involved.

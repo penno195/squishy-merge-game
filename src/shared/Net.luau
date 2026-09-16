@@ -14,6 +14,7 @@ local EVENTS = {
 	"BuyUpgrade",
 	"BuyBoost",
 	"BuyLuck",
+	"BuyAutoMerge",
 	"Spin",
 	"BuySpin",
 	"Rebirth",
@@ -31,6 +32,10 @@ local EVENTS = {
 	"HatchEgg",
 	"EquipPet",
 	"ReleasePet",
+	-- The admin panel: a command id, and the user id of whoever it's aimed at.
+	"AdminCommand",
+	-- The staff panel: a command name and a table of its arguments.
+	"StaffCommand",
 	-- Fired once the client's UI is listening, so nothing sent at join is lost.
 	"Ready",
 	-- Server -> client
@@ -42,6 +47,11 @@ local EVENTS = {
 	"CraftResult",
 	"PetHatched",
 	"Leaderboard",
+	-- An admin command the receiving client carries out on itself: a shove on its
+	-- own character, or the rain everyone gets.
+	"AdminEffect",
+	-- A staff message to every player in the game: the text, and who sent it.
+	"Announcement",
 }
 
 local folder: Instance

@@ -26,6 +26,7 @@ local theme: Types.Theme = {
 		SpawnSpeed = "⚡",
 		GardenSpace = "📦",
 		Luck = "🍀",
+		AutoMerge = "🔁",
 		Income = "💰",
 		Craft = "✨",
 	},
@@ -70,6 +71,7 @@ local theme: Types.Theme = {
 	-- colours the blobs had. A bun is wider for its height than a blob, so each
 	-- is about a sixth shorter than the blob it replaced, which keeps the same
 	-- footprint and the same clearance round it.
+	-- They squash on the spot like the ones in the gardens, only slower.
 	Props = {
 		-- Ornament scale, in front of the gardens: these are things you walk
 		-- past on the way in, so nothing here is taller than a couple of
@@ -82,8 +84,8 @@ local theme: Types.Theme = {
 				Color = Color3.fromRGB(255, 226, 150),
 				Accent = Color3.fromRGB(255, 252, 240),
 			},
-			{ Model = "SakuraSquishyBun", Height = 6.5, Color = Color3.fromRGB(255, 160, 190) },
-			{ Model = "SakuraSquishyBun", Height = 6, Color = Color3.fromRGB(150, 220, 255) },
+			{ Model = "SakuraSquishyBun", Squish = true, Height = 6.5, Color = Color3.fromRGB(255, 160, 190) },
+			{ Model = "SakuraSquishyBun", Squish = true, Height = 6, Color = Color3.fromRGB(150, 220, 255) },
 			{
 				Shape = "Donut",
 				Height = 8,
@@ -97,7 +99,7 @@ local theme: Types.Theme = {
 		-- Out in the open ground between the walkway and the gardens, at the
 		-- size of a thing you'd stop and look at on the way home.
 		Approach = {
-			{ Model = "SakuraSquishyBun", Height = 10, Color = Color3.fromRGB(255, 200, 120) },
+			{ Model = "SakuraSquishyBun", Squish = true, Height = 10, Color = Color3.fromRGB(255, 200, 120) },
 			{
 				Shape = "Butter",
 				Height = 10,
@@ -128,8 +130,8 @@ local theme: Types.Theme = {
 				Color = Color3.fromRGB(255, 222, 130),
 				Accent = Color3.fromRGB(255, 250, 235),
 			},
-			{ Model = "SakuraSquishyBun", Height = 16.5, Color = Color3.fromRGB(190, 160, 255) },
-			{ Model = "SakuraSquishyBun", Height = 15.5, Color = Color3.fromRGB(140, 230, 150) },
+			{ Model = "SakuraSquishyBun", Squish = true, Height = 16.5, Color = Color3.fromRGB(190, 160, 255) },
+			{ Model = "SakuraSquishyBun", Squish = true, Height = 15.5, Color = Color3.fromRGB(140, 230, 150) },
 		},
 		-- The skyline out past the gardens, where only the silhouette carries
 		-- and nothing is in anyone's way. Capped at about 26 studs across so
@@ -142,7 +144,7 @@ local theme: Types.Theme = {
 				Color = Color3.fromRGB(235, 195, 145),
 				Accent = Color3.fromRGB(150, 225, 255),
 			},
-			{ Model = "SakuraSquishyBun", Height = 18, Color = Color3.fromRGB(255, 180, 210) },
+			{ Model = "SakuraSquishyBun", Squish = true, Height = 18, Color = Color3.fromRGB(255, 180, 210) },
 			{
 				Shape = "Butter",
 				Height = 16,

@@ -227,6 +227,22 @@ function Economy.luckActive(data: Types.PlayerData, now: number?): boolean
 	return Economy.luckRemaining(data, now) > 0
 end
 
+-- Auto merge on the same terms: gems, a clock, and extended rather than reset
+-- when bought again. The pass owner's version is checked by whoever knows about
+-- passes; this is only ever the timed one.
+
+function Economy.autoMergeCost(): number
+	return Balance.AutoMerge.GemCost
+end
+
+function Economy.autoMergeSeconds(): number
+	return Balance.AutoMerge.Seconds
+end
+
+function Economy.autoMergeRemaining(data: Types.PlayerData, now: number?): number
+	return math.max(data.AutoMergeEndsAt - (now or os.time()), 0)
+end
+
 -- Income -----------------------------------------------------------------
 
 -- Takes any unit index. A sparkle earns like an ordinary unit a few tiers above
@@ -317,7 +333,7 @@ function Economy.petRarityOf(id: string): Types.PetRarity?
 	return if def then Config.PetRarityById[def.Rarity] else nil
 end
 
--- The pet on the player's shoulder, or nil. `EquippedPet` is an index into the
+-- The pet at the player's heels, or nil. `EquippedPet` is an index into the
 -- inventory, so releasing a pet can leave it pointing past the end -- this is
 -- where that's caught rather than at every call site.
 function Economy.equippedPet(data: Types.PlayerData): Types.PetRecord?
@@ -450,19 +466,39 @@ function Economy.petsFull(data: Types.PlayerData): boolean
 	return #data.Pets >= PetBalance.MaxOwned
 end
 
+-- An egg's weights with a Hatch Luck event applied: each rarer rarity multiplied
+-- by `boost` once more than the one below it, the same shape Luck puts on the drop
+-- pyramid. No boost, or a boost of 1, is the egg exactly as written.
+local function eggWeights(egg: Types.PetEggDef, boost: number?): { [string]: number }
+	local tilt = boost or 1
+	if tilt == 1 then
+		return egg.Weights
+	end
+	local weights: { [string]: number } = {}
+	for rank, rarity in Economy.petRarities() do
+		local weight = egg.Weights[rarity.Id]
+		if weight then
+			weights[rarity.Id] = weight * tilt ^ (rank - 1)
+		end
+	end
+	return weights
+end
+
 -- What an egg can turn up, as a chance per rarity Id. The panel and the pad quote
 -- this, and it is derived from the same weights the roll uses rather than written
--- out twice.
-function Economy.eggChances(egg: Types.PetEggDef): { [string]: number }
+-- out twice. `boost` is a running Hatch Luck event's strength, so the odds shown
+-- during one are the odds being rolled.
+function Economy.eggChances(egg: Types.PetEggDef, boost: number?): { [string]: number }
+	local weights = eggWeights(egg, boost)
 	local total = 0
-	for _, weight in egg.Weights do
+	for _, weight in weights do
 		total += weight
 	end
 	local chances: { [string]: number } = {}
 	if total <= 0 then
 		return chances
 	end
-	for rarityId, weight in egg.Weights do
+	for rarityId, weight in weights do
 		chances[rarityId] = weight / total
 	end
 	return chances
@@ -475,9 +511,15 @@ end
 -- nil when the theme has no pet for the rarity that came up, which Config has
 -- already refused to let happen; the check stays because taking a player's cash
 -- and returning nothing is the one outcome that must be impossible.
-function Economy.rollEgg(egg: Types.PetEggDef, data: Types.PlayerData, bias: number?): Types.PetRecord?
+function Economy.rollEgg(
+	egg: Types.PetEggDef,
+	data: Types.PlayerData,
+	bias: number?,
+	rarityBoost: number?
+): Types.PetRecord?
+	local weights = eggWeights(egg, rarityBoost)
 	local total = 0
-	for _, weight in egg.Weights do
+	for _, weight in weights do
 		total += weight
 	end
 	if total <= 0 then
@@ -485,7 +527,7 @@ function Economy.rollEgg(egg: Types.PetEggDef, data: Types.PlayerData, bias: num
 	end
 	local roll = math.random() * total
 	local chosen: string? = nil
-	for rarityId, weight in egg.Weights do
+	for rarityId, weight in weights do
 		roll -= weight
 		if roll <= 0 then
 			chosen = rarityId
@@ -494,7 +536,7 @@ function Economy.rollEgg(egg: Types.PetEggDef, data: Types.PlayerData, bias: num
 	end
 	-- Floating-point drift on the last rarity.
 	if not chosen then
-		for rarityId in egg.Weights do
+		for rarityId in weights do
 			chosen = rarityId
 		end
 	end
@@ -572,6 +614,12 @@ function Economy.totalLuckBias(data: Types.PlayerData, now: number?, passOwned: 
 	return math.max(timed, pass) + Economy.petPerkValue(data, "DropLuck")
 end
 
+-- What a Drop Luck event adds to that. x2 is worth one Lucky Charm to everyone,
+-- x3 two of them, and so on; 1, which is no event, adds nothing.
+function Economy.eventLuckBias(strength: number): number
+	return Balance.Luck.Bias * math.max(strength - 1, 0)
+end
+
 -- The tiers a drop can roll: the drop tier and the rungs below it, so an
 -- upgraded garden still receives the lower tiers it needs to merge with. A
 -- short window (early on, near tier 1) uses the bottom of the weight list.
@@ -608,13 +656,14 @@ end
 -- the tier pyramid, so a charm buys better drops twice over.
 --
 -- `bias` overrides the player's own, so the garden board can quote what buying
--- a charm would do rather than what is happening now.
-function Economy.variantChance(position: number, data: Types.PlayerData, bias: number?): number
+-- a charm would do rather than what is happening now. `boost` multiplies it on top,
+-- which is what a Variant Luck event is.
+function Economy.variantChance(position: number, data: Types.PlayerData, bias: number?, boost: number?): number
 	local variant = Config.Variants[position]
 	if not variant then
 		return 0
 	end
-	return math.min(variant.Chance * (1 + (bias or Economy.luckBias(data))), 1)
+	return math.min(variant.Chance * (1 + (bias or Economy.luckBias(data))) * (boost or 1), 1)
 end
 
 -- The chance a drop is a variant of any kind. What the board quotes, and what
@@ -630,11 +679,11 @@ end
 -- Rolled independently of the tier, so a variant is as likely on a low rung as
 -- a high one: the prize is the variant, not the pairing. 0 is an ordinary unit,
 -- which is what most drops are.
-function Economy.randomVariant(data: Types.PlayerData, bias: number?): number
+function Economy.randomVariant(data: Types.PlayerData, bias: number?, boost: number?): number
 	local roll = math.random()
 	local cumulative = 0
 	for position in Config.Variants do
-		cumulative += Economy.variantChance(position, data, bias)
+		cumulative += Economy.variantChance(position, data, bias, boost)
 		if roll < cumulative then
 			return position
 		end
@@ -659,8 +708,9 @@ function Economy.randomDropTier(data: Types.PlayerData, bias: number?): number
 end
 
 -- A whole drop: a tier from the pyramid, then a variant over the top of it.
-function Economy.randomDropIndex(data: Types.PlayerData, bias: number?): number
-	return Economy.variantIndex(Economy.randomDropTier(data, bias), Economy.randomVariant(data, bias))
+-- `variantBoost` is a Variant Luck event's strength.
+function Economy.randomDropIndex(data: Types.PlayerData, bias: number?, variantBoost: number?): number
+	return Economy.variantIndex(Economy.randomDropTier(data, bias), Economy.randomVariant(data, bias, variantBoost))
 end
 
 -- The chance a drop rolls the very top tier, which is what Luck is really

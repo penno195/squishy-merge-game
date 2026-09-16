@@ -28,6 +28,9 @@ local Wheel = Config.Balance.Wheel
 -- Full turns before it settles, so a spin always looks like a spin even when
 -- the result is the segment it was already on.
 local TURNS = 5
+-- Auto spin's breath between one result and the next spin, so the prize line
+-- is on screen long enough to be read before the wheel moves again.
+local AUTO_PAUSE = 1.2
 local SURFACE_NAME = "WheelSurface"
 
 local WheelController = {}
@@ -38,6 +41,10 @@ local spinning = false
 -- Degrees, kept across spins so the wheel carries on from where it stopped.
 local angle = 0
 local latest: { [string]: any }? = nil
+-- Auto spin. Local to this client and never saved: it's a way of pressing the
+-- button, and the server still charges each spin exactly as if it were pressed.
+local autoSpin = false
+local autoListeners: { (boolean) -> () } = {}
 
 local function requestSpin()
 	if spinning then
@@ -86,6 +93,43 @@ end
 
 function WheelController.isSpinning(): boolean
 	return spinning
+end
+
+function WheelController.isAutoSpinning(): boolean
+	return autoSpin
+end
+
+function WheelController.onAutoChanged(listener: (boolean) -> ())
+	table.insert(autoListeners, listener)
+end
+
+function WheelController.setAutoSpin(on: boolean)
+	if autoSpin == on then
+		return
+	end
+	autoSpin = on
+	for _, listener in autoListeners do
+		task.spawn(listener, on)
+	end
+	-- Turning it on starts straight away rather than waiting for a spin to end,
+	-- since there may not be one running.
+	if on and WheelController.spinReady() then
+		requestSpin()
+	end
+end
+
+-- After each result: spin again if there's one to spend, otherwise switch off,
+-- so a player who comes back to the panel doesn't find it armed for tomorrow's
+-- free spin.
+local function continueAuto()
+	if not autoSpin or spinning then
+		return
+	end
+	if WheelController.spinReady() then
+		requestSpin()
+	else
+		WheelController.setAutoSpin(false)
+	end
 end
 
 -- Draws a face onto the wheel standing in the hub, once the server's parts have
@@ -153,6 +197,9 @@ local function spinTo(index: number, description: string)
 		spinning = false
 		refreshFaces()
 		announce(index, description)
+		if autoSpin then
+			task.delay(AUTO_PAUSE, continueAuto)
+		end
 	end)
 	tween:Play()
 end

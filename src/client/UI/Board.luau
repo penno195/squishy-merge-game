@@ -2,9 +2,11 @@
 -- Draws the upgrade UI onto the screen at the back of the player's own
 -- garden. Built client-side, so each player only ever sees their own board.
 --
--- The board spans the full width of the fence and is divided into one tile per
--- upgrade, so everything worth buying is readable from across the garden
--- without opening a menu.
+-- The board spans the full width of the fence. It's laid out in columns, each
+-- holding a pair of related upgrades one above the other, with the rebirth tile
+-- taking the whole last column -- so everything worth buying, and the thing all
+-- of it is working towards, is readable from across the garden without opening
+-- a menu.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,6 +15,7 @@ local Workspace = game:GetService("Workspace")
 local Components = require(script.Parent.Components)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
+local RebirthCard = require(script.Parent.RebirthCard)
 local State = require(script.Parent.Parent.State)
 local Types = require(ReplicatedStorage.Shared.Types)
 local UpgradeList = require(script.Parent.UpgradeList)
@@ -23,6 +26,7 @@ local Theme = Config.Theme
 
 local SURFACE_NAME = "UpgradeSurface"
 local HEADER_HEIGHT = 96
+local COLUMN_GAP = 12
 
 local Board = {}
 
@@ -107,12 +111,37 @@ function Board.start()
 			Parent = background,
 		})
 
-		local tiles = UpgradeList.tiles(body, UpgradeList.BoardIds)
+		Components.listLayout({
+			FillDirection = Enum.FillDirection.Horizontal,
+			Padding = UDim.new(0, COLUMN_GAP),
+		}).Parent =
+			body
+
+		local columnCount = #UpgradeList.BoardColumns + 1
+		local function makeColumn(order: number): Frame
+			return Components.new("Frame", {
+				BackgroundTransparency = 1,
+				-- Each column gives up its share of the gaps between them.
+				Size = UDim2.new(1 / columnCount, -COLUMN_GAP * (columnCount - 1) / columnCount, 1, 0),
+				LayoutOrder = order,
+				Parent = body,
+			})
+		end
+
+		local lists: { UpgradeList.List } = {}
+		for order, ids in UpgradeList.BoardColumns do
+			table.insert(lists, UpgradeList.stack(makeColumn(order), ids))
+		end
+		local rebirth = RebirthCard.create(makeColumn(columnCount))
+
 		update = function(snapshot: { [string]: any })
 			local data: Types.PlayerData = snapshot.Data
 			cashPill.setText(Format.number(data.Cash))
 			gemPill.setText(Format.number(data.Gems))
-			tiles.update(snapshot)
+			for _, list in lists do
+				list.update(snapshot)
+			end
+			rebirth.update(snapshot)
 		end
 
 		local snapshot = State.get()

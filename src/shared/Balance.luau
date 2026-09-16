@@ -158,7 +158,7 @@ return {
 		{ Id = "Rainbow", Chance = 0.002, Income = 60, CraftBoost = 3.6, PetPerk = 3.5 },
 	},
 
-	-- Pets. One rides on the player's shoulder at a time and the rest wait in the
+	-- Pets. One follows at the player's heels at a time and the rest wait in the
 	-- inventory, swappable whenever, which is the decision the whole system turns
 	-- on: a pet is a tool you pick for what you are about to do, not a number you
 	-- accumulate. So the *perk* is the reason to own one and the cash multiplier
@@ -168,7 +168,7 @@ return {
 	-- Which pets exist is theme data. What a rarity and a perk are worth is here,
 	-- so a reskin names pets and balances none of them.
 	Pets = {
-		-- One at a time. Raising this would need the panel and the shoulder offset
+		-- One at a time. Raising this would need the panel and the heel offset
 		-- revisited, and would dilute the choosing that is the point.
 		EquipSlots = 1,
 		-- How close to an egg pad a player has to be to hatch. Also the range its
@@ -385,6 +385,18 @@ return {
 		Bias = 2,
 		Seconds = 600,
 		GemCost = 10,
+	},
+
+	-- Auto merge on a clock, the third thing on the gem column of the board. The
+	-- Auto Merge pass is the same thing forever, the way Lucky Forever is to the
+	-- charm, so this has to be worth trying without being a substitute: five
+	-- minutes is long enough to feel a garden tidy itself and short enough that
+	-- keeping it running all session costs far more than the drip pays.
+	--
+	-- A first guess, not measured. The sim doesn't spend gems.
+	AutoMerge = {
+		Seconds = 300,
+		GemCost = 20,
 	},
 
 	-- Gems are the premium currency: a slow drip from playing, or bought with

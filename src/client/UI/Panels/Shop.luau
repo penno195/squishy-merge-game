@@ -120,19 +120,28 @@ local PASSES: { PassEntry } = {
 		Description = `Run {Economy.craftSlots(Monetisation.ExtraCraftSlots)} crafts at once instead of {Economy.craftSlots()}.`,
 	},
 	{
+		Key = "Admin",
+		Title = "Admin Panel",
+		Description = "Troll the server: squish, freeze, fling and jail other players.",
+	},
+	{
 		Key = "BiggerGarden",
 		Title = "Bigger Garden",
 		Description = `Room for {Monetisation.BiggerGardenSpaces} more {Theme.Text.UnitPlural}, past the last upgrade.`,
 	},
 }
 
-function Shop.create(parent: Instance)
+-- `openAdmin` opens the admin panel, for the Admin card once it's owned.
+function Shop.create(parent: Instance, openAdmin: () -> ())
 	local panel = Components.panel("Shop", UDim2.fromOffset(480, 460), parent)
 	local list = Components.scroller({ Size = UDim2.fromScale(1, 1), Parent = panel.Content })
 	Components.listLayout({ Padding = UDim.new(0, 8) }).Parent = list
 
 	local passButtons = {}
 	local order = 0
+	-- Whether the server says this player is an admin, which the Admin card asks
+	-- before deciding whether a press buys the panel or opens it.
+	local isAdmin = false
 
 	local function addEntry(title: string, description: string, id: number, infoType: Enum.InfoType, onBuy: () -> ())
 		order += 1
@@ -173,7 +182,9 @@ function Shop.create(parent: Instance)
 		-- Show the real Robux price once Roblox answers.
 		task.spawn(function()
 			local ok, info = pcall(MarketplaceService.GetProductInfo, MarketplaceService, id, infoType)
-			if ok and info and info.PriceInRobux then
+			-- An admin's card says Open, and the price arriving late mustn't undo that.
+			local ownAdmin = isAdmin and id == Config.Settings.GamePasses.Admin
+			if ok and info and info.PriceInRobux and not ownAdmin then
 				button.setText(`R$ {info.PriceInRobux}`)
 			end
 		end)
@@ -189,7 +200,11 @@ function Shop.create(parent: Instance)
 		local id = Config.Settings.GamePasses[pass.Key]
 		if id ~= 0 or SHOW_UNSET then
 			local card, button = addEntry(pass.Title, pass.Description, id, Enum.InfoType.GamePass, function()
-				MarketplaceService:PromptGamePassPurchase(LocalPlayer, id)
+				if pass.Key == "Admin" and isAdmin then
+					openAdmin()
+				elseif id ~= 0 then
+					MarketplaceService:PromptGamePassPurchase(LocalPlayer, id)
+				end
 			end)
 			passButtons[pass.Key] = button
 			if pass.Offer then
@@ -253,10 +268,19 @@ function Shop.create(parent: Instance)
 	local function update(snapshot: { [string]: any })
 		latest = snapshot
 		local passes = snapshot.Passes or {}
+		isAdmin = snapshot.IsAdmin == true
 		for key, button in passButtons do
+			-- Owning the panel is a way in, not a sold-out sign. It opens for anyone
+			-- the server calls an admin -- the pass, the creator, or Studio -- which
+			-- is also how it's tested before its ID exists.
+			if key == "Admin" then
+				if isAdmin then
+					button.setText("Open")
+					button.setEnabled(true)
+				end
 			-- "Owned" would be a lie on an entry with no ID -- in Studio that's
 			-- Settings.StudioPasses talking, not a purchase.
-			if passes[key] and Config.Settings.GamePasses[key] ~= 0 then
+			elseif passes[key] and Config.Settings.GamePasses[key] ~= 0 then
 				button.setText("Owned")
 				button.setEnabled(false)
 			end

@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local DataService = require(script.Parent.DataService)
 local Economy = require(ReplicatedStorage.Shared.Economy)
+local EventService = require(script.Parent.EventService)
 local Format = require(ReplicatedStorage.Shared.Format)
 local ItemService = require(script.Parent.ItemService)
 local PassService = require(script.Parent.PassService)
@@ -29,7 +30,10 @@ function RewardService.incomePerSecond(player: Player, boostMultiplier: number?)
 	end
 	-- The pass and the equipped pet multiply together. The pet's share is a nudge by
 	-- design -- 3% to 15% across the whole rarity ladder -- so this can't run away.
-	local multiplier = PassService.cashMultiplier(player) * PetService.cashMultiplier(player)
+	-- A Cash Boost event multiplies the lot, for as long as staff have it on.
+	local multiplier = PassService.cashMultiplier(player)
+		* PetService.cashMultiplier(player)
+		* EventService.strength("Cash")
 	return Economy.incomePerSecond(data, multiplier, boostMultiplier)
 end
 

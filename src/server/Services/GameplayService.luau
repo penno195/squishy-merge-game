@@ -1,6 +1,7 @@
 --!strict
 -- The core loop: timed drops from the sky, per-second income from items lying
--- in the garden, run-over pickup and merging, and the auto-merge gamepass.
+-- in the garden, run-over pickup and merging, and auto merge -- the pass, or
+-- the gem-bought clock.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -10,6 +11,7 @@ local ActionService = require(script.Parent.ActionService)
 local Config = require(ReplicatedStorage.Shared.Config)
 local DataService = require(script.Parent.DataService)
 local Economy = require(ReplicatedStorage.Shared.Economy)
+local EventService = require(script.Parent.EventService)
 local Format = require(ReplicatedStorage.Shared.Format)
 local GardenService = require(script.Parent.GardenService)
 local ItemService = require(script.Parent.ItemService)
@@ -115,6 +117,11 @@ local function spacesFor(player: Player): number
 	return PassService.extraGardenSpaces(player) + PetService.extraSpaces(player)
 end
 
+-- How fast drops come: the pass, sped up again by a Fast Drops event.
+local function dropSpeed(player: Player): number
+	return PassService.spawnMultiplier(player) / EventService.strength("FastDrops")
+end
+
 local function tick(player: Player, playerTimers: Timers, now: number)
 	local data = DataService.get(player)
 	if not data then
@@ -133,18 +140,21 @@ local function tick(player: Player, playerTimers: Timers, now: number)
 
 	-- A full garden leaves the drop "due", so one falls as soon as there's room.
 	if now >= playerTimers.nextDrop and Economy.hasRoom(data, spacesFor(player)) then
-		-- Every source of luck at once -- the charm, the pass and a Charmed pet.
-		local tier =
-			Economy.randomDropIndex(data, Economy.totalLuckBias(data, os.time(), PassService.has(player, "LuckCharm")))
+		-- Every source of luck at once -- the charm, the pass, a Charmed pet and
+		-- whatever event staff have running.
+		local bias = Economy.totalLuckBias(data, os.time(), PassService.has(player, "LuckCharm"))
+			+ Economy.eventLuckBias(EventService.strength("DropLuck"))
+		local tier = Economy.randomDropIndex(data, bias, EventService.strength("VariantLuck"))
 		if ItemService.dropItem(player, tier, nil, true) then
-			local wait = Economy.randomDropInterval(data, PassService.spawnMultiplier(player))
+			local wait = Economy.randomDropInterval(data, dropSpeed(player))
 			playerTimers.nextDrop = now + wait
 			playerTimers.dropInterval = wait
 			ActionService.fire(player, "Dropped", { Value = tier, Fields = { Source = "Sky" } })
 		end
 	end
 
-	if now >= playerTimers.nextAutoMerge and PassService.has(player, "AutoMerge") then
+	local autoMerging = PassService.has(player, "AutoMerge") or Economy.autoMergeRemaining(data) > 0
+	if now >= playerTimers.nextAutoMerge and autoMerging then
 		playerTimers.nextAutoMerge = now + Config.Balance.Monetisation.AutoMergeInterval
 		ItemService.autoMerge(player)
 	end
@@ -158,7 +168,7 @@ function GameplayService.addPlayer(player: Player)
 		return
 	end
 	local now = Workspace:GetServerTimeNow()
-	local wait = Economy.randomDropInterval(data, PassService.spawnMultiplier(player))
+	local wait = Economy.randomDropInterval(data, dropSpeed(player))
 	timers[player] = {
 		nextIncome = now + 1,
 		nextDrop = now + wait,
@@ -188,7 +198,7 @@ function GameplayService.resetDropTimer(player: Player)
 	local playerTimers = timers[player]
 	local data = DataService.get(player)
 	if playerTimers and data then
-		local wait = Economy.randomDropInterval(data, PassService.spawnMultiplier(player))
+		local wait = Economy.randomDropInterval(data, dropSpeed(player))
 		playerTimers.nextDrop = Workspace:GetServerTimeNow() + wait
 		playerTimers.dropInterval = wait
 	end

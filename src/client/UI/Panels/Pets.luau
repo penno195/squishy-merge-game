@@ -1,5 +1,5 @@
 --!strict
--- The pets panel: what's on your shoulder, and everything else you've hatched.
+-- The pets panel: what's at your heels, and everything else you've hatched.
 --
 -- One pet is equipped at a time, so this panel's whole job is the swap. That makes
 -- the perk the thing each row has to say loudest -- the cash multiplier is a nudge

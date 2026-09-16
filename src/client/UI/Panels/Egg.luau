@@ -13,6 +13,7 @@
 -- of perks, which they can only do if they can see both.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local Components = require(script.Parent.Parent.Components)
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -198,7 +199,15 @@ function Egg.create(parent: Instance)
 		local data: Types.PlayerData = snapshot.Data
 		panel.setTitle(egg.Name)
 
-		local chances = Economy.eggChances(egg)
+		-- During a Hatch Luck event the odds shown are the event's, since those are
+		-- the odds being rolled.
+		local hatchLuck = 1
+		for _, entry in snapshot.Events or {} do
+			if entry.Id == "HatchLuck" and entry.EndsAt > Workspace:GetServerTimeNow() then
+				hatchLuck = entry.Strength
+			end
+		end
+		local chances = Economy.eggChances(egg, hatchLuck)
 		for index, rarity in Economy.petRarities() do
 			local row = oddsRows[index]
 			local chance = chances[rarity.Id]

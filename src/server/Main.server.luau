@@ -8,10 +8,12 @@ local Config = require(ReplicatedStorage.Shared.Config)
 
 local Services = script.Parent.Services
 
+local AdminService = require(Services.AdminService)
 local AnalyticsService = require(Services.AnalyticsService)
 local CraftService = require(Services.CraftService)
 local DailyService = require(Services.DailyService)
 local DataService = require(Services.DataService)
+local EventService = require(Services.EventService)
 local GameplayService = require(Services.GameplayService)
 local GardenService = require(Services.GardenService)
 local HubService = require(Services.HubService)
@@ -25,12 +27,15 @@ local ProductService = require(Services.ProductService)
 local QuestService = require(Services.QuestService)
 local PropService = require(Services.PropService)
 local ShopService = require(Services.ShopService)
+local StaffService = require(Services.StaffService)
 local StarterService = require(Services.StarterService)
 local StatsService = require(Services.StatsService)
 local StateService = require(Services.StateService)
 local WheelService = require(Services.WheelService)
 
 StateService.init()
+-- Early, so an event already running elsewhere is in place before the first drop.
+EventService.init()
 -- Before anything that fires an action, so nothing early is missed.
 AnalyticsService.init()
 StatsService.init()
@@ -40,6 +45,8 @@ HubService.init()
 PropService.init()
 PlinthService.init()
 PassService.init()
+-- After PassService: the Admin pass is one of its passes.
+AdminService.init()
 GameplayService.init()
 ShopService.init()
 DailyService.init()
@@ -54,6 +61,7 @@ PlaytimeService.init()
 CraftService.init()
 -- After HubService too: it connects to the prompts on the egg pads.
 PetService.init()
+StaffService.init()
 
 DataService.onLoaded(function(player, data)
 	PassService.load(player)

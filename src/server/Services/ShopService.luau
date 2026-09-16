@@ -100,6 +100,34 @@ local function buyLuck(player: Player)
 	ActionService.fire(player, "LuckBought", { Value = Economy.luckSeconds(), GemsSpent = cost })
 end
 
+-- Auto merge for a while, on the same terms again -- and refused to a pass owner
+-- for the same reason the charm is.
+local function buyAutoMerge(player: Player)
+	local data = DataService.get(player)
+	if not data then
+		return
+	end
+	if PassService.has(player, "AutoMerge") then
+		StateService.notify(player, "You already have Auto Merge for good -- no need to buy more!", "Info")
+		return
+	end
+	local cost = Economy.autoMergeCost()
+	if data.Gems < cost then
+		StateService.notify(player, `You need {cost} Gems for Auto Merge!`, "Error")
+		return
+	end
+	data.Gems -= cost
+	local now = os.time()
+	data.AutoMergeEndsAt = math.max(data.AutoMergeEndsAt, now) + Economy.autoMergeSeconds()
+	StateService.markDirty(player)
+	StateService.notify(
+		player,
+		`Auto Merge on! Your {Theme.Text.UnitPlural} merge themselves for {Format.time(data.AutoMergeEndsAt - now)}.`,
+		"Reward"
+	)
+	ActionService.fire(player, "AutoMergeBought", { Value = Economy.autoMergeSeconds(), GemsSpent = cost })
+end
+
 local function rebirth(player: Player)
 	local data = DataService.get(player)
 	if not data then
@@ -158,6 +186,7 @@ function ShopService.init()
 	Net.event("BuyUpgrade").OnServerEvent:Connect(buyUpgrade)
 	Net.event("BuyBoost").OnServerEvent:Connect(buyBoost)
 	Net.event("BuyLuck").OnServerEvent:Connect(buyLuck)
+	Net.event("BuyAutoMerge").OnServerEvent:Connect(buyAutoMerge)
 	Net.event("Rebirth").OnServerEvent:Connect(rebirth)
 end
 

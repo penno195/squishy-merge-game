@@ -329,7 +329,7 @@ function ItemService.takeCarried(player: Player): number?
 	return tier
 end
 
--- Merges the first matching pair lying in the garden (the auto-merge gamepass).
+-- Merges the first matching pair lying in the garden (auto merge, either kind).
 function ItemService.autoMerge(player: Player): boolean
 	local list = items[player]
 	local data = DataService.get(player)

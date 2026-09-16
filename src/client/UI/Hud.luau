@@ -13,6 +13,7 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Components = require(script.Parent.Components)
@@ -25,16 +26,18 @@ local Sound = require(script.Parent.Sound)
 local State = require(script.Parent.Parent.State)
 local Types = require(ReplicatedStorage.Shared.Types)
 
+local AdminPanel = require(script.Parent.Panels.Admin)
 local CraftPanel = require(script.Parent.Panels.Craft)
 local DailyPanel = require(script.Parent.Panels.Daily)
+local EventStrip = require(script.Parent.EventStrip)
 local EggPanel = require(script.Parent.Panels.Egg)
 local IndexPanel = require(script.Parent.Panels.Index)
 local LeaderboardPanel = require(script.Parent.Panels.Leaderboard)
 local PetsPanel = require(script.Parent.Panels.Pets)
 local PlaytimePanel = require(script.Parent.Panels.Playtime)
 local QuestsPanel = require(script.Parent.Panels.Quests)
-local RebirthPanel = require(script.Parent.Panels.Rebirth)
 local ShopPanel = require(script.Parent.Panels.Shop)
+local StaffPanel = require(script.Parent.Panels.Staff)
 local UpgradesPanel = require(script.Parent.Panels.Upgrades)
 local WheelPanel = require(script.Parent.Panels.Wheel)
 
@@ -56,7 +59,9 @@ local TOAST_COLORS: { [string]: Color3 } = {
 local MENU_ICONS: { [string]: string } = {
 	Upgrades = "⬆️",
 	Shop = "🛒",
-	Daily = "🎁",
+	Rewards = "🎁",
+	Collection = "🎒",
+	Daily = "📅",
 	Quests = "📋",
 	Playtime = "⏱️",
 	Wheel = "🎡",
@@ -64,10 +69,14 @@ local MENU_ICONS: { [string]: string } = {
 	Ranks = "🏆",
 	Index = "📖",
 	Pets = "🐾",
+	Admin = "🛡️",
+	Staff = "👑",
 }
 local WHEEL_PANEL = "Wheel"
 local CRAFT_PANEL = "Craft"
 local EGG_PANEL = "Egg"
+local ADMIN_PANEL = "Admin"
+local STAFF_PANEL = "Staff"
 -- The prompt on an egg pad, which carries an "Egg" attribute saying which pad it
 -- is. Named rather than matched on the panel map because it has to be filled in
 -- before it opens, which none of the others do.
@@ -139,27 +148,44 @@ function Hud.start()
 	}, Theme.Icons.Currency or "", Palette.Accent)
 	cashPill.Instance.Parent = stats
 
-	local gemPill = Components.pill({
-		Size = UDim2.fromOffset(210, 46),
+	-- Gems, with the two timed effects beside them as chips while they run.
+	-- Beside rather than under: they come and go, and stacked as full rows they
+	-- pushed the menu off the bottom of a short screen.
+	local gemRow = Components.new("Frame", {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(0, 46),
+		AutomaticSize = Enum.AutomaticSize.X,
 		LayoutOrder = 2,
+		Parent = stats,
+	})
+	Components.listLayout({
+		FillDirection = Enum.FillDirection.Horizontal,
+		Padding = UDim.new(0, 8),
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+	}).Parent =
+		gemRow
+
+	local gemPill = Components.pill({
+		Size = UDim2.fromOffset(170, 46),
+		LayoutOrder = 1,
 	}, Theme.Icons.Gems or "", Palette.Secondary)
-	gemPill.Instance.Parent = stats
+	gemPill.Instance.Parent = gemRow
 
 	-- Only on screen while it's running, so a quiet HUD stays quiet.
 	local boostPill = Components.pill({
-		Size = UDim2.fromOffset(250, 46),
-		LayoutOrder = 3,
+		Size = UDim2.fromOffset(150, 46),
+		LayoutOrder = 2,
 		BackgroundColor3 = Palette.Primary,
 	}, Theme.Icons.Boost or "", Palette.Text)
-	boostPill.Instance.Parent = stats
+	boostPill.Instance.Parent = gemRow
 	boostPill.setVisible(false)
 
 	local luckPill = Components.pill({
-		Size = UDim2.fromOffset(250, 46),
-		LayoutOrder = 4,
+		Size = UDim2.fromOffset(130, 46),
+		LayoutOrder = 3,
 		BackgroundColor3 = Palette.Positive,
 	}, Theme.Icons.Luck or "", Palette.Background)
-	luckPill.Instance.Parent = stats
+	luckPill.Instance.Parent = gemRow
 	luckPill.setVisible(false)
 
 	local function statLine(order: number, color: Color3): TextLabel
@@ -174,8 +200,8 @@ function Hud.start()
 			Parent = stats,
 		})
 	end
-	local incomeLabel = statLine(5, Palette.Positive)
-	local detailLabel = statLine(6, Palette.TextMuted)
+	local incomeLabel = statLine(3, Palette.Positive)
+	local detailLabel = statLine(4, Palette.TextMuted)
 
 	-- Panels and the menu that opens them --------------------------------
 	--
@@ -185,9 +211,6 @@ function Hud.start()
 	type MenuEntry = {
 		Name: string,
 		Icon: string,
-		-- Hidden entries get every snapshot but no menu button: the only way into
-		-- them is whatever else opens them.
-		Hidden: boolean?,
 		-- The three things the menu and the snapshot loop need. A panel with more
 		-- than these -- the egg panel has a setter of its own -- goes in narrowed to
 		-- this shape and is kept in a local as well, because Luau will not assign a
@@ -203,10 +226,21 @@ function Hud.start()
 	-- which is more than the list's shape allows.
 	local eggPanel = EggPanel.create(screen)
 
+	-- The shop opens the admin panel from its own card, but the function that opens
+	-- panels is built from this list, so the shop is handed a way to reach it later.
+	local openByName: ((string) -> ())? = nil
+
 	local panels: { MenuEntry } = {
 		{ Name = "Upgrades", Icon = MENU_ICONS.Upgrades, Panel = UpgradesPanel.create(screen) },
-		{ Name = "Shop", Icon = MENU_ICONS.Shop, Panel = ShopPanel.create(screen) },
-		{ Name = Theme.Text.Rebirth, Icon = "🔁", Panel = RebirthPanel.create(screen) },
+		{
+			Name = "Shop",
+			Icon = MENU_ICONS.Shop,
+			Panel = ShopPanel.create(screen, function()
+				if openByName then
+					openByName(ADMIN_PANEL)
+				end
+			end),
+		},
 		{ Name = "Quests", Icon = MENU_ICONS.Quests, Panel = QuestsPanel.create(screen) },
 		{ Name = "Playtime", Icon = MENU_ICONS.Playtime, Panel = PlaytimePanel.create(screen) },
 		{ Name = "Daily", Icon = MENU_ICONS.Daily, Panel = DailyPanel.create(screen) },
@@ -218,44 +252,266 @@ function Hud.start()
 		{
 			Name = EGG_PANEL,
 			Icon = "",
-			Hidden = true,
 			Panel = { setOpen = eggPanel.setOpen, isOpen = eggPanel.isOpen, update = eggPanel.update },
 		},
+		-- Its menu button is in MENU below, and the shop's Admin card opens it too.
+		{ Name = ADMIN_PANEL, Icon = "", Panel = AdminPanel.create(screen) },
+		{ Name = STAFF_PANEL, Icon = "", Panel = StaffPanel.create(screen) },
 		{ Name = "Ranks", Icon = MENU_ICONS.Ranks, Panel = LeaderboardPanel.create(screen) },
 		{ Name = "Index", Icon = MENU_ICONS.Index, Panel = IndexPanel.create(screen) },
 	}
 
-	local menu = Components.new("Frame", {
+	local panelByName: { [string]: MenuEntry } = {}
+	for _, entry in panels do
+		panelByName[entry.Name] = entry
+	end
+
+	-- The menu. Six buttons in a grid rather than a button per panel: a column of
+	-- eleven ran off the bottom of a short screen, and a wall of them is slow to
+	-- find anything in. Upgrades, the Shop and the ranks are one press. The rest
+	-- are grouped by what a player is after -- free things to collect, and the
+	-- things they own -- and pressing a group opens a tray of its panels beside
+	-- it, over the world, without moving anything else on screen.
+	--
+	-- Rebirth isn't here. It's on the garden board, where the upgrades it resets
+	-- are.
+	type MenuSlot = {
+		Name: string,
+		Icon: string,
+		-- One panel opens directly; more than one opens a tray of them.
+		Opens: { string },
+	}
+	local MENU: { MenuSlot } = {
+		{ Name = "Upgrades", Icon = MENU_ICONS.Upgrades, Opens = { "Upgrades" } },
+		{ Name = "Shop", Icon = MENU_ICONS.Shop, Opens = { "Shop" } },
+		{ Name = "Rewards", Icon = MENU_ICONS.Rewards, Opens = { "Daily", "Playtime", "Quests", WHEEL_PANEL } },
+		{ Name = "Collection", Icon = MENU_ICONS.Collection, Opens = { "Pets", CRAFT_PANEL, "Index" } },
+		{ Name = "Ranks", Icon = MENU_ICONS.Ranks, Opens = { "Ranks" } },
+		-- Shown to everyone, not just admins. Anyone without the pass gets the panel
+		-- with its commands greyed out and a pointer to the shop, which is the pitch.
+		{ Name = "Admin", Icon = MENU_ICONS.Admin, Opens = { ADMIN_PANEL } },
+		-- Staff only: hidden until the server says this player is one. Last, so
+		-- hiding it never moves a tray's row.
+		{ Name = "Staff", Icon = MENU_ICONS.Staff, Opens = { STAFF_PANEL } },
+	}
+	-- 76 square: comfortably above the size a thumb can hit reliably, with the
+	-- name under it rather than beside it so two fit across.
+	local CELL = 76
+	local CELL_LABEL = 20
+	local CELL_HEIGHT = CELL + 4 + CELL_LABEL
+	local CELL_GAP = 10
+	local COLUMNS = 2
+	local TRAY_PADDING = 10
+
+	-- How many things a panel has waiting to be collected. A group can only hide
+	-- its panels if it says when one of them wants the player, so these roll up
+	-- into the badge on the group's own button.
+	local READY: { [string]: ({ [string]: any }) -> number } = {
+		Daily = function(snapshot)
+			local available = Economy.dailyStatus(snapshot.Data, snapshot.Now or os.time())
+			return if available then 1 else 0
+		end,
+		Playtime = function(snapshot)
+			local startedAt = snapshot.SessionStartedAt
+			if not startedAt then
+				return 0
+			end
+			local elapsed = math.max(Workspace:GetServerTimeNow() - startedAt, 0) * (snapshot.PlaytimeSpeed or 1)
+			return Economy.playtimeReadyCount(elapsed, snapshot.PlaytimeClaimed or {})
+		end,
+		Quests = function(snapshot)
+			local data: Types.PlayerData = snapshot.Data
+			local count = 0
+			for _, slot in data.Quests.Active do
+				if Economy.questClaimable(data, slot) then
+					count += 1
+				end
+			end
+			return count
+		end,
+		[WHEEL_PANEL] = function(snapshot)
+			return snapshot.SpinsAvailable or Economy.spinsAvailable(snapshot.Data, os.time())
+		end,
+		[CRAFT_PANEL] = function(snapshot)
+			local data: Types.PlayerData = snapshot.Data
+			local count = 0
+			for slot = 1, math.min(snapshot.CraftSlots or 1, #data.Craft) do
+				if Economy.craftReady(data.Craft[slot], os.time()) then
+					count += 1
+				end
+			end
+			return count
+		end,
+	}
+
+	local function openPanel(name: string)
+		local entry = panelByName[name]
+		if not entry then
+			return
+		end
+		local opening = not entry.Panel.isOpen()
+		for _, other in panels do
+			other.Panel.setOpen(false)
+		end
+		entry.Panel.setOpen(opening)
+		Sound.play(Theme.Sounds.Purchase)
+	end
+	openByName = openPanel
+
+	-- A square button with its name under it.
+	local function menuCell(
+		parent: Instance,
+		name: string,
+		icon: string,
+		order: number,
+		onClick: () -> ()
+	): Components.Button
+		local cell = Components.new("Frame", {
+			BackgroundTransparency = 1,
+			Size = UDim2.fromOffset(CELL, CELL_HEIGHT),
+			LayoutOrder = order,
+			Parent = parent,
+		})
+		local button = Components.button({
+			Text = "",
+			Size = UDim2.fromOffset(CELL, CELL),
+			BackgroundColor3 = Palette.Secondary,
+			MaxTextSize = 40,
+			Parent = cell,
+		}, onClick)
+		button.setIcon(icon)
+		button.Instance.Parent = cell
+		Components.label({
+			Text = name,
+			-- A little wider than the button, so "Collection" isn't squeezed.
+			Size = UDim2.new(1, 16, 0, CELL_LABEL),
+			Position = UDim2.fromOffset(-8, CELL + 4),
+			MaxTextSize = 18,
+			Stroke = 2,
+			Parent = cell,
+		})
+		return button
+	end
+
+	local menuArea = Components.new("Frame", {
 		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(148, 0),
+		Size = UDim2.fromOffset(COLUMNS * CELL + (COLUMNS - 1) * CELL_GAP, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		LayoutOrder = 2,
 		Parent = column,
 	})
-	Components.listLayout({ Padding = UDim.new(0, 8), HorizontalAlignment = Enum.HorizontalAlignment.Left }).Parent =
-		menu
+	local grid = Components.new("Frame", {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		Parent = menuArea,
+	})
+	Components.new("UIGridLayout", {
+		CellSize = UDim2.fromOffset(CELL, CELL_HEIGHT),
+		CellPadding = UDim2.fromOffset(CELL_GAP, CELL_GAP),
+		FillDirectionMaxCells = COLUMNS,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = grid,
+	})
 
-	for order, entry in panels do
-		if entry.Hidden then
+	-- Every button that can carry a badge, by panel name for trays and by slot
+	-- for the grid, so one pass can light them all.
+	local panelButtons: { [string]: Components.Button } = {}
+	local slotButtons: { [number]: Components.Button } = {}
+	local trays: { Frame } = {}
+
+	local function showTray(tray: Frame?)
+		for _, other in trays do
+			other.Visible = other == tray
+		end
+	end
+
+	for order, slot in MENU do
+		if #slot.Opens == 1 then
+			local name = slot.Opens[1]
+			local button = menuCell(grid, slot.Name, slot.Icon, order, function()
+				showTray(nil)
+				openPanel(name)
+			end)
+			slotButtons[order] = button
+			panelButtons[name] = button
 			continue
 		end
-		-- 56 tall: comfortably above the size a thumb can hit reliably.
-		local button = Components.button({
-			Text = entry.Name,
-			Size = UDim2.fromOffset(148, 56),
-			LayoutOrder = order,
-			BackgroundColor3 = Palette.Secondary,
-			Parent = menu,
-		}, function()
-			local opening = not entry.Panel.isOpen()
-			for _, other in panels do
-				other.Panel.setOpen(false)
+
+		-- Beside the grid, level with the row its button is on.
+		local row = (order - 1) // COLUMNS
+		local tray: Frame = Components.card({
+			Position = UDim2.fromOffset(
+				COLUMNS * CELL + (COLUMNS - 1) * CELL_GAP + CELL_GAP,
+				row * (CELL_HEIGHT + CELL_GAP) - TRAY_PADDING
+			),
+			Size = UDim2.fromOffset(0, CELL_HEIGHT + TRAY_PADDING * 2),
+			AutomaticSize = Enum.AutomaticSize.X,
+			BackgroundColor3 = Palette.Background,
+			Visible = false,
+			Parent = menuArea,
+		})
+		Components.padding(TRAY_PADDING).Parent = tray
+		Components.listLayout({
+			FillDirection = Enum.FillDirection.Horizontal,
+			Padding = UDim.new(0, CELL_GAP),
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+		}).Parent =
+			tray
+		table.insert(trays, tray)
+
+		for itemOrder, name in slot.Opens do
+			local entry = panelByName[name]
+			if entry then
+				panelButtons[name] = menuCell(tray, entry.Name, entry.Icon, itemOrder, function()
+					showTray(nil)
+					openPanel(name)
+				end)
 			end
-			entry.Panel.setOpen(opening)
+		end
+
+		slotButtons[order] = menuCell(grid, slot.Name, slot.Icon, order, function()
+			local opening = not tray.Visible
+			showTray(if opening then tray else nil)
 			Sound.play(Theme.Sounds.Purchase)
 		end)
-		button.setIcon(entry.Icon)
-		button.Instance.Parent = menu
+	end
+
+	-- Hidden until a snapshot says otherwise, so it never flashes up for a frame.
+	local staffCell = slotButtons[#MENU].Instance.Parent
+	if staffCell and staffCell:IsA("GuiObject") then
+		staffCell.Visible = false
+	end
+
+	-- A press out in the world closes an open tray, the way tapping away from any
+	-- popover does. Presses on the HUD itself arrive as processed and are left to
+	-- the buttons.
+	UserInputService.InputBegan:Connect(function(input, processed)
+		if processed then
+			return
+		end
+		if
+			input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch
+		then
+			showTray(nil)
+		end
+	end)
+
+	local function refreshBadges(snapshot: { [string]: any })
+		for order, slot in MENU do
+			local total = 0
+			for _, name in slot.Opens do
+				local ready = READY[name]
+				local count = if ready then ready(snapshot) else 0
+				total += count
+				local button = panelButtons[name]
+				if button and #slot.Opens > 1 then
+					button.setBadge(if count > 0 then tostring(count) else nil)
+				end
+			end
+			slotButtons[order].setBadge(if total > 0 then tostring(total) else nil)
+		end
 	end
 
 	-- Walking up to the wheel or the crafting station opens the same panel the
@@ -275,6 +531,7 @@ function Hud.start()
 		if not wanted then
 			return
 		end
+		showTray(nil)
 		for _, entry in panels do
 			entry.Panel.setOpen(entry.Name == wanted)
 		end
@@ -347,6 +604,9 @@ function Hud.start()
 	end)
 
 	-- Toasts (top centre) ------------------------------------------------
+	-- Staff events running, and staff messages to the whole game.
+	local eventStrip = EventStrip.create(screen)
+
 	local toasts = Components.new("Frame", {
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -389,6 +649,10 @@ function Hud.start()
 	State.onChange(function(snapshot)
 		latest = snapshot
 		local data: Types.PlayerData = snapshot.Data
+		eventStrip.update(snapshot)
+		if staffCell and staffCell:IsA("GuiObject") then
+			staffCell.Visible = snapshot.IsStaff == true
+		end
 
 		cashPill.setText(Format.number(data.Cash))
 		gemPill.setText(Format.number(data.Gems))
@@ -430,26 +694,35 @@ function Hud.start()
 		for _, entry in panels do
 			entry.Panel.update(snapshot)
 		end
+		refreshBadges(snapshot)
 	end)
 
-	-- The drop timer and the boost both count down between snapshots.
-	RunService.RenderStepped:Connect(function()
+	-- The drop timer and the boost both count down between snapshots, and a
+	-- playtime rung or a craft can come ready between them too.
+	local sinceBadges = 0
+	RunService.RenderStepped:Connect(function(delta)
 		local snapshot = latest
 		if not snapshot then
 			return
 		end
 		local data: Types.PlayerData = snapshot.Data
 
+		sinceBadges += delta
+		if sinceBadges >= 1 then
+			sinceBadges = 0
+			refreshBadges(snapshot)
+		end
+
 		local boostLeft = Economy.boostRemaining(data)
 		boostPill.setVisible(boostLeft > 0)
 		if boostLeft > 0 then
-			boostPill.setText(`x{Config.Balance.Boost.Multiplier}  {Format.time(boostLeft)}`)
+			boostPill.setText(`x{Config.Balance.Boost.Multiplier} {Format.time(boostLeft)}`)
 		end
 
 		local luckLeft = Economy.luckRemaining(data)
 		luckPill.setVisible(luckLeft > 0)
 		if luckLeft > 0 then
-			luckPill.setText(`Lucky  {Format.time(luckLeft)}`)
+			luckPill.setText(Format.time(luckLeft))
 		end
 
 		if not Economy.hasRoom(data, spaces) then
@@ -464,6 +737,7 @@ function Hud.start()
 	end)
 
 	Net.event("Notify").OnClientEvent:Connect(toast)
+	Net.event("Announcement").OnClientEvent:Connect(eventStrip.announce)
 end
 
 return Hud

@@ -22,6 +22,7 @@ local ActionService = require(script.Parent.ActionService)
 local Config = require(ReplicatedStorage.Shared.Config)
 local DataService = require(script.Parent.DataService)
 local Economy = require(ReplicatedStorage.Shared.Economy)
+local EventService = require(script.Parent.EventService)
 local Format = require(ReplicatedStorage.Shared.Format)
 local HubService = require(script.Parent.HubService)
 local ItemService = require(script.Parent.ItemService)
@@ -211,7 +212,9 @@ local function collect(player: Player, slot: unknown)
 	-- The pet is read at the moment of collection rather than when the craft was
 	-- started, which is deliberate: a Lucky Crafter is a pet you put on to open the
 	-- machine, and rewarding the swap is the point of having an inventory.
-	local unitIndex = Economy.rollCraft(craft.Inputs, PetService.perk(player, "CraftLuck"))
+	-- A Craft Luck event adds to the pet's boost: x2 is one more on top, and so on.
+	local boost = PetService.perk(player, "CraftLuck") + EventService.strength("CraftLuck") - 1
+	local unitIndex = Economy.rollCraft(craft.Inputs, boost)
 	if unitIndex == 0 or not ItemService.dropItem(player, unitIndex, nil, true) then
 		return
 	end

@@ -12,12 +12,17 @@
 -- Every shape is built with its base at y = 0 of the CFrame it's given, so
 -- callers just hand over a spot on the ground.
 
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Tint = require(script.Parent.Tint)
 local Types = require(script.Parent.Types)
 
 local PropVisuals = {}
+
+-- Props that squash in place the way units do. The client animates them;
+-- nothing on the server treats them any differently.
+PropVisuals.SquishTag = "SquishyProp"
 
 type Builder = (Model, CFrame, Types.PropDef, number, Color3) -> ()
 
@@ -375,6 +380,9 @@ function PropVisuals.build(def: Types.PropDef, base: CFrame, parent: Instance): 
 		local boxCFrame, boxSize = model:GetBoundingBox()
 		local drop = boxCFrame.Position.Y - boxSize.Y / 2 - model:GetPivot().Position.Y
 		model:PivotTo(base * CFrame.new(0, -drop, 0))
+		if def.Squish then
+			CollectionService:AddTag(model, PropVisuals.SquishTag)
+		end
 		model.Parent = parent
 		return model
 	end

@@ -27,6 +27,7 @@ export type Action =
 	| "Rebirthed"
 	| "BoostBought"
 	| "LuckBought"
+	| "AutoMergeBought"
 	-- The crafting station
 	| "CraftStarted"
 	| "CraftSkipped"
@@ -45,6 +46,8 @@ export type Action =
 	| "PetReleased"
 	| "PassPurchased" -- a gamepass was bought in-game
 	| "StarterClaimed" -- the starter pack was handed over
+	| "AdminCommand" -- an admin used a command, on someone or on themselves
+	| "StaffCommand" -- staff ran an event, spawned or gave something, or moderated
 	-- Session bookends
 	| "SessionStarted"
 	| "SessionEnded"

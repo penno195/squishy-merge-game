@@ -1,6 +1,6 @@
 --!strict
--- The upgrade entries, and the two ways they're drawn: tiles across the garden
--- board, and rows in the Upgrades panel. Both read the same spec and the same
+-- The upgrade entries, and the two ways they're drawn: tiles stacked in columns
+-- on the garden board, and rows in the Upgrades panel. Both read the same spec and the same
 -- update function, so the two can never drift apart.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,15 +17,16 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Palette = Components.Palette
 local Theme = Config.Theme
 
--- The two gem-bought timed effects. Neither is an upgrade -- no levels, no
--- cash, nothing to max out -- but both sit alongside them on the board and in
--- the panel, so they're described here in the same shape.
+-- The gem-bought timed effects. None is an upgrade -- no levels, no cash,
+-- nothing to max out -- but they sit alongside them on the board and in the
+-- panel, so they're described here in the same shape.
 local BOOST_ID = "Boost"
 local LUCK_ID = "Luck"
+local AUTO_MERGE_ID = "AutoMerge"
 
--- Cap on the price drawn across a board tile, in that surface's own pixels. The
--- caption box is about 130 of them tall, so this lets the price fill it rather
--- than sit at the size a button on a phone screen would use.
+-- Cap on the price drawn across a board tile, in that surface's own pixels. A
+-- stacked tile's button is about 130 of them tall, so this lets the price fill
+-- it rather than sit at the size a button on a phone screen would use.
 local BOARD_PRICE_TEXT = 96
 
 type Timed = {
@@ -51,6 +52,20 @@ local TIMED: { [string]: Timed } = {
 		cost = Economy.luckCost,
 		remaining = Economy.luckRemaining,
 	},
+	[AUTO_MERGE_ID] = {
+		Name = "Auto Merge",
+		Icon = "AutoMerge",
+		Remote = "BuyAutoMerge",
+		cost = Economy.autoMergeCost,
+		remaining = Economy.autoMergeRemaining,
+	},
+}
+
+-- Timed entries a pass makes permanent, keyed by entry id to the pass. An owner's
+-- tile stops selling it: there is no clock to show and nothing left to buy.
+local PERMANENT_PASS: { [string]: string } = {
+	[LUCK_ID] = "LuckCharm",
+	[AUTO_MERGE_ID] = "AutoMerge",
 }
 
 local UpgradeList = {}
@@ -77,9 +92,15 @@ local function entryFor(id: string): Entry
 	return { Id = id, Name = Economy.getUpgrade(id).Name, Icon = icon(id) }
 end
 
--- What the garden board shows, in this order. Everything else lives in the
--- Upgrades panel, which lists the lot.
-UpgradeList.BoardIds = { "SpawnTier", "SpawnSpeed", "GardenSpace", BOOST_ID, LUCK_ID }
+-- What the garden board shows: one column per list, top to bottom, left to
+-- right. Grouped by what they're for -- the drops, the garden, the gem-bought
+-- effects -- so a column reads as one decision. The board adds the rebirth
+-- tile after these.
+UpgradeList.BoardColumns = {
+	{ "SpawnTier", "SpawnSpeed" },
+	{ "GardenSpace", "Income" },
+	{ BOOST_ID, LUCK_ID, AUTO_MERGE_ID },
+}
 
 function UpgradeList.allIds(): { string }
 	local ids = {}
@@ -88,6 +109,7 @@ function UpgradeList.allIds(): { string }
 	end
 	table.insert(ids, BOOST_ID)
 	table.insert(ids, LUCK_ID)
+	table.insert(ids, AUTO_MERGE_ID)
 	return ids
 end
 
@@ -131,6 +153,15 @@ local function describe(id: string, data: Types.PlayerData, passes: { [string]: 
 		end
 		local boost = Config.Balance.Boost
 		return `x{boost.Multiplier} {Theme.Text.Currency} for {Format.time(boost.Seconds)}`
+	elseif id == AUTO_MERGE_ID then
+		if passes.AutoMerge then
+			return `Your {Theme.Text.UnitPlural} merge themselves for good`
+		end
+		local remaining = Economy.autoMergeRemaining(data)
+		if remaining > 0 then
+			return `Active — {Format.time(remaining)} left`
+		end
+		return `Pairs merge themselves for {Format.time(Economy.autoMergeSeconds())}`
 	end
 	return ""
 end
@@ -140,7 +171,8 @@ end
 local function statusOf(id: string, data: Types.PlayerData, passes: { [string]: boolean }): string
 	local timed = TIMED[id]
 	if timed then
-		if id == LUCK_ID and passes.LuckCharm then
+		local pass = PERMANENT_PASS[id]
+		if pass and passes[pass] then
 			return "OWNED"
 		end
 		return if timed.remaining(data) > 0 then "RUNNING" else "Ready"
@@ -176,10 +208,11 @@ local function makeUpdater(rows: { [string]: Row }): ({ [string]: any }) -> ()
 			local timed = TIMED[id]
 			if timed then
 				local cost = timed.cost()
-				-- The pass owner's charm never runs out, so the tile stops asking
+				-- A pass owner's version never runs out, so the tile stops asking
 				-- for gems. The server refuses the sale too; this is so the button
 				-- doesn't invite one.
-				if id == LUCK_ID and passes.LuckCharm then
+				local pass = PERMANENT_PASS[id]
+				if pass and passes[pass] then
 					row.Button.setText("Permanent")
 					row.Button.setEnabled(false)
 				else
@@ -222,21 +255,18 @@ local function keepTimersLive(host: Instance, update: ({ [string]: any }) -> (),
 	end)
 end
 
--- Tiles: one column per entry, side by side across the garden board.
-function UpgradeList.tiles(parent: Instance, ids: { string }): List
-	local strip: Frame = Components.new("Frame", {
+-- Tiles stacked one above another, filling one column of the garden board.
+-- Each is wider than it is tall, so the name sits beside its icon rather than
+-- under it and the price gets the whole bottom of the tile.
+function UpgradeList.stack(parent: Instance, ids: { string }): List
+	local column: Frame = Components.new("Frame", {
 		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1),
 		Parent = parent,
 	})
-	Components.listLayout({
-		FillDirection = Enum.FillDirection.Horizontal,
-		Padding = UDim.new(0, 12),
-		VerticalAlignment = Enum.VerticalAlignment.Center,
-	}).Parent =
-		strip
+	local gap = 12
+	Components.listLayout({ Padding = UDim.new(0, gap) }).Parent = column
 
-	local width = 1 / #ids
 	local rows: { [string]: Row } = {}
 
 	for order, id in ids do
@@ -244,39 +274,40 @@ function UpgradeList.tiles(parent: Instance, ids: { string }): List
 		local isTimed = TIMED[id] ~= nil
 		local card = Components.card({
 			-- Each tile gives up its share of the gaps between them.
-			Size = UDim2.new(width, -12, 1, 0),
+			Size = UDim2.new(1, 0, 1 / #ids, -gap * (#ids - 1) / #ids),
 			LayoutOrder = order,
 			Pattern = true,
 			BackgroundColor3 = if isTimed then Palette.Secondary else Palette.Surface,
-			Parent = strip,
+			Parent = column,
 		})
 		Components.padding(14).Parent = card
 
 		Components.label({
 			Text = entry.Icon,
-			Size = UDim2.fromScale(1, 0.16),
+			Size = UDim2.fromScale(0.16, 0.26),
 			Parent = card,
 		})
 		Components.label({
 			Text = entry.Name,
-			Size = UDim2.fromScale(1, 0.15),
-			Position = UDim2.fromScale(0, 0.17),
+			Size = UDim2.fromScale(0.82, 0.26),
+			Position = UDim2.fromScale(0.18, 0),
+			TextXAlignment = Enum.TextXAlignment.Left,
 			TextColor3 = Palette.Text,
 			Stroke = 2,
 			Parent = card,
 		})
 		local status = Components.label({
 			Text = "",
-			Size = UDim2.fromScale(1, 0.09),
-			Position = UDim2.fromScale(0, 0.33),
+			Size = UDim2.fromScale(1, 0.12),
+			Position = UDim2.fromScale(0, 0.29),
 			TextColor3 = Palette.Accent,
 			Stroke = 2,
 			Parent = card,
 		})
 		local detail = Components.label({
 			Text = "",
-			Size = UDim2.fromScale(1, 0.25),
-			Position = UDim2.fromScale(0, 0.44),
+			Size = UDim2.fromScale(1, 0.22),
+			Position = UDim2.fromScale(0, 0.43),
 			TextColor3 = Palette.TextMuted,
 			TextWrapped = true,
 			Stroke = 2,
@@ -284,8 +315,8 @@ function UpgradeList.tiles(parent: Instance, ids: { string }): List
 		})
 		local button = Components.button({
 			Text = "",
-			Size = UDim2.fromScale(1, 0.26),
-			Position = UDim2.fromScale(0, 0.74),
+			Size = UDim2.fromScale(1, 0.32),
+			Position = UDim2.fromScale(0, 0.68),
 			BackgroundColor3 = if isTimed then Palette.Accent else Palette.Positive,
 			TextColor3 = if isTimed then Palette.Background else Palette.Text,
 			-- The price, and the whole point of the board is that it's read from
@@ -307,7 +338,7 @@ function UpgradeList.tiles(parent: Instance, ids: { string }): List
 		latest = snapshot
 		update(snapshot)
 	end
-	keepTimersLive(strip, update, function()
+	keepTimersLive(column, update, function()
 		return latest
 	end)
 	return { update = wrapped }

@@ -51,16 +51,29 @@ function Wheel.create(parent: Instance)
 		Parent = panel.Content,
 	})
 
+	-- Spin shares its row with the auto toggle, which only appears once there's
+	-- more than one spin to spend; alone, Spin takes the whole row back.
 	local spinButton = Components.button({
 		Text = "Spin!",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, WHEEL_SIZE + 58),
+		Position = UDim2.fromOffset(12, WHEEL_SIZE + 58),
 		Size = UDim2.new(1, -24, 0, 66),
 		BackgroundColor3 = Palette.Positive,
 		Parent = panel.Content,
 	}, function()
 		Sound.play(Theme.Sounds.Purchase)
 		WheelController.requestSpin()
+	end)
+
+	local autoButton = Components.button({
+		Text = "Auto",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -12, 0, WHEEL_SIZE + 58),
+		Size = UDim2.new(0.34, -6, 0, 66),
+		BackgroundColor3 = Palette.Secondary,
+		Parent = panel.Content,
+	}, function()
+		Sound.play(Theme.Sounds.Purchase)
+		WheelController.setAutoSpin(not WheelController.isAutoSpinning())
 	end)
 
 	local buyButton = Components.button({
@@ -97,8 +110,16 @@ function Wheel.create(parent: Instance)
 		local data: Types.PlayerData = snapshot.Data
 		local spins = snapshot.SpinsAvailable or Economy.spinsAvailable(data, os.time())
 		local ready = spins > 0 and not WheelController.isSpinning()
+		local auto = WheelController.isAutoSpinning()
 
-		spinButton.setEnabled(ready)
+		-- While auto is running the Spin button would only race it, so it stands
+		-- down; the toggle is how it stops.
+		spinButton.setEnabled(ready and not auto)
+		local showAuto = spins > 1 or auto
+		autoButton.Instance.Visible = showAuto
+		spinButton.Instance.Size = if showAuto then UDim2.new(0.66, -18, 0, 66) else UDim2.new(1, -24, 0, 66)
+		autoButton.setText(if auto then "Stop" else "Auto")
+		autoButton.setColor(if auto then Palette.Negative else Palette.Secondary)
 		-- The count rides on the button, so it's read at the moment of pressing.
 		spinButton.setBadge(if spins > 0 then `x{spins}` else nil)
 
@@ -106,6 +127,8 @@ function Wheel.create(parent: Instance)
 		buyButton.setText(`Buy a spin — {cost}`)
 		buyButton.setEnabled(data.Gems >= cost)
 	end
+
+	WheelController.onAutoChanged(render)
 
 	WheelController.onResult(function(index, description)
 		local prize = Prizes[index]

@@ -29,6 +29,9 @@ local SPARKLE_TEXTURE = "rbxasset://textures/particles/sparkles_main.dds"
 local UnitVisuals = {}
 
 UnitVisuals.Tag = "MergeUnit"
+-- A pet out in the world. Each client moves every pet tagged with this behind
+-- the player named by its "OwnerId" attribute.
+UnitVisuals.PetTag = "FollowingPet"
 
 -- The blob's proportions: width over height, and where its face sits as a
 -- fraction of its height. The feature vocabulary below is laid out against
@@ -813,12 +816,12 @@ end
 -- has to make: a new skin's pets look right before any asset exists for them, and a
 -- pet that names "CatEars" gets cat ears from code that already existed.
 --
--- No label. A name tag welded to a running player's shoulder is noise, and the pets
+-- No label. A name tag following a running player about is noise, and the pets
 -- panel is where a pet's name and perk are read.
 --
 -- `blobHeight` scales with the merge ladder, which a pet has no place on, so this
--- has a height of its own: big enough to read on a shoulder, small enough not to sit
--- over the player's head.
+-- has a height of its own: big enough to read at a player's heels, small enough not
+-- to trip over.
 local PET_HEIGHT = 2.2
 
 function UnitVisuals.buildPet(record: Types.PetRecord): Model?

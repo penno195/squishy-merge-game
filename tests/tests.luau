@@ -110,6 +110,7 @@ local data = {
 	Items = {},
 	Carried = 0,
 	LuckEndsAt = 0,
+	AutoMergeEndsAt = 0,
 	Rebirths = 0,
 	Sparkles = {},
 	Discovered = {},
@@ -153,6 +154,7 @@ if #variants > 0 then
 		Items = { Economy.variantIndex(2, 1) },
 		Carried = Economy.variantIndex(2, 1),
 		LuckEndsAt = 0,
+		AutoMergeEndsAt = 0,
 		Rebirths = 0,
 		Sparkles = {},
 		Discovered = {},
@@ -172,6 +174,7 @@ local rebirthData = {
 	Items = {},
 	Carried = 0,
 	LuckEndsAt = 0,
+	AutoMergeEndsAt = 0,
 	Rebirths = 0,
 	Cash = 0,
 	Sparkles = {},
@@ -294,6 +297,7 @@ local questData = {
 	Items = {},
 	Carried = 0,
 	LuckEndsAt = 0,
+	AutoMergeEndsAt = 0,
 	Rebirths = 0,
 	Sparkles = {},
 	Discovered = {},
@@ -428,6 +432,7 @@ local raceData = {
 	Items = {},
 	Carried = 0,
 	LuckEndsAt = 0,
+	AutoMergeEndsAt = 0,
 	Rebirths = 0,
 	Sparkles = {},
 	Discovered = {},
@@ -490,6 +495,7 @@ local passData = {
 	Items = {},
 	Carried = 0,
 	LuckEndsAt = 0,
+	AutoMergeEndsAt = 0,
 	Rebirths = 0,
 	Sparkles = {},
 	Discovered = {},
@@ -637,6 +643,7 @@ local petData = {
 	Items = {},
 	Carried = 0,
 	LuckEndsAt = 0,
+	AutoMergeEndsAt = 0,
 	Rebirths = 0,
 	Sparkles = {},
 	Discovered = {},
@@ -896,6 +903,44 @@ for index = 1, Economy.maxOwnedPets() do
 	petData.Pets[index] = { Id = sample.Id, Variant = 0 }
 end
 check("a full inventory is full", Economy.petsFull(petData))
+
+-- Staff events. Strength 1 is no event and has to change nothing, or every drop,
+-- hatch and craft in the game would shift the moment the event code shipped.
+check("no Drop Luck event adds no luck", Economy.eventLuckBias(1) == 0)
+check("x2 Drop Luck is worth one lucky charm", Economy.eventLuckBias(2) == Config.Balance.Luck.Bias)
+check("stronger Drop Luck lifts the top tier more", Economy.eventLuckBias(5) > Economy.eventLuckBias(3))
+for position in Config.Variants do
+	local plain = Economy.variantChance(position, petData, 0)
+	check(`variant {position} is unchanged by a boost of 1`, Economy.variantChance(position, petData, 0, 1) == plain)
+	check(
+		`Variant Luck multiplies variant {position}`,
+		Economy.variantChance(position, petData, 0, 2) == math.min(plain * 2, 1)
+	)
+end
+for _, egg in Config.Balance.Pets.Eggs do
+	local plain, boosted = Economy.eggChances(egg), Economy.eggChances(egg, 3)
+	local total = 0
+	for rarityId, chance in boosted do
+		total += chance
+		check(`{egg.Id} with Hatch Luck still weights only its own rarities`, egg.Weights[rarityId] ~= nil)
+	end
+	check(`{egg.Id}'s boosted odds add up`, math.abs(total - 1) < 1e-9, `{total}`)
+	for rarityId, chance in Economy.eggChances(egg, 1) do
+		check(`{egg.Id} with no Hatch Luck is the egg as written`, math.abs(chance - plain[rarityId]) < 1e-12)
+	end
+	-- The rarest rarity the egg has is where the boost has to show.
+	local rarest: string? = nil
+	for _, rarity in rarities do
+		if egg.Weights[rarity.Id] then
+			rarest = rarity.Id
+		end
+	end
+	if rarest and (plain[rarest] :: number) < 1 then
+		check(`Hatch Luck makes {egg.Id}'s rarest pet likelier`, boosted[rarest] > plain[rarest])
+	end
+	local rolled = Economy.rollEgg(egg, petData, nil, 5)
+	check(`{egg.Id} with Hatch Luck still rolls a real pet`, rolled ~= nil and Economy.petDef(rolled.Id) ~= nil)
+end
 
 print(`{checks - failures} / {checks} checks passed`)
 if failures > 0 then

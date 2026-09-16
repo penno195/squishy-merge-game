@@ -33,6 +33,7 @@ local function newData()
 		Gems = 0,
 		BoostEndsAt = 0,
 		LuckEndsAt = 0,
+		AutoMergeEndsAt = 0,
 		Items = {},
 		Carried = 0,
 		Upgrades = {},
