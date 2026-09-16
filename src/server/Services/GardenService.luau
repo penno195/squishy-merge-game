@@ -426,6 +426,14 @@ function GardenService.init()
 	if templateBaseplate then
 		templateBaseplate:Destroy()
 	end
+	-- And our spawn pad replaces the template's spawn. Left in, it sits in the
+	-- middle of the hub with the spawn logo on it, and Roblox picks between
+	-- every spawn in the place, so some players would arrive on it instead.
+	for _, child in Workspace:GetChildren() do
+		if child:IsA("SpawnLocation") then
+			child:Destroy()
+		end
+	end
 
 	local world = Instance.new("Folder")
 	world.Name = "World"
