@@ -192,8 +192,8 @@ local theme: Types.Theme = {
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 7, Color = Color3.fromRGB(150, 220, 255) },
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 8, Color = Color3.fromRGB(150, 235, 180) },
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 7.5, Color = Color3.fromRGB(205, 170, 255) },
-			{ Model = "Pinky", Height = 8, Color = Color3.fromRGB(255, 170, 205) },
-			{ Model = "Bluey", Height = 8, Color = Color3.fromRGB(160, 215, 255) },
+			{ Model = "Pinky", Height = 0.8, Color = Color3.fromRGB(255, 170, 205) },
+			{ Model = "Bluey", Height = 0.8, Color = Color3.fromRGB(160, 215, 255) },
 		},
 		-- Ornament scale, just outside the walkway: things you walk past rather
 		-- than stop at, so nothing here is taller than a couple of players. The
@@ -210,7 +210,7 @@ local theme: Types.Theme = {
 				Accent = Color3.fromRGB(255, 140, 200),
 			},
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 6, Color = Color3.fromRGB(150, 220, 255) },
-			{ Model = "Pinky", Height = 6.5, Color = Color3.fromRGB(255, 170, 205) },
+			{ Model = "Pinky", Height = 0.65, Color = Color3.fromRGB(255, 170, 205) },
 		},
 		-- Out in the open ground between the walkway and the gardens, at the
 		-- size of a thing you'd stop and look at on the way home.
@@ -223,7 +223,7 @@ local theme: Types.Theme = {
 				Color = Color3.fromRGB(235, 195, 145),
 				Accent = Color3.fromRGB(160, 230, 255),
 			},
-			{ Model = "Bluey", Height = 11, Color = Color3.fromRGB(160, 215, 255) },
+			{ Model = "Bluey", Height = 1.1, Color = Color3.fromRGB(160, 215, 255) },
 			{
 				Shape = "Stack",
 				Height = 11,
@@ -246,7 +246,7 @@ local theme: Types.Theme = {
 				Accent = Color3.fromRGB(255, 170, 210),
 			},
 			{ Model = "RubixCube", Height = 15, Color = Color3.fromRGB(255, 255, 255) },
-			{ Model = "Pinky", Height = 15, Color = Color3.fromRGB(255, 170, 205) },
+			{ Model = "Pinky", Height = 1.5, Color = Color3.fromRGB(255, 170, 205) },
 		},
 		-- The skyline, out past the gardens. Tall enough to read from the hub.
 		Outer = {
@@ -264,7 +264,7 @@ local theme: Types.Theme = {
 				Color = Color3.fromRGB(255, 245, 250),
 				Accent = Color3.fromRGB(255, 170, 200),
 			},
-			{ Model = "Bluey", Height = 20, Color = Color3.fromRGB(160, 215, 255) },
+			{ Model = "Bluey", Height = 2, Color = Color3.fromRGB(160, 215, 255) },
 			{ Shape = "Sphere", Height = 14, Color = Color3.fromRGB(180, 245, 225) },
 			{ Model = "RubixCube", Height = 22, Color = Color3.fromRGB(255, 255, 255) },
 		},
