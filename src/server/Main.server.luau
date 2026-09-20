@@ -30,6 +30,7 @@ local ShopService = require(Services.ShopService)
 local StaffService = require(Services.StaffService)
 local StarterService = require(Services.StarterService)
 local StatsService = require(Services.StatsService)
+local TacoService = require(Services.TacoService)
 local StateService = require(Services.StateService)
 local WheelService = require(Services.WheelService)
 
@@ -43,6 +44,7 @@ GardenService.init()
 -- After GardenService: these hang off the world it builds.
 HubService.init()
 PropService.init()
+TacoService.init()
 PlinthService.init()
 PassService.init()
 -- After PassService: the Admin pass is one of its passes.

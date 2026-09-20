@@ -60,7 +60,16 @@ local theme: Types.Theme = {
 		PathMaterial = Enum.Material.SmoothPlastic,
 	},
 
-	Sounds = {},
+	Sounds = {
+		-- Every one of these is optional; unset is silent. The Taco Rain event's
+		-- song is the artist's own upload of it -- Roblox's library, public, so it
+		-- is cleared for use. Anything put here has to be, and a reupload of a
+		-- commercial track is not.
+		TacoRain = "rbxassetid://142376088",
+	},
+
+	-- "Taco" by slyslush, a public-domain catalogue model.
+	TacoRainModel = 10615433240,
 
 	-- Scenery, keyed by the zones in Balance.PropZones. Nothing here is required:
 	-- a theme that omits `Props` simply gets a bare map. Giant versions of the

@@ -59,6 +59,17 @@ LiveEvents.List = {
 		Strengths = { 2, 3, 5 },
 	},
 	{
+		Id = "TacoRain",
+		Name = "Taco Rain",
+		Icon = "\u{1F32E}",
+		-- The one event that changes nothing: no drop, no unit, no currency moves.
+		-- Each client rains its own tacos, so there is nothing to touch, nothing to
+		-- pick up and nothing for the server to carry. The strength is how heavy
+		-- the rain is rather than a multiplier on anything.
+		Description = "Tacos fall from the sky. Nothing else happens",
+		Strengths = { 1, 2, 3 },
+	},
+	{
 		Id = "FastDrops",
 		Name = "Fast Drops",
 		Icon = "⚡",

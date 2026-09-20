@@ -12,6 +12,7 @@ local Hud = require(script.Parent.UI.Hud)
 local Net = require(ReplicatedStorage.Shared.Net)
 local PetController = require(script.Parent.Controllers.PetController)
 local State = require(script.Parent.State)
+local TacoController = require(script.Parent.Controllers.TacoController)
 local WheelController = require(script.Parent.Controllers.WheelController)
 
 Hud.start()
@@ -22,6 +23,7 @@ PetController.start()
 AdminController.start()
 WheelController.start()
 CraftController.start()
+TacoController.start()
 State.start()
 
 -- Tell the server the UI is listening; it replies with state, any queued

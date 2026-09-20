@@ -252,7 +252,13 @@ export type Theme = {
 		Rebirth: string?,
 		Error: string?,
 		Music: string?,
+		-- Looped for as long as the Taco Rain event runs. Unset, it rains in silence.
+		TacoRain: string?,
 	},
+	-- A catalogue Model the Taco Rain event drops instead of the taco built out of
+	-- parts in code. Unset or 0 uses the built one. Fetched once per server, and
+	-- stripped of everything that isn't geometry first (TacoService).
+	TacoRainModel: number?,
 	-- Index = tier. Tier 1 spawns first; merging two tier N units makes tier N + 1.
 	Units: { UnitDef },
 	-- A Model under ReplicatedStorage.ThemeAssets.Units that every unit, sparkle
