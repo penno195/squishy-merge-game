@@ -863,6 +863,16 @@ end
 
 -- Binds a model to a part (a character's root) so it rides along without the
 -- server moving it every frame. Welded parts must be unanchored.
+--
+-- Every part of it is made massless, and that is not an optimisation. A weld
+-- joins the model into the character's own assembly, and an assembly is thrown
+-- about by the mass *and the shape* of everything in it. A squishy is sized off
+-- its tier: the first is about nine to a character's fourteen, and the last is
+-- roughly two hundred and forty -- seventeen characters' worth, held out in
+-- front of the root. Turning with that welded on is a figure skater throwing
+-- their arms out, and the player gets swung round after it. Massless parts
+-- contribute neither mass nor inertia, so the character turns like a character
+-- whatever it is carrying.
 function UnitVisuals.attachTo(model: Model, target: BasePart, offset: CFrame)
 	local primary = UnitVisuals.primaryPart(model)
 	if not primary then
@@ -874,6 +884,7 @@ function UnitVisuals.attachTo(model: Model, target: BasePart, offset: CFrame)
 			descendant.Anchored = false
 			descendant.CanCollide = false
 			descendant.CanQuery = false
+			descendant.Massless = true
 			if descendant ~= primary then
 				local weld = Instance.new("WeldConstraint")
 				weld.Part0 = primary
