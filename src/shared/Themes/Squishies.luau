@@ -62,7 +62,20 @@ local theme: Types.Theme = {
 		-- The stripe itself, uploaded from assets/source/textures/candy-stripe.png
 		-- through Open Cloud on 2026-09-20. With this set the rails are one part
 		-- each again; FenceStripe stays because it still colours the posts.
-		FenceTexture = "rbxassetid://84809515840199",
+		--
+		-- This is the *image* id, not the id Open Cloud handed back. Uploading an
+		-- image gives you a Decal, which is an XML wrapper naming the image
+		-- inside it, and a Texture wants the image. The wrapper's id renders as
+		-- nothing at all, which looks exactly like a broken upload. To get the
+		-- one you want: fetch
+		-- `apis.roblox.com/asset-delivery-api/v1/assetId/<decal id>` with the API
+		-- key, follow the `location` it gives back, and read the `<url>` out of
+		-- the XML that downloads.
+		--
+		-- Roblox's *thumbnails* of both ids come back blank, in the Toolbox and
+		-- over the API alike, so a white preview says nothing about whether the
+		-- image is there. The stored file is the thing to check.
+		FenceTexture = "rbxassetid://132356211694074",
 		Border = Color3.fromRGB(255, 120, 190),
 		-- The hub pad and the walkway ringing it.
 		Hub = Color3.fromRGB(95, 70, 135),
