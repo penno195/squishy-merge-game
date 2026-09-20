@@ -230,6 +230,11 @@ export type LightingDef = {
 	FogStart: number?,
 	FogEnd: number?,
 	ExposureCompensation: number?,
+	-- How far a bright thing spills into what is around it. Roblox's own
+	-- defaults are generous, and on a map full of Neon they turn every shiny
+	-- thing into a white blot with a face somewhere inside it.
+	BloomIntensity: number?,
+	BloomThreshold: number?,
 }
 
 export type Palette = {

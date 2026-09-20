@@ -145,7 +145,9 @@ local theme: Types.Theme = {
 		-- Brighter than a night map would normally take, because the fairground
 		-- under it is the thing being looked at. The lamps do the close work;
 		-- this stops everything between them going to silhouette.
-		ExposureCompensation = 0.3,
+		ExposureCompensation = 0.05,
+		BloomIntensity = 0.35,
+		BloomThreshold = 1.7,
 		Ambient = Color3.fromRGB(96, 88, 126),
 		OutdoorAmbient = Color3.fromRGB(118, 108, 152),
 		ColorShiftTop = Color3.fromRGB(186, 196, 255),

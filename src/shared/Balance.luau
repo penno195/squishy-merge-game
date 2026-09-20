@@ -155,11 +155,11 @@ return {
 		GardenBrightness = 1.8,
 		-- Under the big top: one hung at the crown, and one on each pole.
 		CanopyRange = 60,
-		CanopyBrightness = 2,
+		CanopyBrightness = 0.9,
 		PoleRange = 46,
-		PoleBrightness = 1.2,
+		PoleBrightness = 0.5,
 		-- The bulb each one hangs in.
-		LampSize = 2.4,
+		LampSize = 1.8,
 	},
 
 	-- Where scenery stands. Each zone is a ring of evenly spaced slots which the

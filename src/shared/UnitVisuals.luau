@@ -454,7 +454,7 @@ Features.Ring = function(model, width, height, color)
 		CFrame.new(0, height * 0.52, 0)
 			* CFrame.Angles(0, math.rad(20), math.rad(22))
 			* CFrame.Angles(0, 0, math.pi / 2),
-		color:Lerp(WHITE, 0.5),
+		color:Lerp(WHITE, 0.2),
 		Enum.PartType.Cylinder,
 		model
 	)
@@ -473,7 +473,7 @@ Features.Star = function(model, width, height, _color)
 			Vector3.new(thin, thin, long),
 		}
 	do
-		local spoke = makeBall("Spoke", size, centre, Color3.fromRGB(255, 235, 140), model)
+		local spoke = makeBall("Spoke", size, centre, Color3.fromRGB(214, 176, 92), model)
 		spoke.Material = Enum.Material.Neon
 	end
 end
@@ -721,18 +721,18 @@ local function addShine(model: Model, color: Color3)
 
 	local light = Instance.new("PointLight")
 	light.Color = color
-	light.Brightness = 0.7
-	light.Range = math.max(size.Y * 2, 7)
+	light.Brightness = 0.3
+	light.Range = math.max(size.Y * 1.5, 6)
 	light.Parent = adornee
 
 	local glitter = Instance.new("ParticleEmitter")
 	glitter.Texture = SPARKLE_TEXTURE
 	glitter.Color = ColorSequence.new(color, Color3.new(1, 1, 1))
-	glitter.LightEmission = 0.45
-	glitter.Size = NumberSequence.new(size.Y * 0.22, 0)
-	glitter.Transparency = NumberSequence.new(0.1, 1)
+	glitter.LightEmission = 0.15
+	glitter.Size = NumberSequence.new(size.Y * 0.12, 0)
+	glitter.Transparency = NumberSequence.new(0.45, 1)
 	glitter.Lifetime = NumberRange.new(0.7, 1.3)
-	glitter.Rate = 9
+	glitter.Rate = 5
 	glitter.Speed = NumberRange.new(0.6, 1.6)
 	glitter.SpreadAngle = Vector2.new(180, 180)
 	glitter.Rotation = NumberRange.new(0, 360)

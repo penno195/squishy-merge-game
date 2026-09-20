@@ -11,6 +11,7 @@
 
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 
@@ -21,9 +22,19 @@ local LightingService = {}
 function LightingService.init()
 	local sky = Theme.Sky
 	if sky then
-		local existing = Lighting:FindFirstChildOfClass("Sky")
-		if existing then
-			existing:Destroy()
+		-- Whatever the place was made from brings its own weather with it, and
+		-- an Atmosphere or a bank of Terrain clouds is drawn *in front of* the
+		-- skybox: at midnight both render as flat black, so the sky goes out
+		-- like a light and the stars behind it are never seen. A theme that
+		-- brings its own sky wants nothing else in the way of it.
+		for _, thing in Lighting:GetChildren() do
+			if thing:IsA("Sky") or thing:IsA("Atmosphere") then
+				thing:Destroy()
+			end
+		end
+		local clouds = Workspace.Terrain:FindFirstChildOfClass("Clouds")
+		if clouds then
+			clouds:Destroy()
 		end
 		local instance = Instance.new("Sky")
 		instance.SkyboxUp = sky.Up
@@ -45,6 +56,16 @@ function LightingService.init()
 	if not settings then
 		return
 	end
+
+	-- Bloom is what turns a Neon part into a white blot. The default spills from
+	-- anything bright at all; raising the threshold means only something really
+	-- bright blooms, and dropping the intensity means it glows rather than
+	-- swallowing whatever it is attached to.
+	local bloom = Lighting:FindFirstChildOfClass("BloomEffect") or Instance.new("BloomEffect")
+	bloom.Intensity = settings.BloomIntensity or 0.4
+	bloom.Threshold = settings.BloomThreshold or 1.6
+	bloom.Size = 20
+	bloom.Parent = Lighting
 	-- Written out rather than looped over the table: the names differ from the
 	-- field names in two places, and a loop that sets properties by string is a
 	-- typo away from silently doing nothing.
