@@ -197,6 +197,36 @@ export type CanopyDef = {
 	Flag: Color3?,
 }
 
+-- Six faces of a skybox, each `rbxassetid://...`. scripts/make-sky.py draws a
+-- set that puts the map inside a big top; any six that agree at their edges will
+-- do. Unset leaves Roblox's own sky.
+export type SkyDef = {
+	Up: string,
+	Dn: string,
+	Lf: string,
+	Rt: string,
+	Ft: string,
+	Bk: string,
+}
+
+-- What the theme does to Lighting. Everything is optional and anything left out
+-- keeps whatever the place already had, so a skin can adjust one value without
+-- restating the rest.
+export type LightingDef = {
+	-- Fixed, not a cycle: inside a tent there is no sunset.
+	ClockTime: number?,
+	Brightness: number?,
+	-- Ambient is the light in shadow. Under canvas it is the main light there
+	-- is, so these go up rather than down when a theme puts a roof on.
+	Ambient: Color3?,
+	OutdoorAmbient: Color3?,
+	ColorShiftTop: Color3?,
+	FogColor: Color3?,
+	FogStart: number?,
+	FogEnd: number?,
+	ExposureCompensation: number?,
+}
+
 export type Palette = {
 	Primary: Color3,
 	Secondary: Color3,
@@ -321,6 +351,11 @@ export type Theme = {
 	-- up is decided by its Rarity, not by its place here. A theme with no Pets
 	-- still works: the egg pads simply aren't built.
 	Pets: { PetDef }?,
+	-- The sky, and what the theme does to Lighting for it. A theme that sets a
+	-- Sky almost always wants Lighting with it: a tent roof overhead with an
+	-- outdoor sun under it looks like a mistake.
+	Sky: SkyDef?,
+	Lighting: LightingDef?,
 	-- The big top over the hub. Nil leaves the hub open to the sky.
 	Canopy: CanopyDef?,
 	-- Scenery, keyed by the zone Ids in Balance.PropZones. Each slot in a zone

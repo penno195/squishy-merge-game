@@ -31,9 +31,15 @@ return {
 		-- stop it working: a tile is a third of a stud proud and collides with
 		-- nothing, so a player still stands on the slab underneath and is still
 		-- carried by it. The tiles are anchored and still, which is what the
-		-- walkway's own segments are -- the floor never moves, only what stands
-		-- on it does.
-		RingTileLanes = 3,
+		-- walkway's own segments are. The tiles do turn, though: the client
+		-- spins the whole ring of them at the speed the floor carries you, so
+		-- the walkway looks like it is moving rather than looking like a
+		-- painted stripe that drags people along it.
+		-- Four across and three along each segment puts them at about three
+		-- studs square, which is the size the tiles on the paths out to the
+		-- gardens are, so the two read as the same paving.
+		RingTileLanes = 4,
+		RingTileRows = 3,
 		-- Straight segments the ring is built from: more is smoother, and more
 		-- parts. 48 keeps each segment under 7 studs long.
 		RingSegments = 48,

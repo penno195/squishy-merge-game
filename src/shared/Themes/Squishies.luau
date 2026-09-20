@@ -117,6 +117,35 @@ local theme: Types.Theme = {
 	-- "Taco" by slyslush, a public-domain catalogue model.
 	TacoRainModel = 10615433240,
 
+	-- The whole map is inside an enormous big top, and the one over the hub is
+	-- a tent within it. Drawn by scripts/make-sky.py and uploaded 2026-09-20;
+	-- these are the image ids, not the decal ids Open Cloud hands back.
+	Sky = {
+		Up = "rbxassetid://107050451632933",
+		Dn = "rbxassetid://105319320056713",
+		Lf = "rbxassetid://124251741303446",
+		Rt = "rbxassetid://88229214197271",
+		Ft = "rbxassetid://130467253304019",
+		Bk = "rbxassetid://131987535568949",
+	},
+
+	-- Lit for being indoors. Under canvas the light is bounced rather than
+	-- direct, so the ambient values go up and the sun comes down: left at the
+	-- outdoor default, a hard shadow under every squishy would argue with the
+	-- roof over them. The clock is fixed because a tent has no sunset, and the
+	-- fog is far enough out to soften the wall without touching the mural.
+	Lighting = {
+		ClockTime = 14,
+		Brightness = 1.6,
+		Ambient = Color3.fromRGB(118, 100, 112),
+		OutdoorAmbient = Color3.fromRGB(162, 140, 156),
+		ColorShiftTop = Color3.fromRGB(255, 236, 242),
+		FogColor = Color3.fromRGB(246, 214, 228),
+		FogStart = 420,
+		FogEnd = 1400,
+		ExposureCompensation = 0.15,
+	},
+
 	-- The big top over the hub. Pink and cream rather than the fairground's red
 	-- and white: the hub pad underneath is purple, and red over purple is the
 	-- one pairing in this palette that goes muddy.

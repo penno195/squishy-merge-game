@@ -21,6 +21,7 @@ local GameplayService = require(Services.GameplayService)
 local GardenService = require(Services.GardenService)
 local HubService = require(Services.HubService)
 local ItemService = require(Services.ItemService)
+local LightingService = require(Services.LightingService)
 local LeaderboardService = require(Services.LeaderboardService)
 local PassService = require(Services.PassService)
 local PetService = require(Services.PetService)
@@ -37,6 +38,9 @@ local TacoService = require(Services.TacoService)
 local StateService = require(Services.StateService)
 local WheelService = require(Services.WheelService)
 
+-- Before the world, so the first frame anybody sees is already lit for the
+-- theme rather than flicking over to it a moment later.
+LightingService.init()
 StateService.init()
 -- Early, so an event already running elsewhere is in place before the first drop.
 EventService.init()

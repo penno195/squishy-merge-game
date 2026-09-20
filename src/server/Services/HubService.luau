@@ -143,6 +143,17 @@ local function buildWalkway(parent: Instance, radius: number)
 	local count = Hub.RingSegments
 	local length = (2 * math.pi * radius / count) * SEGMENT_OVERLAP
 
+	-- The tiles go in a Model of their own, pivoted on the middle of the map, so
+	-- the client can turn the whole ring with one call rather than walking six
+	-- hundred parts itself. The speed rides along as an attribute: the server is
+	-- the one that knows both how fast the floor carries you and how far out the
+	-- ring is, and the client needs the two divided.
+	local tiles = Instance.new("Model")
+	tiles.Name = "Tiles"
+	tiles.Parent = ring
+	tiles.WorldPivot = CFrame.new()
+	tiles:SetAttribute("RadiansPerSecond", Hub.RingSpeed / radius)
+
 	for index = 1, count do
 		local angle = (index - 0.5) / count * math.pi * 2
 		local position = Vector3.new(math.cos(angle) * radius, PAD_THICKNESS / 2, math.sin(angle) * radius)
@@ -163,31 +174,36 @@ local function buildWalkway(parent: Instance, radius: number)
 		-- with nothing, so the player is still standing on the slab and is
 		-- still carried by it -- the tiles are scenery on a moving floor rather
 		-- than the floor itself.
-		local tiles = Theme.World.PathTiles
-		if not tiles or #tiles == 0 then
+		local sweets = Theme.World.PathTiles
+		if not sweets or #sweets == 0 then
 			continue
 		end
 		local tile = Hub.PathTile
 		local outward = Vector3.new(math.cos(angle), 0, math.sin(angle))
 		local lanes = Hub.RingTileLanes
+		local rows = Hub.RingTileRows
 		local laneWidth = Hub.RingWidth / lanes
 		-- The segments overlap so their slabs leave no seam; the tiles must not,
 		-- or every join would have one sweet sitting on top of another.
-		local laneLength = 2 * math.pi * radius / count
+		local rowLength = (2 * math.pi * radius / count) / rows
 		for lane = 1, lanes do
-			local spot = position
-				+ outward * ((lane - 0.5) * laneWidth - Hub.RingWidth / 2)
-				+ Vector3.new(0, PAD_THICKNESS / 2 + tile.Rise / 2, 0)
-			local sweet = makePart(
-				"WalkwayTile",
-				Vector3.new(laneWidth - tile.Gap, tile.Rise, laneLength - tile.Gap),
-				CFrame.lookAt(spot, spot + tangent),
-				tiles[math.random(#tiles)],
-				Theme.World.PathMaterial,
-				ring
-			)
-			sweet.CanCollide = false
-			sweet.CastShadow = false
+			for row = 1, rows do
+				local spot = position
+					+ outward * ((lane - 0.5) * laneWidth - Hub.RingWidth / 2)
+					+ tangent * ((row - 0.5) * rowLength - rowLength * rows / 2)
+					+ Vector3.new(0, PAD_THICKNESS / 2 + tile.Rise / 2, 0)
+				local sweet = makePart(
+					"WalkwayTile",
+					Vector3.new(laneWidth - tile.Gap, tile.Rise, rowLength - tile.Gap),
+					CFrame.lookAt(spot, spot + tangent),
+					sweets[math.random(#sweets)],
+					Theme.World.PathMaterial,
+					tiles
+				)
+				sweet.CanCollide = false
+				sweet.CanQuery = false
+				sweet.CastShadow = false
+			end
 		end
 	end
 
