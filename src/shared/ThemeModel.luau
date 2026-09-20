@@ -26,6 +26,11 @@ local function strip(instance: Instance)
 	for _, descendant in instance:GetDescendants() do
 		if
 			descendant:IsA("LuaSourceContainer")
+			-- A catalogue model of a creature brings a Humanoid, which on an
+			-- anchored ornament is a state machine with nothing to do: it hunts
+			-- for a root part it hasn't got and complains every frame it can't
+			-- find one.
+			or descendant:IsA("Humanoid")
 			or descendant:IsA("RemoteEvent")
 			or descendant:IsA("RemoteFunction")
 			or descendant:IsA("BindableEvent")

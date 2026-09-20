@@ -126,12 +126,12 @@ local theme: Types.Theme = {
 	-- big top over the hub is unchanged -- the map is now a fairground at night
 	-- rather than a fairground inside a tent.
 	Sky = {
-		Up = "rbxassetid://88529097661062",
-		Dn = "rbxassetid://114357419305096",
-		Lf = "rbxassetid://129555933805018",
-		Rt = "rbxassetid://133927619057034",
-		Ft = "rbxassetid://134945594141491",
-		Bk = "rbxassetid://122215315444281",
+		Up = "rbxassetid://131832374471735",
+		Dn = "rbxassetid://89731991702198",
+		Lf = "rbxassetid://101651100776827",
+		Rt = "rbxassetid://77176630302738",
+		Ft = "rbxassetid://132540318890581",
+		Bk = "rbxassetid://90828553152578",
 	},
 
 	-- Lit for a fairground after dark, which is not the same as lit for night.
@@ -183,85 +183,72 @@ local theme: Types.Theme = {
 	-- footprint and the same clearance round it.
 	-- They squash on the spot like the ones in the gardens, only slower.
 	Props = {
-		-- Round the feet of the tent poles. These are the squishies that used to
-		-- have the middle of the map to themselves, kept where they were and now
-		-- stood under the roof: six colours at six sizes, all of them breathing,
-		-- so the busiest part of the map is still made of the thing the game is
-		-- about rather than of scenery.
+		-- Round the feet of the tent poles. Six of them at the size of a thing
+		-- you walk round, kept apart so each reads on its own: these are the
+		-- squishies that used to have the middle of the map to themselves, and
+		-- crowded together under the roof none of them could be seen properly.
 		Ringside = {
-			{ Model = "SakuraSquishyBun", Squish = true, Height = 9.5, Color = Color3.fromRGB(255, 160, 190) },
-			{ Model = "SakuraSquishyBun", Squish = true, Height = 7.5, Color = Color3.fromRGB(150, 220, 255) },
-			{ Model = "SakuraSquishyBun", Squish = true, Height = 8.5, Color = Color3.fromRGB(150, 235, 180) },
-			{ Model = "SakuraSquishyBun", Squish = true, Height = 6.5, Color = Color3.fromRGB(205, 170, 255) },
-			{ Model = "SakuraSquishyBun", Squish = true, Height = 9, Color = Color3.fromRGB(255, 225, 140) },
-			-- One of the butter sticks among them, for a shape that isn't a bun.
-			{ Model = "ButterSquishy", Scale = 1.9, Color = Color3.fromRGB(250, 206, 80) },
+			{ Model = "SakuraSquishyBun", Squish = true, Height = 8.5, Color = Color3.fromRGB(255, 160, 190) },
+			{ Model = "SakuraSquishyBun", Squish = true, Height = 7, Color = Color3.fromRGB(150, 220, 255) },
+			{ Model = "SakuraSquishyBun", Squish = true, Height = 8, Color = Color3.fromRGB(150, 235, 180) },
+			{ Model = "SakuraSquishyBun", Squish = true, Height = 7.5, Color = Color3.fromRGB(205, 170, 255) },
+			{ Model = "Pinky", Height = 8, Color = Color3.fromRGB(255, 170, 205) },
+			{ Model = "Bluey", Height = 8, Color = Color3.fromRGB(160, 215, 255) },
 		},
-
-		-- Ornament scale, in front of the gardens: these are things you walk
-		-- past on the way in, so nothing here is taller than a couple of
-		-- players. A Butter is 1.55 times as wide as it is tall, so 7 high is
-		-- already 11 studs across.
+		-- Ornament scale, just outside the walkway: things you walk past rather
+		-- than stop at, so nothing here is taller than a couple of players. The
+		-- butter lies down, because a butter stick stood on its end is a
+		-- monolith -- and at a fraction of the size it was, it is a prop again.
 		HubEdge = {
-			{
-				Shape = "Butter",
-				Height = 7,
-				Color = Color3.fromRGB(255, 226, 150),
-				Accent = Color3.fromRGB(255, 252, 240),
-			},
+			{ Model = "ButterSquishy", Lay = true, Height = 4, Color = Color3.fromRGB(250, 206, 80) },
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 6.5, Color = Color3.fromRGB(255, 160, 190) },
-			{ Model = "SakuraSquishyBun", Squish = true, Height = 6, Color = Color3.fromRGB(150, 220, 255) },
+			{ Model = "RubixCube", Height = 6, Color = Color3.fromRGB(255, 255, 255) },
 			{
 				Shape = "Donut",
 				Height = 8,
 				Color = Color3.fromRGB(235, 195, 145),
 				Accent = Color3.fromRGB(255, 140, 200),
 			},
-			-- Sized by `Scale` rather than `Height`, off whatever it was
-			-- modelled at, which for this one is 6.4 studs long.
-			{ Model = "ButterSquishy", Scale = 1.6, Color = Color3.fromRGB(250, 206, 80) },
+			{ Model = "SakuraSquishyBun", Squish = true, Height = 6, Color = Color3.fromRGB(150, 220, 255) },
+			{ Model = "Pinky", Height = 6.5, Color = Color3.fromRGB(255, 170, 205) },
 		},
 		-- Out in the open ground between the walkway and the gardens, at the
 		-- size of a thing you'd stop and look at on the way home.
 		Approach = {
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 10, Color = Color3.fromRGB(255, 200, 120) },
-			{
-				Shape = "Butter",
-				Height = 10,
-				Color = Color3.fromRGB(255, 226, 150),
-				Accent = Color3.fromRGB(255, 252, 240),
-			},
+			{ Model = "ButterSquishy", Lay = true, Height = 6, Color = Color3.fromRGB(250, 206, 80) },
 			{
 				Shape = "Donut",
 				Height = 12,
 				Color = Color3.fromRGB(235, 195, 145),
 				Accent = Color3.fromRGB(160, 230, 255),
 			},
+			{ Model = "Bluey", Height = 11, Color = Color3.fromRGB(160, 215, 255) },
 			{
 				Shape = "Stack",
 				Height = 11,
 				Color = Color3.fromRGB(255, 245, 250),
 				Accent = Color3.fromRGB(190, 160, 255),
 			},
-			{ Model = "ButterSquishy", Scale = 3, Color = Color3.fromRGB(250, 206, 80) },
+			{ Model = "RubixCube", Height = 10, Color = Color3.fromRGB(255, 255, 255) },
 		},
 		-- The landmarks in the gaps between gardens. Big enough to see over the
 		-- fences from the hub, small enough to leave the plinths either side of
 		-- them in clear view.
 		BetweenGardens = {
-			{
-				Shape = "Butter",
-				Height = 18,
-				Color = Color3.fromRGB(255, 222, 130),
-				Accent = Color3.fromRGB(255, 250, 235),
-			},
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 16.5, Color = Color3.fromRGB(190, 160, 255) },
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 15.5, Color = Color3.fromRGB(140, 230, 150) },
+			{ Model = "ButterSquishy", Lay = true, Height = 9, Color = Color3.fromRGB(250, 206, 80) },
+			{
+				Shape = "Donut",
+				Height = 18,
+				Color = Color3.fromRGB(235, 195, 145),
+				Accent = Color3.fromRGB(255, 170, 210),
+			},
+			{ Model = "RubixCube", Height = 15, Color = Color3.fromRGB(255, 255, 255) },
+			{ Model = "Pinky", Height = 15, Color = Color3.fromRGB(255, 170, 205) },
 		},
-		-- The skyline out past the gardens, where only the silhouette carries
-		-- and nothing is in anyone's way. Capped at about 26 studs across so
-		-- neighbours in the ring don't grow into each other: 24 slots out there
-		-- is 34 studs of arc each.
+		-- The skyline, out past the gardens. Tall enough to read from the hub.
 		Outer = {
 			{
 				Shape = "Donut",
@@ -270,24 +257,19 @@ local theme: Types.Theme = {
 				Accent = Color3.fromRGB(150, 225, 255),
 			},
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 18, Color = Color3.fromRGB(255, 180, 210) },
-			{
-				Shape = "Butter",
-				Height = 16,
-				Color = Color3.fromRGB(255, 230, 160),
-				Accent = Color3.fromRGB(255, 252, 240),
-			},
+			{ Model = "ButterSquishy", Lay = true, Height = 12, Color = Color3.fromRGB(250, 206, 80) },
 			{
 				Shape = "Stack",
 				Height = 24,
 				Color = Color3.fromRGB(255, 245, 250),
 				Accent = Color3.fromRGB(255, 170, 200),
 			},
+			{ Model = "Bluey", Height = 20, Color = Color3.fromRGB(160, 215, 255) },
 			{ Shape = "Sphere", Height = 14, Color = Color3.fromRGB(180, 245, 225) },
+			{ Model = "RubixCube", Height = 22, Color = Color3.fromRGB(255, 255, 255) },
 		},
 	},
 
-	-- Every squishy is the one bun from the design, in its own colour and wearing
-	-- its own features. Delete this line and they are all blobs again.
 	CreatureModel = "SakuraSquishyBun",
 
 	-- `Features` dresses the body from the vocabulary in UnitVisuals, so a thing

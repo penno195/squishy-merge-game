@@ -72,7 +72,7 @@ NIGHT_ZENITH = (14, 12, 38)
 NIGHT_HORIZON = (72, 44, 96)
 # A wash of colour along the horizon, so the candy carries on after dark.
 NIGHT_GLOW = (150, 80, 130)
-STARS = 1500
+STARS = 3200
 MOON_DIR = (0.42, 0.46, -0.78)
 MOON_RADIUS = 0.055
 
@@ -155,10 +155,10 @@ def night_face(name, out_dir):
         length = math.sqrt(dot(d, d))
         if d[1] / length < -0.15 and rng.random() < 0.8:
             continue
-        size = rng.choice((0.0022, 0.0026, 0.0032, 0.0040, 0.0055))
+        size = rng.choice((0.0022, 0.0026, 0.0032, 0.0040, 0.0055, 0.0070))
         warmth = rng.random()
         tint = (255, 250, 245) if warmth < 0.6 else ((215, 225, 255) if warmth < 0.85 else (255, 220, 235))
-        bright = 0.6 + rng.random() * 0.4
+        bright = 0.72 + rng.random() * 0.28
         colour = tuple(round(NIGHT_ZENITH[k] + (tint[k] - NIGHT_ZENITH[k]) * bright) for k in range(3))
         place(image, name, d, size, colour, softness=0.8)
 

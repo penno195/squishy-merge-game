@@ -41,7 +41,27 @@ function PropService.init()
 		zoneFolder.Name = zone.Id
 		zoneFolder.Parent = folder
 
+		-- What stood in the slot before this one, and in the first slot, so a
+		-- ring never puts two of the same thing side by side. Picking freely at
+		-- random reads as clumps -- three buns in a row looks like a decision
+		-- somebody made, and the ring stops looking like a mixture.
+		local previous, first = 0, 0
 		for slot = 1, zone.Count do
+			local pick = math.random(#options)
+			if #options > 1 then
+				-- Re-rolling into the gap between the choices is cheaper than
+				-- shuffling, and unlike a shuffle it still allows a repeat a
+				-- few slots along, which is what a mixture actually looks like.
+				local last = slot == zone.Count
+				while pick == previous or (last and pick == first) do
+					pick = math.random(#options)
+				end
+			end
+			previous = pick
+			if slot == 1 then
+				first = pick
+			end
+
 			-- Jitter is radial only. Spreading them sideways as well would
 			-- eventually drop one across a path out to a garden.
 			local angle = (slot - 1 + zone.Offset) / zone.Count * math.pi * 2
@@ -50,7 +70,7 @@ function PropService.init()
 			-- Facing the middle of the map, so anything with a front (a
 			-- lollipop's disc) is turned towards the players.
 			local base = CFrame.lookAt(position, Vector3.new(0, 0, 0))
-			PropVisuals.build(options[math.random(#options)], base, zoneFolder)
+			PropVisuals.build(options[pick], base, zoneFolder)
 		end
 	end
 end

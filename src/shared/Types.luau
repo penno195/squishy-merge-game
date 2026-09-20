@@ -175,6 +175,11 @@ export type PropDef = {
 	-- built shape is made of balls and cylinders, which can't be stretched
 	-- unevenly.
 	Squish: boolean?,
+	-- Tipped onto its side. A model is built standing up, which is right for a
+	-- creature and wrong for a thing -- a butter stick on its end is a monolith.
+	-- Applied before `Height` is measured, so the height asked for is the height
+	-- it ends up lying down.
+	Lay: boolean?,
 }
 
 -- The big top over the hub, if the theme wants one. Where it stands and how big

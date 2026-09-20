@@ -160,11 +160,15 @@ return {
 	-- 0.62 for a while, which put it on top of the walkway once that moved.
 	PropZones = {
 		-- Round the feet of the canopy's poles, close enough in to be under the
-		-- roof with the stations. Twelve slots at half a slot's offset puts each
-		-- one fifteen degrees off both a pole and a path, so nothing stands in
-		-- either. This ring is what keeps the giant squishies in the middle of
-		-- the map once there is a tent over it.
-		{ Id = "Ringside", Count = 12, Radius = 0.45, Offset = 0.5, Jitter = 2 },
+		-- roof with the stations. This ring is what keeps the giant squishies in
+		-- the middle of the map once there is a tent over it.
+		--
+		-- Six of them, a quarter of a slot round: that lands each one fifteen
+		-- degrees off a path on one side and fifteen off a pole on the other,
+		-- and leaves seventy studs between neighbours. Twelve fitted, but only
+		-- barely -- at the size these are they crowded each other and the paths,
+		-- and a squishy you can't walk round isn't scenery, it's a wall.
+		{ Id = "Ringside", Count = 6, Radius = 0.45, Offset = 0.25, Jitter = 2 },
 		-- A ring hugging the open side of the walkway, at a size you walk past.
 		{ Id = "HubEdge", Count = 12, Radius = 0.55, Offset = 0.5, Jitter = 3 },
 		-- Out in the middle of the open ground, between the walkway and the

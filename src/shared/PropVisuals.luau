@@ -353,6 +353,11 @@ end
 function PropVisuals.build(def: Types.PropDef, base: CFrame, parent: Instance): Model
 	local model = themeModel(def.Model)
 	if model then
+		-- Tipped over first, so `Height` measures the model as it will stand --
+		-- or lie. Rotating after sizing would give a butter stick asked to be
+		-- five studs tall a five stud *length* and whatever height it liked.
+		local lay = if def.Lay then CFrame.Angles(math.pi / 2, 0, 0) else CFrame.identity
+		model:PivotTo(lay)
 		if def.Scale then
 			model:ScaleTo(def.Scale)
 		elseif def.Height then
@@ -370,10 +375,12 @@ function PropVisuals.build(def: Types.PropDef, base: CFrame, parent: Instance): 
 		end
 		Tint.apply(model, def.Color)
 		-- Supplied models are pivoted wherever the modeller left them, so drop
-		-- the model by however far its lowest point sits below the pivot.
+		-- the model by however far its lowest point sits below the pivot. The
+		-- drop is measured in world Y and `base` only ever turns about Y, so it
+		-- survives being combined with the lay.
 		local boxCFrame, boxSize = model:GetBoundingBox()
 		local drop = boxCFrame.Position.Y - boxSize.Y / 2 - model:GetPivot().Position.Y
-		model:PivotTo(base * CFrame.new(0, -drop, 0))
+		model:PivotTo((base * lay) + Vector3.new(0, -drop, 0))
 		if def.Squish then
 			CollectionService:AddTag(model, PropVisuals.SquishTag)
 		end
