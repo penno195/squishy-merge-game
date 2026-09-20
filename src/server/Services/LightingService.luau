@@ -32,9 +32,12 @@ function LightingService.init()
 		instance.SkyboxRt = sky.Rt
 		instance.SkyboxFt = sky.Ft
 		instance.SkyboxBk = sky.Bk
-		-- Nothing in the real sky belongs in a tent.
+		-- The skybox carries its own sun, moon and stars if it wants them, drawn
+		-- where the theme decided rather than wherever Roblox's clock puts
+		-- them. Roblox's own stars stay on top of a night sky, though: they
+		-- twinkle, which a painted one cannot.
 		instance.CelestialBodiesShown = false
-		instance.StarCount = 0
+		instance.StarCount = 3000
 		instance.Parent = Lighting
 	end
 

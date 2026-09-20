@@ -13,11 +13,11 @@
 -- added here once and every theme can then use it.
 
 local CollectionService = game:GetService("CollectionService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(script.Parent.Config)
 local Economy = require(script.Parent.Economy)
 local Format = require(script.Parent.Format)
+local ThemeModel = require(script.Parent.ThemeModel)
 local Tint = require(script.Parent.Tint)
 local Types = require(script.Parent.Types)
 
@@ -44,18 +44,15 @@ function UnitVisuals.blobHeight(tier: number): number
 	return 2.6 + (tier - 1) * 0.18
 end
 
-local function findThemeModel(name: string?): Model?
+local function themeModel(name: string?): Model?
 	if not name then
 		return nil
 	end
-	local assets = ReplicatedStorage:FindFirstChild("ThemeAssets")
-	local units = assets and assets:FindFirstChild("Units")
-	local model = units and units:FindFirstChild(name)
-	if model and model:IsA("Model") then
-		return model
+	local model = ThemeModel.clone(name, { "Units" })
+	if not model then
+		warn(`Theme model "{name}" not found in ReplicatedStorage.ThemeAssets.Units; using a blob`)
 	end
-	warn(`Theme model "{name}" not found in ReplicatedStorage.ThemeAssets.Units; using a blob`)
-	return nil
+	return model
 end
 
 -- Face parts, shared by the mouth and by anything a feature tints toward.
@@ -680,8 +677,9 @@ end
 -- A theme's own model, standing in for a blob `blobHeight` tall. With no `Scale`
 -- it's sized to be as wide as that blob would be, so the ladder grows the same
 -- way whichever it's built from and garden spacing tuned for blobs still holds.
-local function buildFromTemplate(template: Model, def: Types.UnitDef, color: Color3, blobHeight: number): Model
-	local model = template:Clone()
+-- `model` is already a copy of the theme's asset, tidied and turned into a
+-- Model by ThemeModel, so this dresses it in place rather than cloning again.
+local function buildFromTemplate(model: Model, def: Types.UnitDef, color: Color3, blobHeight: number): Model
 	local body = model:FindFirstChild("Body")
 	if def.Scale then
 		model:ScaleTo(def.Scale)
@@ -830,7 +828,7 @@ function UnitVisuals.buildPet(record: Types.PetRecord): Model?
 		return nil
 	end
 	local color = Economy.petColor(record)
-	local template = findThemeModel(def.Model)
+	local template = themeModel(def.Model)
 
 	local dressing: Types.UnitDef = { Name = def.Name, Color = color, Features = def.Features, Scale = def.Scale }
 	local model = if template
@@ -887,7 +885,7 @@ end
 -- sparkles on the end of it.
 function UnitVisuals.build(tier: number): Model
 	local def = Config.Units[tier]
-	local template = findThemeModel(def.Model)
+	local template = themeModel(def.Model)
 
 	local model = if template
 		then buildFromTemplate(template, def, def.Color, UnitVisuals.blobHeight(def.Tier or tier))

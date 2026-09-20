@@ -13,8 +13,8 @@
 -- callers just hand over a spot on the ground.
 
 local CollectionService = game:GetService("CollectionService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local ThemeModel = require(script.Parent.ThemeModel)
 local Tint = require(script.Parent.Tint)
 local Types = require(script.Parent.Types)
 
@@ -337,28 +337,22 @@ local SHAPES: { [string]: Builder } = {
 -- Props first, then Units: a giant version of a creature from the garden is
 -- the same model stood somewhere else, and shouldn't need a second copy kept
 -- in step with the first.
-local function findThemeModel(name: string?): Model?
+local function themeModel(name: string?): Model?
 	if not name then
 		return nil
 	end
-	local assets = ReplicatedStorage:FindFirstChild("ThemeAssets")
-	for _, folderName in { "Props", "Units" } do
-		local folder = assets and assets:FindFirstChild(folderName)
-		local model = folder and folder:FindFirstChild(name)
-		if model and model:IsA("Model") then
-			return model
-		end
+	local model = ThemeModel.clone(name, { "Props", "Units" })
+	if not model then
+		warn(`Theme prop "{name}" not found in ReplicatedStorage.ThemeAssets.Props or .Units; building a shape instead`)
 	end
-	warn(`Theme prop "{name}" not found in ReplicatedStorage.ThemeAssets.Props or .Units; building a shape instead`)
-	return nil
+	return model
 end
 
 -- `base` is a spot on the ground; the prop is built standing on it, facing the
 -- way the CFrame faces.
 function PropVisuals.build(def: Types.PropDef, base: CFrame, parent: Instance): Model
-	local template = findThemeModel(def.Model)
-	if template then
-		local model = template:Clone()
+	local model = themeModel(def.Model)
+	if model then
 		if def.Scale then
 			model:ScaleTo(def.Scale)
 		elseif def.Height then
@@ -387,14 +381,14 @@ function PropVisuals.build(def: Types.PropDef, base: CFrame, parent: Instance): 
 		return model
 	end
 
-	local model = Instance.new("Model")
-	model.Name = def.Shape or "Prop"
+	local shape = Instance.new("Model")
+	shape.Name = def.Shape or "Prop"
 	-- Annotated: the lookup and the fallback are the same signature, but Luau
 	-- won't collapse the union on its own.
 	local build: Builder = SHAPES[def.Shape or ""] or buildCone
-	build(model, base, def, def.Height or DEFAULT_HEIGHT, def.Accent or Color3.new(1, 1, 1))
-	model.Parent = parent
-	return model
+	build(shape, base, def, def.Height or DEFAULT_HEIGHT, def.Accent or Color3.new(1, 1, 1))
+	shape.Parent = parent
+	return shape
 end
 
 return PropVisuals

@@ -409,6 +409,13 @@ one that does, with hills that are sine waves of a whole number of periods and
 everything else drawn three times so whatever crosses the seam comes back in the
 other side. A theme that sets no mural gets a wall in its own colour.
 
+The sky is `World.Sky`, six faces a theme names, with `World.Lighting` beside it:
+a sky and the light under it have to be chosen together, or you get a night sky
+with an afternoon sun in it. `scripts/make-sky.py` draws two sets -- `night`, and
+`tent` for a map that wants to be inside a big top. Both are seamless, by
+computing each pixel from the direction it looks along rather than drawing six
+pictures and hoping.
+
 Uploading an image is `scripts/upload-image.sh`, which exists because Studio's
 own uploader has never worked on this machine and because Open Cloud hands back
 the id of a *Decal* -- a wrapper naming the image inside it. A Texture given the
