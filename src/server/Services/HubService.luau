@@ -193,11 +193,12 @@ end
 -- rather than replacing it, so what shows in the grouting between them is the
 -- slab's own colour.
 --
--- Laid square and butted up, not scattered. A path is *made*, and what keeps a
--- grid from reading as a repeat is the colours being mixed and every other row
--- being shifted half a tile, the way paving is laid -- not the tiles being
--- crooked. The row that the shift pushes over the edge is dropped rather than
--- left hanging over the grass.
+-- Each row is cut into a different number of tiles of differing widths, which
+-- between them fill the paving exactly: a row of three wide ones, then two fat
+-- ones, then four narrow. That is where the variety comes from, rather than from
+-- scattering tiles about -- a path is made, and a made path meets its own edges.
+-- An even grid with every other row nudged along reads as a tiled floor, and
+-- leaves a bald strip down one side wherever the nudge runs a tile off the edge.
 local function tilePath(
 	parent: Instance,
 	centre: Vector3,
@@ -208,35 +209,42 @@ local function tilePath(
 )
 	local tile = Hub.PathTile
 	local across = Vector3.new(-direction.Z, 0, direction.X)
-	local step = tile.Size + tile.Gap
 	-- The tiles fill the space between the kerbs, not the whole slab, or the
-	-- outermost row would be laid underneath them.
+	-- outermost ones would be laid underneath them.
 	local paved = width - tile.KerbWidth * 2
-	-- Rounded, not floored: the tile size is what a tile should look like, and
-	-- the path is whatever width it is. Flooring 2.8 tiles' worth of room to two
-	-- lays them half a stud wider than they were meant to be, which is the
-	-- difference between a paved path and a row of slabs.
-	local rows = math.max(math.round(length / step), 1)
-	local columns = math.max(math.round(paved / step), 1)
+	-- Rounded, not floored: the size is what a row should look like and the path
+	-- is whatever length it is.
+	local rows = math.max(math.round(length / (tile.Size + tile.Gap)), 1)
 	local rowStep = length / rows
-	local columnStep = paved / columns
 
 	for row = 1, rows do
-		local shift = if row % 2 == 0 then columnStep / 2 else 0
-		for column = 1, columns do
-			local along = (row - 0.5) * rowStep - length / 2
-			local side = (column - 0.5) * columnStep - paved / 2 + shift
-			if math.abs(side) > paved / 2 - columnStep / 2 then
-				continue
-			end
+		local count = math.random(tile.MinAcross, tile.MaxAcross)
+		-- Random shares of the row, normalised so they add up to the full width.
+		-- Weighted rather than free, so one tile is never a sliver beside a slab.
+		local weights = table.create(count)
+		local total = 0
+		for index = 1, count do
+			local weight = 0.72 + math.random() * 0.56
+			weights[index] = weight
+			total += weight
+		end
+
+		local along = (row - 0.5) * rowStep - length / 2
+		local edge = -paved / 2
+		for index = 1, count do
+			local span = paved * (weights[index] / total)
+			local spot = centre
+				+ direction * along
+				+ across * (edge + span / 2)
+				+ Vector3.new(0, PAD_THICKNESS + tile.Rise / 2, 0)
+			edge += span
 			-- Both ends of the look have to be at the tile's own height. Aiming
 			-- a raised eye at a target on the ground tips the part by the angle
 			-- between them, which over one stud of direction and a stud of lift
 			-- is most of a right angle -- tiles stood on their edges.
-			local spot = centre + direction * along + across * side + Vector3.new(0, PAD_THICKNESS + tile.Rise / 2, 0)
 			local sweet = makePart(
 				"PathTile",
-				Vector3.new(columnStep - tile.Gap, tile.Rise, rowStep - tile.Gap),
+				Vector3.new(span - tile.Gap, tile.Rise, rowStep - tile.Gap),
 				CFrame.lookAt(spot, spot + direction),
 				tiles[math.random(#tiles)],
 				Theme.World.PathMaterial,
@@ -249,8 +257,7 @@ local function tilePath(
 	end
 
 	-- The kerb framing both sides, which is what turns a field of tiles into a
-	-- path. It runs the full length, including past the last row, so the path
-	-- ends square rather than frayed.
+	-- path. A theme that wants no frame leaves `PathKerb` out.
 	if not Theme.World.PathKerb then
 		return
 	end

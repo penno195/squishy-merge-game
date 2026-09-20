@@ -41,8 +41,13 @@ return {
 		--
 		-- A theme with no `PathTiles` gets the plain slab and none of this.
 		PathTile = {
-			-- One tile across the path, before the gap is taken off it.
+			-- How deep a row is, before the gap is taken off it. Across the path
+			-- a row is split into `MinAcross` to `MaxAcross` tiles of differing
+			-- widths that between them fill it exactly, so the path is paved
+			-- edge to edge and no two rows are cut the same.
 			Size = 3.1,
+			MinAcross = 2,
+			MaxAcross = 4,
 			-- Grouting between tiles, so the slab shows through as the line.
 			Gap = 0.35,
 			Rise = 0.3,
