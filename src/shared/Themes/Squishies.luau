@@ -135,8 +135,12 @@ local theme: Types.Theme = {
 		-- under it is the thing being looked at. The lamps do the close work;
 		-- this stops everything between them going to silhouette.
 		ExposureCompensation = 0.05,
-		BloomIntensity = 0.35,
-		BloomThreshold = 1.7,
+		-- Low, and reached only by something genuinely bright. Every lamp added
+		-- to the map raises what the scene is worth overall, and bloom spills
+		-- off whatever crosses its threshold -- so the same shine that was
+		-- right in a dark map goes back to blooming as the map gets lit.
+		BloomIntensity = 0.18,
+		BloomThreshold = 2.1,
 		-- Roblox's own, on its own skybox. Well above the default thousand,
 		-- because a fairground at night wants a sky worth looking up at.
 		StarCount = 6000,

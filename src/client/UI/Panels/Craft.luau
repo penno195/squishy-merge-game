@@ -374,11 +374,9 @@ function Craft.create(parent: Instance)
 		elseif #inputs >= Economy.craftInputs() then
 			addText, addEnabled = "This slot is full", false
 		elseif carried == 0 then
-			addText, addEnabled = `Carry a {Theme.Text.Unit} over`, false
+			addText, addEnabled = `Pick a {Theme.Text.Unit} up first`, false
 		elseif Economy.isSparkle(carried) then
 			addText, addEnabled = `{Theme.Text.SparklePlural} can't go in`, false
-		elseif not CraftController.atMachine() then
-			addText, addEnabled = `Walk to the {Theme.Text.Machine}`, false
 		else
 			addText, addEnabled = `Add {Config.Units[carried].Name}`, true
 		end

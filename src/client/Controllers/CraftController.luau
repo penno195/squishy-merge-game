@@ -7,7 +7,6 @@
 -- machine shows every player their own slots and their own clock even though
 -- there is only one of it stood on the hub's rim.
 
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -20,7 +19,6 @@ local Net = require(ReplicatedStorage.Shared.Net)
 local State = require(script.Parent.Parent.State)
 local Types = require(ReplicatedStorage.Shared.Types)
 
-local LocalPlayer = Players.LocalPlayer
 local Palette = Components.Palette
 local Theme = Config.Theme
 
@@ -29,7 +27,6 @@ local PIP_SIZE = 34
 
 local CraftController = {}
 
-local machine: Model? = nil
 local listeners: { (index: number, sparkle: boolean) -> () } = {}
 local latest: { [string]: any }? = nil
 
@@ -38,19 +35,6 @@ local function findMachine(): Model?
 	local hub = world and world:FindFirstChild("Hub")
 	local found = hub and hub:FindFirstChild("CraftMachine")
 	return if found and found:IsA("Model") then found else nil
-end
-
--- Whether the player is stood close enough to load the machine. The server
--- checks this too; this is only so the button can say so first.
-function CraftController.atMachine(): boolean
-	local stand = machine
-	local character = LocalPlayer.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if not (stand and root and root:IsA("BasePart")) then
-		return false
-	end
-	local delta = stand:GetPivot().Position - root.Position
-	return Vector2.new(delta.X, delta.Z).Magnitude <= Config.Balance.Craft.Radius
 end
 
 function CraftController.onResult(listener: (index: number, sparkle: boolean) -> ())
@@ -64,7 +48,6 @@ local function mountScreen(): boolean
 	if not (plate and plate:IsA("BasePart")) then
 		return false
 	end
-	machine = stand
 	if plate:FindFirstChild(SURFACE_NAME) then
 		return true
 	end

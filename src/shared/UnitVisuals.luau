@@ -458,7 +458,10 @@ Features.Ring = function(model, width, height, color)
 		Enum.PartType.Cylinder,
 		model
 	)
-	ring.Material = Enum.Material.Neon
+	-- Bright plastic rather than Neon. Neon ignores the lighting and blooms,
+	-- and with lamps over every garden there is plenty of light on it now --
+	-- it was reading as a bulb stuck to a squishy rather than as a shine.
+	ring.Material = Enum.Material.SmoothPlastic
 end
 
 -- Three crossed spokes above the head. Crossed rather than a flat five-pointed
@@ -474,7 +477,7 @@ Features.Star = function(model, width, height, _color)
 		}
 	do
 		local spoke = makeBall("Spoke", size, centre, Color3.fromRGB(214, 176, 92), model)
-		spoke.Material = Enum.Material.Neon
+		spoke.Material = Enum.Material.SmoothPlastic
 	end
 end
 
@@ -721,14 +724,14 @@ local function addShine(model: Model, color: Color3)
 
 	local light = Instance.new("PointLight")
 	light.Color = color
-	light.Brightness = 0.3
-	light.Range = math.max(size.Y * 1.5, 6)
+	light.Brightness = 0.12
+	light.Range = math.max(size.Y * 1.2, 5)
 	light.Parent = adornee
 
 	local glitter = Instance.new("ParticleEmitter")
 	glitter.Texture = SPARKLE_TEXTURE
 	glitter.Color = ColorSequence.new(color, Color3.new(1, 1, 1))
-	glitter.LightEmission = 0.15
+	glitter.LightEmission = 0.05
 	glitter.Size = NumberSequence.new(size.Y * 0.12, 0)
 	glitter.Transparency = NumberSequence.new(0.45, 1)
 	glitter.Lifetime = NumberRange.new(0.7, 1.3)

@@ -24,7 +24,6 @@ local DataService = require(script.Parent.DataService)
 local Economy = require(ReplicatedStorage.Shared.Economy)
 local EventService = require(script.Parent.EventService)
 local Format = require(ReplicatedStorage.Shared.Format)
-local HubService = require(script.Parent.HubService)
 local ItemService = require(script.Parent.ItemService)
 local Net = require(ReplicatedStorage.Shared.Net)
 local PassService = require(script.Parent.PassService)
@@ -33,7 +32,6 @@ local PlinthService = require(script.Parent.PlinthService)
 local StateService = require(script.Parent.StateService)
 local Types = require(ReplicatedStorage.Shared.Types)
 
-local Craft = Config.Balance.Craft
 local Theme = Config.Theme
 
 -- How often finished crafts are looked for. Only a toast rides on this: the
@@ -71,17 +69,6 @@ local function spacesFor(player: Player): number
 	return PassService.extraGardenSpaces(player) + PetService.extraSpaces(player)
 end
 
-local function atMachine(player: Player): boolean
-	local position = HubService.machinePosition()
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if not (position and root and root:IsA("BasePart")) then
-		return false
-	end
-	local delta = position - root.Position
-	return Vector2.new(delta.X, delta.Z).Magnitude <= Craft.Radius
-end
-
 -- The craft a client's message is about, or nil if it named a slot this player
 -- has no business touching. `slot` arrives over a remote, so it is whatever the
 -- client felt like sending: a fraction, a string and a slot bought by somebody
@@ -117,18 +104,13 @@ local function add(player: Player, slot: unknown)
 		return
 	end
 	if data.Carried == 0 then
-		StateService.notify(player, `Pick a {Theme.Text.Unit} up and bring it over.`, "Error")
+		StateService.notify(player, `Pick a {Theme.Text.Unit} up first.`, "Error")
 		return
 	end
 	if Economy.isSparkle(data.Carried) then
 		StateService.notify(player, `{Theme.Text.SparklePlural} can't go in the {Theme.Text.Machine}.`, "Error")
 		return
 	end
-	if not atMachine(player) then
-		StateService.notify(player, `Stand at the {Theme.Text.Machine} to load it.`, "Error")
-		return
-	end
-
 	local tier = ItemService.takeCarried(player)
 	if not tier then
 		return
