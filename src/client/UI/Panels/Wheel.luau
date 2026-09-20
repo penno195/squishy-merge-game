@@ -10,6 +10,7 @@ local Components = require(script.Parent.Parent.Components)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Economy = require(ReplicatedStorage.Shared.Economy)
 local Net = require(ReplicatedStorage.Shared.Net)
+local Reveal = require(script.Parent.Parent.Reveal)
 local Sound = require(script.Parent.Parent.Sound)
 local Types = require(ReplicatedStorage.Shared.Types)
 local WheelController = require(script.Parent.Parent.Parent.Controllers.WheelController)
@@ -139,6 +140,10 @@ function Wheel.create(parent: Instance)
 	WheelController.onResult(function(index, description)
 		local prize = Prizes[index]
 		resultLabel.Text = if description ~= "" then `{prize.Label}!  You won {description}.` else `{prize.Label}!`
+		-- The line in the panel is for someone who is still looking at the
+		-- wheel; the card is for everyone else, since a spin can be set running
+		-- and left to finish while the panel is shut.
+		Reveal.prize(prize.Label, description)
 		render()
 	end)
 

@@ -22,6 +22,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Economy = require(ReplicatedStorage.Shared.Economy)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Net = require(ReplicatedStorage.Shared.Net)
+local Reveal = require(script.Parent.Reveal)
 local Sound = require(script.Parent.Sound)
 local State = require(script.Parent.Parent.State)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -46,6 +47,8 @@ local Palette = Components.Palette
 local Theme = Config.Theme
 
 local TOAST_SECONDS = 4
+-- How many can be on screen at once. See the note where they're built.
+local MAX_TOASTS = 3
 local TOAST_COLORS: { [string]: Color3 } = {
 	Error = Palette.Negative,
 	Reward = Palette.Positive,
@@ -99,6 +102,10 @@ function Hud.start()
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 		Parent = playerGui,
 	})
+
+	-- Prize and egg cards are drawn over everything, so they hang off the screen
+	-- rather than off any panel.
+	Reveal.mount(screen)
 
 	-- One scale factor keeps the layout usable from phone to desktop.
 	local scale: UIScale = Components.new("UIScale", { Parent = screen })
@@ -617,12 +624,35 @@ function Hud.start()
 	})
 	Components.listLayout({ Padding = UDim.new(0, 6) }).Parent = toasts
 
+	-- Three at a time. They arrive in bursts -- a merge, a quest claimed and a
+	-- level all at once -- and a stack tall enough to reach the buy button is
+	-- both unreadable and in the way. The oldest goes to make room, because the
+	-- newest is the one that just happened.
+	local live: { Frame } = {}
+	local order = 0
+
+	local function dismiss(card: Frame)
+		local index = table.find(live, card)
+		if index then
+			table.remove(live, index)
+		end
+		card:Destroy()
+	end
+
 	local function toast(message: string, kind: string)
+		while #live >= MAX_TOASTS do
+			dismiss(live[1])
+		end
+		order += 1
 		local card = Components.card({
 			Size = UDim2.new(1, 0, 0, 46),
 			BackgroundColor3 = TOAST_COLORS[kind] or Palette.Surface,
+			-- Explicit, so the newest is always at the bottom of the stack
+			-- rather than wherever the layout happened to put it.
+			LayoutOrder = order,
 			Parent = toasts,
 		})
+		table.insert(live, card)
 		Components.label({
 			Text = message,
 			Size = UDim2.new(1, -20, 1, -8),
@@ -633,10 +663,14 @@ function Hud.start()
 			Parent = card,
 		})
 		task.delay(TOAST_SECONDS, function()
+			-- It may already have been pushed out by three newer ones.
+			if not card.Parent then
+				return
+			end
 			local fade = TweenService:Create(card, TweenInfo.new(0.4), { BackgroundTransparency = 1 })
 			fade:Play()
 			fade.Completed:Wait()
-			card:Destroy()
+			dismiss(card)
 		end)
 	end
 
@@ -737,6 +771,8 @@ function Hud.start()
 	end)
 
 	Net.event("Notify").OnClientEvent:Connect(toast)
+	-- The server has already picked the pet and banked it; this is the ceremony.
+	Net.event("PetHatched").OnClientEvent:Connect(Reveal.egg)
 	Net.event("Announcement").OnClientEvent:Connect(eventStrip.announce)
 end
 

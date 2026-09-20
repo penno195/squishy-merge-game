@@ -35,8 +35,11 @@ export type Command = {
 
 local AdminCommands = {}
 
--- Between any two commands from the same admin.
-AdminCommands.Cooldown = 3
+-- Between any two commands from the same admin. Staff are exempt -- the checks
+-- in AdminService that hold an admin back are there to stop a paying player
+-- pinning someone down, which is not what a staff member running an event is
+-- doing.
+AdminCommands.Cooldown = 6
 -- How long a player is left alone after a command lands on them, counted from the
 -- moment it lands. Longer than every effect, so there is always a gap between one
 -- wearing off and the next.
