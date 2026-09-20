@@ -187,16 +187,18 @@ local theme: Types.Theme = {
 		-- you walk round, kept apart so each reads on its own: these are the
 		-- squishies that used to have the middle of the map to themselves, and
 		-- crowded together under the roof none of them could be seen properly.
-		-- Bluey and Pinky are a pair by the same maker, so they take the same
-		-- height wherever they stand: four near the hub, five in the open
-		-- ground, eight out past the gardens. Sized apart they read as two
-		-- unrelated things rather than as two of a set.
+		-- Bluey and Pinky take very different numbers to look the same size, and
+		-- the models are why. Pinky is two and a half studs of creature, so
+		-- `Height` means what it says on it and its numbers are small. Bluey's
+		-- model is a 320 x 78 x 615 stud scene of sixty-two parts -- a build,
+		-- not a character -- so the height it is asked for is spread across all
+		-- of that and the creature inside ends up a fraction of it.
 		Ringside = {
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 8.5, Color = Color3.fromRGB(255, 160, 190) },
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 7, Color = Color3.fromRGB(150, 220, 255) },
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 8, Color = Color3.fromRGB(150, 235, 180) },
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 7.5, Color = Color3.fromRGB(205, 170, 255) },
-			{ Model = "Pinky", Height = 4, Color = Color3.fromRGB(255, 170, 205) },
+			{ Model = "Pinky", Height = 0.6, Color = Color3.fromRGB(255, 170, 205) },
 			{ Model = "Bluey", Height = 4, Color = Color3.fromRGB(160, 215, 255) },
 		},
 		-- Ornament scale, just outside the walkway: things you walk past rather
@@ -214,7 +216,7 @@ local theme: Types.Theme = {
 				Accent = Color3.fromRGB(255, 140, 200),
 			},
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 6, Color = Color3.fromRGB(150, 220, 255) },
-			{ Model = "Pinky", Height = 4, Color = Color3.fromRGB(255, 170, 205) },
+			{ Model = "Pinky", Height = 0.6, Color = Color3.fromRGB(255, 170, 205) },
 		},
 		-- Out in the open ground between the walkway and the gardens, at the
 		-- size of a thing you'd stop and look at on the way home.
@@ -250,7 +252,7 @@ local theme: Types.Theme = {
 				Accent = Color3.fromRGB(255, 170, 210),
 			},
 			{ Model = "RubixCube", Height = 15, Color = Color3.fromRGB(255, 255, 255) },
-			{ Model = "Pinky", Height = 8, Color = Color3.fromRGB(255, 170, 205) },
+			{ Model = "Pinky", Height = 1.1, Color = Color3.fromRGB(255, 170, 205) },
 		},
 		-- The skyline, out past the gardens. Tall enough to read from the hub.
 		Outer = {

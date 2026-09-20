@@ -374,13 +374,15 @@ function PropVisuals.build(def: Types.PropDef, base: CFrame, parent: Instance): 
 			end
 		end
 		Tint.apply(model, def.Color)
-		-- Supplied models are pivoted wherever the modeller left them, so drop
-		-- the model by however far its lowest point sits below the pivot. The
-		-- drop is measured in world Y and `base` only ever turns about Y, so it
-		-- survives being combined with the lay.
+		-- Put it where it goes, then measure where it actually ended up and sit
+		-- it on the floor. Working the drop out in advance means predicting what
+		-- a rotation, a scale and whatever pivot offset the modeller left behind
+		-- will do between them -- and getting any of the three wrong leaves the
+		-- prop hovering, which is exactly what a stick of butter did.
+		model:PivotTo(base * lay)
 		local boxCFrame, boxSize = model:GetBoundingBox()
-		local drop = boxCFrame.Position.Y - boxSize.Y / 2 - model:GetPivot().Position.Y
-		model:PivotTo((base * lay) + Vector3.new(0, -drop, 0))
+		local bottom = boxCFrame.Position.Y - boxSize.Y / 2
+		model:PivotTo(model:GetPivot() + Vector3.new(0, base.Position.Y - bottom, 0))
 		if def.Squish then
 			CollectionService:AddTag(model, PropVisuals.SquishTag)
 		end
