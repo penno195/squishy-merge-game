@@ -160,36 +160,35 @@ function WheelFace.create(props: { [string]: any }, onSpin: () -> ()): Face
 	-- and narrow, so radial text fits names like "Bonus Unit" that would crowd
 	-- their neighbours laid across the arc.
 	--
-	-- Past the halfway point, reading outward would put every word upside down,
-	-- so those segments are turned to read inward instead. That's what the
-	-- printed wheels do, and it's the difference between a wheel you can read
-	-- at a glance and one you tilt your head at.
+	-- Every one of them reads the same way: from the hub outward. Turning the
+	-- far half round to keep its words upright is what a printed wheel does, but
+	-- on a wheel that spins it reads as half the labels being wrong -- the eye
+	-- takes the mixture for a mistake long before it thanks you for the two
+	-- words it didn't have to tilt its head at.
 	for index, prize in Prizes do
 		local degrees = (index - 1) * segmentAngle
 		local angle = math.rad(degrees)
-		local flipped = degrees > 180
 		local holder: Frame = Components.new("Frame", {
 			Name = `Label{index}`,
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5 + math.sin(angle) * LABEL_RADIUS, 0.5 - math.cos(angle) * LABEL_RADIUS),
 			-- Width runs along the radius once rotated, height across the arc.
 			Size = UDim2.fromScale(LABEL_LENGTH, LABEL_DEPTH),
-			Rotation = if flipped then degrees + 90 else degrees - 90,
+			Rotation = degrees - 90,
 			BackgroundTransparency = 1,
 			Parent = spinner,
 		})
-		-- A flipped holder is upside down, so its two lines swap places to keep
-		-- the name above the odds on screen either way.
+		-- The name sits nearer the hub and the odds outside it, on every wedge.
 		Components.label({
 			Text = prize.Label,
-			Position = UDim2.fromScale(0, if flipped then 1 - LABEL_NAME_SHARE else 0),
+			Position = UDim2.fromScale(0, 0),
 			Size = UDim2.fromScale(1, LABEL_NAME_SHARE),
 			Stroke = 3,
 			Parent = holder,
 		})
 		Components.label({
 			Text = `{string.format("%.0f", Economy.prizeChance(index) * 100)}%`,
-			Position = UDim2.fromScale(0, if flipped then 0 else 1 - LABEL_ODDS_SHARE),
+			Position = UDim2.fromScale(0, 1 - LABEL_ODDS_SHARE),
 			Size = UDim2.fromScale(1, LABEL_ODDS_SHARE),
 			TextColor3 = Palette.Accent,
 			Stroke = 3,

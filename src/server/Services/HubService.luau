@@ -229,11 +229,15 @@ local function tilePath(
 			if math.abs(side) > paved / 2 - columnStep / 2 then
 				continue
 			end
-			local spot = centre + direction * along + across * side
+			-- Both ends of the look have to be at the tile's own height. Aiming
+			-- a raised eye at a target on the ground tips the part by the angle
+			-- between them, which over one stud of direction and a stud of lift
+			-- is most of a right angle -- tiles stood on their edges.
+			local spot = centre + direction * along + across * side + Vector3.new(0, PAD_THICKNESS + tile.Rise / 2, 0)
 			local sweet = makePart(
 				"PathTile",
 				Vector3.new(columnStep - tile.Gap, tile.Rise, rowStep - tile.Gap),
-				CFrame.lookAt(spot + Vector3.new(0, PAD_THICKNESS + tile.Rise / 2, 0), spot + direction),
+				CFrame.lookAt(spot, spot + direction),
 				tiles[math.random(#tiles)],
 				Theme.World.PathMaterial,
 				parent
@@ -247,13 +251,18 @@ local function tilePath(
 	-- The kerb framing both sides, which is what turns a field of tiles into a
 	-- path. It runs the full length, including past the last row, so the path
 	-- ends square rather than frayed.
+	if not Theme.World.PathKerb then
+		return
+	end
 	for _, side in { -1, 1 } do
-		local spot = centre + across * (side * (width / 2 - tile.KerbWidth / 2))
+		local spot = centre
+			+ across * (side * (width / 2 - tile.KerbWidth / 2))
+			+ Vector3.new(0, PAD_THICKNESS + tile.KerbHeight / 2, 0)
 		local kerb = makePart(
 			"PathKerb",
 			Vector3.new(tile.KerbWidth, tile.KerbHeight, length),
-			CFrame.lookAt(spot + Vector3.new(0, PAD_THICKNESS + tile.KerbHeight / 2, 0), spot + direction),
-			Theme.World.PathKerb or Theme.World.Border,
+			CFrame.lookAt(spot, spot + direction),
+			Theme.World.PathKerb,
 			Theme.World.PathMaterial,
 			parent
 		)
