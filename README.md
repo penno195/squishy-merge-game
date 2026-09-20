@@ -347,7 +347,10 @@ layout, **what** stands there is theme data.
 
 The fences and the paths are dressed from the same theme data. `World.FenceStripe`
 bands each rail between that colour and `World.Fence` and alternates the posts
-between them, which is what makes a candy-cane fence; `World.PathTiles` lays
+between them, which is what makes a candy-cane fence out of parts alone; `World.FenceTexture`
+does it properly instead, wrapping an uploaded stripe round each rail -- a
+diagonal is the one thing parts cannot draw, since a part is one colour -- and a
+textured rail is one part however long it is, so it costs *less* than banding; `World.PathTiles` lays
 sweets over the path slabs, framed by a kerb in `World.PathKerb`, with `World.Path`
 showing between them as the grouting. Both are optional, and a theme that omits
 them gets the plain fence and plain paths the base always had. They are not free:

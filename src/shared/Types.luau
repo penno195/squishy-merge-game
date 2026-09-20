@@ -263,6 +263,12 @@ export type Theme = {
 		-- and `Fence`, and the posts alternate between them. Unset leaves the
 		-- fence one colour and one part per rail.
 		FenceStripe: Color3?,
+		-- An image wrapped round the rails instead, as `rbxassetid://...`. A
+		-- diagonal stripe is the thing parts cannot do -- a part is one colour,
+		-- so banding is the best they manage -- and it is also cheaper than
+		-- banding, because a textured rail is one part however long it is. Set,
+		-- it wins over `FenceStripe`, which still colours the posts.
+		FenceTexture: string?,
 		Border: Color3,
 		-- The hub pad and the moving walkway ringing it.
 		Hub: Color3,

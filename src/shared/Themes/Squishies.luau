@@ -59,6 +59,10 @@ local theme: Types.Theme = {
 		Fence = Color3.fromRGB(255, 250, 250),
 		FenceMaterial = Enum.Material.SmoothPlastic,
 		FenceStripe = Color3.fromRGB(230, 60, 70),
+		-- The stripe itself, uploaded from assets/source/textures/candy-stripe.png
+		-- through Open Cloud on 2026-09-20. With this set the rails are one part
+		-- each again; FenceStripe stays because it still colours the posts.
+		FenceTexture = "rbxassetid://84809515840199",
 		Border = Color3.fromRGB(255, 120, 190),
 		-- The hub pad and the walkway ringing it.
 		Hub = Color3.fromRGB(95, 70, 135),

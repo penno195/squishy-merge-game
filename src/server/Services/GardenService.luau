@@ -103,10 +103,37 @@ local function buildFenceRun(parent: Instance, origin: CFrame, fromLocal: Vector
 	local direction = delta.Unit
 	local middle = fromLocal + delta / 2
 	local stripe = Theme.World.FenceStripe
+	local texture = Theme.World.FenceTexture
 
 	for _, height in RAIL_HEIGHTS do
 		local up = Vector3.new(0, FLOOR_HEIGHT + height, 0)
-		if stripe then
+		if texture then
+			-- One part for the whole run, with the stripe drawn on it. The four
+			-- long faces each get their own Texture: a Texture is one face, and
+			-- the rail is walked past on both sides and seen from above.
+			--
+			-- The rail stays square rather than becoming a cylinder. A Texture
+			-- on a cylinder's curved surface is projected a quarter at a time
+			-- and the diagonal kinks where the quarters meet, which on a stripe
+			-- is the one thing you would notice.
+			local thickness = Garden.FenceRailThickness
+			local rail = makePart(
+				"Rail",
+				Vector3.new(thickness, thickness, length),
+				origin * CFrame.lookAt(middle + up, middle + up + direction),
+				Theme.World.Fence,
+				Theme.World.FenceMaterial,
+				parent
+			)
+			for _, face in { Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Left, Enum.NormalId.Right } do
+				local drawn = Instance.new("Texture")
+				drawn.Texture = texture
+				drawn.Face = face
+				drawn.StudsPerTileU = Garden.FenceTextureScale
+				drawn.StudsPerTileV = Garden.FenceTextureScale
+				drawn.Parent = rail
+			end
+		elseif stripe then
 			local bands = math.max(math.floor(length / Garden.FenceStripe), 1)
 			local bandLength = length / bands
 			for index = 1, bands do

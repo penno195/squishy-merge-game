@@ -162,11 +162,20 @@ return {
 		Width = 76,
 		Depth = 66,
 		FenceHeight = 5,
-		-- How long each band of a striped fence rail is. A rail is one part and
-		-- a part is one colour, so a candy cane has to be cut into bands -- which
-		-- is the whole cost of this look, at roughly a hundred parts a garden.
-		-- Raise it for fatter stripes and fewer parts.
+		-- How long each band of a striped fence rail is, for themes striping the
+		-- fence out of parts. A rail is one part and a part is one colour, so a
+		-- candy cane has to be cut into bands -- about a hundred parts a garden.
+		-- Raise it for fatter stripes and fewer parts. A theme with a
+		-- `FenceTexture` pays none of this.
 		FenceStripe = 3.5,
+		-- Studs to a tile of that texture. The image is four stripes across, so
+		-- this is four stripes' worth: 1.5 puts a stripe every few inches of
+		-- rail, which is about what a stick of rock looks like.
+		FenceTextureScale = 1.5,
+		-- A textured rail is square and fatter than a banded one. A stripe needs
+		-- something to be drawn on, and the thin rail that reads fine as a
+		-- painted bar looks like wire once it is meant to be a candy cane.
+		FenceRailThickness = 0.75,
 		-- Gap in the fence at the front so players can run in.
 		GateWidth = 12,
 		-- The upgrade screen standing over the back wall. It spans the full
