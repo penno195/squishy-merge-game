@@ -229,6 +229,30 @@ local function buildWall(parent: Instance, radius: number)
 	end
 end
 
+-- A lamp hung over the middle of a garden. The gardens are where the game is
+-- played and where the night sky costs the most: unlit, a player is sorting
+-- coloured squishies by the light of the sky behind them.
+local function buildLamp(plot: Model, origin: CFrame)
+	local lights = Balance.Lights
+	local bulb = makePart(
+		"Lamp",
+		Vector3.one * lights.LampSize,
+		origin * CFrame.new(0, FLOOR_HEIGHT + lights.GardenHeight, 0),
+		Theme.Palette.Accent,
+		Enum.Material.Neon,
+		plot
+	)
+	bulb.Shape = Enum.PartType.Ball
+	bulb.CanCollide = false
+	bulb.CanQuery = false
+
+	local light = Instance.new("PointLight")
+	light.Color = Theme.Palette.Accent
+	light.Brightness = lights.GardenBrightness
+	light.Range = lights.GardenRange
+	light.Parent = bulb
+end
+
 -- Fence around all four sides, with a gap at the front for the gate.
 local function buildFence(plot: Model, origin: CFrame)
 	local halfWidth = Garden.Width / 2
@@ -495,6 +519,7 @@ local function buildGarden(index: number, origin: CFrame, parent: Instance): Mod
 		plot
 	)
 	buildFence(plot, origin)
+	buildLamp(plot, origin)
 	buildUpgradeBoard(plot, origin)
 	buildBin(plot, origin)
 	binPositions[plot] = (origin * CFrame.new(binOffset())).Position

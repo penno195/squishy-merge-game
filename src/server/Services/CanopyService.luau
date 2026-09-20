@@ -255,6 +255,20 @@ local function buildCrown(parent: Instance, def: Types.CanopyDef)
 	makeFlag(tip, Vector3.new(0, 0, -1), def.Flag or def.Trim, parent)
 end
 
+-- A lamp: a bulb you can see, with the light inside it. A light with no source
+-- reads as a mistake, and under a tent the source is half the look.
+local function hangLamp(parent: Instance, at: Vector3, range: number, brightness: number, def: Types.CanopyDef)
+	local lights = Balance.Lights
+	local bulb = makePart("Lamp", Vector3.one * lights.LampSize, CFrame.new(at), def.Trim, Enum.Material.Neon, parent)
+	bulb.Shape = Enum.PartType.Ball
+
+	local light = Instance.new("PointLight")
+	light.Color = def.Trim
+	light.Brightness = brightness
+	light.Range = range
+	light.Parent = bulb
+end
+
 -- Bulbs on a sagging string between each pair of poles. Neon rather than a light
 -- source: sixty point lights in one place is a frame rate, and at this distance
 -- the difference is invisible anyway.
@@ -339,6 +353,16 @@ function CanopyService.init()
 	buildHem(folder, radius, def)
 	buildCrown(folder, def)
 	buildBunting(folder, angles, radius, def)
+
+	-- The inside of the tent, lit. One hung under the crown for the middle, and
+	-- one on each pole for the rim, because a single light capped at sixty studs
+	-- of range cannot reach a tent a hundred and thirty wide.
+	local lights = Balance.Lights
+	hangLamp(folder, Vector3.new(0, Canopy.CrownHeight - 8, 0), lights.CanopyRange, lights.CanopyBrightness, def)
+	for _, angle in angles do
+		local at = Vector3.new(math.cos(angle) * radius * 0.82, Canopy.EavesHeight - 4, math.sin(angle) * radius * 0.82)
+		hangLamp(folder, at, lights.PoleRange, lights.PoleBrightness, def)
+	end
 end
 
 return CanopyService

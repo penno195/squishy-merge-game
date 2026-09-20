@@ -702,10 +702,15 @@ end
 -- it and a slow drift of glitter. Applied on top of whatever the model already
 -- is, so it works the same on a procedural blob and on a theme's own model.
 -- Variants that ask for it get the same treatment in their own colour.
+-- A variant that shines. Deliberately not much of a glow: Neon renders a part
+-- at its colour with the lighting taken off it, so a whole body of it is a
+-- silhouette of flat colour -- the face, the shading and everything else that
+-- makes a squishy readable goes with it. So the body keeps its own material and
+-- the shine is carried by the trim, a modest light and the glitter.
 local function addShine(model: Model, color: Color3)
 	local body = model:FindFirstChild("Body")
 	if body and body:IsA("BasePart") then
-		body.Material = Enum.Material.Neon
+		body.Material = Enum.Material.SmoothPlastic
 	end
 
 	local adornee = UnitVisuals.primaryPart(model)
@@ -716,14 +721,14 @@ local function addShine(model: Model, color: Color3)
 
 	local light = Instance.new("PointLight")
 	light.Color = color
-	light.Brightness = 2
-	light.Range = math.max(size.Y * 3, 8)
+	light.Brightness = 0.7
+	light.Range = math.max(size.Y * 2, 7)
 	light.Parent = adornee
 
 	local glitter = Instance.new("ParticleEmitter")
 	glitter.Texture = SPARKLE_TEXTURE
 	glitter.Color = ColorSequence.new(color, Color3.new(1, 1, 1))
-	glitter.LightEmission = 1
+	glitter.LightEmission = 0.45
 	glitter.Size = NumberSequence.new(size.Y * 0.22, 0)
 	glitter.Transparency = NumberSequence.new(0.1, 1)
 	glitter.Lifetime = NumberRange.new(0.7, 1.3)

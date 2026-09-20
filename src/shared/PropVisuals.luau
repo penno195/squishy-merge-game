@@ -374,15 +374,32 @@ function PropVisuals.build(def: Types.PropDef, base: CFrame, parent: Instance): 
 			end
 		end
 		Tint.apply(model, def.Color)
-		-- Put it where it goes, then measure where it actually ended up and sit
-		-- it on the floor. Working the drop out in advance means predicting what
-		-- a rotation, a scale and whatever pivot offset the modeller left behind
-		-- will do between them -- and getting any of the three wrong leaves the
-		-- prop hovering, which is exactly what a stick of butter did.
+		-- Put it where it goes, then find its real lowest point and sit that on
+		-- the floor.
+		--
+		-- Measured part by part rather than with GetBoundingBox, which returns a
+		-- box aligned to the *model's* pivot rather than to the world. On
+		-- anything upright the two agree, which is why this looked right until
+		-- the butter was laid on its side: the height of a tipped-over box
+		-- measured along its own axes is its width, and the butter was lifted by
+		-- half of the wrong number and left hanging in the air.
+		--
+		-- A part's reach along world Y is its three half-extents projected onto
+		-- Y, which is the standard way to bound a rotated box.
 		model:PivotTo(base * lay)
-		local boxCFrame, boxSize = model:GetBoundingBox()
-		local bottom = boxCFrame.Position.Y - boxSize.Y / 2
-		model:PivotTo(model:GetPivot() + Vector3.new(0, base.Position.Y - bottom, 0))
+		local lowest = math.huge
+		for _, descendant in model:GetDescendants() do
+			if descendant:IsA("BasePart") then
+				local cf, size = descendant.CFrame, descendant.Size
+				local reach = math.abs(cf.RightVector.Y) * size.X / 2
+					+ math.abs(cf.UpVector.Y) * size.Y / 2
+					+ math.abs(cf.LookVector.Y) * size.Z / 2
+				lowest = math.min(lowest, cf.Position.Y - reach)
+			end
+		end
+		if lowest < math.huge then
+			model:PivotTo(model:GetPivot() + Vector3.new(0, base.Position.Y - lowest, 0))
+		end
 		if def.Squish then
 			CollectionService:AddTag(model, PropVisuals.SquishTag)
 		end

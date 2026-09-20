@@ -141,6 +141,27 @@ return {
 		MuralWidth = 128,
 	},
 
+	-- Lamps hung where the map has to stay readable after dark. A night sky is
+	-- only worth having if what is under it can still be seen, and ambient light
+	-- alone flattens everything it saves.
+	--
+	-- Range is capped at 60 by Roblox whatever is asked for, so a big space is
+	-- lit with several lamps rather than one bright one.
+	Lights = {
+		-- One over the middle of each garden, which is where players spend the
+		-- game and where the light matters most.
+		GardenHeight = 30,
+		GardenRange = 60,
+		GardenBrightness = 1.8,
+		-- Under the big top: one hung at the crown, and one on each pole.
+		CanopyRange = 60,
+		CanopyBrightness = 2,
+		PoleRange = 46,
+		PoleBrightness = 1.2,
+		-- The bulb each one hangs in.
+		LampSize = 2.4,
+	},
+
 	-- Where scenery stands. Each zone is a ring of evenly spaced slots which the
 	-- active theme fills from its own `Props` table, so the layout is shared and
 	-- only what stands in it changes between skins.

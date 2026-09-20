@@ -508,13 +508,15 @@ local function buildMachine(parent: Instance, origin: CFrame)
 		machine
 	)
 	dome.Shape = Enum.PartType.Ball
-	dome.Transparency = 0.35
+	-- Lit, not blinding. A Neon dome at full strength washes out the screen
+	-- underneath it, which is the part of the machine anybody actually reads.
+	dome.Transparency = 0.55
 	dome.CanCollide = false
 
 	local light = Instance.new("PointLight")
 	light.Color = Theme.Palette.Primary
-	light.Brightness = 2.5
-	light.Range = 26
+	light.Brightness = 1
+	light.Range = 22
 	light.Parent = dome
 
 	local prompt = Instance.new("ProximityPrompt")

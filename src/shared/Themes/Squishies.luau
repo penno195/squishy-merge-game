@@ -126,12 +126,12 @@ local theme: Types.Theme = {
 	-- big top over the hub is unchanged -- the map is now a fairground at night
 	-- rather than a fairground inside a tent.
 	Sky = {
-		Up = "rbxassetid://131832374471735",
-		Dn = "rbxassetid://89731991702198",
-		Lf = "rbxassetid://101651100776827",
-		Rt = "rbxassetid://77176630302738",
-		Ft = "rbxassetid://132540318890581",
-		Bk = "rbxassetid://90828553152578",
+		Up = "rbxassetid://103204462478397",
+		Dn = "rbxassetid://131775157176953",
+		Lf = "rbxassetid://92606180858753",
+		Rt = "rbxassetid://88264055260240",
+		Ft = "rbxassetid://127074462287942",
+		Bk = "rbxassetid://133955608513485",
 	},
 
 	-- Lit for a fairground after dark, which is not the same as lit for night.
@@ -142,13 +142,16 @@ local theme: Types.Theme = {
 	Lighting = {
 		ClockTime = 0,
 		Brightness = 1.1,
+		-- Brighter than a night map would normally take, because the fairground
+		-- under it is the thing being looked at. The lamps do the close work;
+		-- this stops everything between them going to silhouette.
+		ExposureCompensation = 0.3,
 		Ambient = Color3.fromRGB(96, 88, 126),
 		OutdoorAmbient = Color3.fromRGB(118, 108, 152),
 		ColorShiftTop = Color3.fromRGB(186, 196, 255),
 		FogColor = Color3.fromRGB(46, 34, 74),
 		FogStart = 460,
 		FogEnd = 1500,
-		ExposureCompensation = 0.25,
 	},
 
 	-- The big top over the hub. Pink and cream rather than the fairground's red
