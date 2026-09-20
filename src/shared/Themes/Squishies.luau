@@ -192,15 +192,15 @@ local theme: Types.Theme = {
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 7, Color = Color3.fromRGB(150, 220, 255) },
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 8, Color = Color3.fromRGB(150, 235, 180) },
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 7.5, Color = Color3.fromRGB(205, 170, 255) },
-			{ Model = "Pinky", Height = 0.8, Color = Color3.fromRGB(255, 170, 205) },
-			{ Model = "Bluey", Height = 0.8, Color = Color3.fromRGB(160, 215, 255) },
+			{ Model = "Pinky", Height = 0.65, Color = Color3.fromRGB(255, 170, 205) },
+			{ Model = "Bluey", Height = 4, Color = Color3.fromRGB(160, 215, 255) },
 		},
 		-- Ornament scale, just outside the walkway: things you walk past rather
 		-- than stop at, so nothing here is taller than a couple of players. The
 		-- butter lies down, because a butter stick stood on its end is a
 		-- monolith -- and at a fraction of the size it was, it is a prop again.
 		HubEdge = {
-			{ Model = "ButterSquishy", Lay = true, Height = 4, Color = Color3.fromRGB(250, 206, 80) },
+			{ Model = "ButterSquishy", Lay = true, Height = 16, Color = Color3.fromRGB(250, 206, 80) },
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 6.5, Color = Color3.fromRGB(255, 160, 190) },
 			{ Model = "RubixCube", Height = 6, Color = Color3.fromRGB(255, 255, 255) },
 			{
@@ -210,20 +210,20 @@ local theme: Types.Theme = {
 				Accent = Color3.fromRGB(255, 140, 200),
 			},
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 6, Color = Color3.fromRGB(150, 220, 255) },
-			{ Model = "Pinky", Height = 0.65, Color = Color3.fromRGB(255, 170, 205) },
+			{ Model = "Pinky", Height = 0.55, Color = Color3.fromRGB(255, 170, 205) },
 		},
 		-- Out in the open ground between the walkway and the gardens, at the
 		-- size of a thing you'd stop and look at on the way home.
 		Approach = {
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 10, Color = Color3.fromRGB(255, 200, 120) },
-			{ Model = "ButterSquishy", Lay = true, Height = 6, Color = Color3.fromRGB(250, 206, 80) },
+			{ Model = "ButterSquishy", Lay = true, Height = 24, Color = Color3.fromRGB(250, 206, 80) },
 			{
 				Shape = "Donut",
 				Height = 12,
 				Color = Color3.fromRGB(235, 195, 145),
 				Accent = Color3.fromRGB(160, 230, 255),
 			},
-			{ Model = "Bluey", Height = 1.1, Color = Color3.fromRGB(160, 215, 255) },
+			{ Model = "Bluey", Height = 5, Color = Color3.fromRGB(160, 215, 255) },
 			{
 				Shape = "Stack",
 				Height = 11,
@@ -238,7 +238,7 @@ local theme: Types.Theme = {
 		BetweenGardens = {
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 16.5, Color = Color3.fromRGB(190, 160, 255) },
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 15.5, Color = Color3.fromRGB(140, 230, 150) },
-			{ Model = "ButterSquishy", Lay = true, Height = 9, Color = Color3.fromRGB(250, 206, 80) },
+			{ Model = "ButterSquishy", Lay = true, Height = 36, Color = Color3.fromRGB(250, 206, 80) },
 			{
 				Shape = "Donut",
 				Height = 18,
@@ -246,7 +246,7 @@ local theme: Types.Theme = {
 				Accent = Color3.fromRGB(255, 170, 210),
 			},
 			{ Model = "RubixCube", Height = 15, Color = Color3.fromRGB(255, 255, 255) },
-			{ Model = "Pinky", Height = 1.5, Color = Color3.fromRGB(255, 170, 205) },
+			{ Model = "Pinky", Height = 1.2, Color = Color3.fromRGB(255, 170, 205) },
 		},
 		-- The skyline, out past the gardens. Tall enough to read from the hub.
 		Outer = {
@@ -257,14 +257,14 @@ local theme: Types.Theme = {
 				Accent = Color3.fromRGB(150, 225, 255),
 			},
 			{ Model = "SakuraSquishyBun", Squish = true, Height = 18, Color = Color3.fromRGB(255, 180, 210) },
-			{ Model = "ButterSquishy", Lay = true, Height = 12, Color = Color3.fromRGB(250, 206, 80) },
+			{ Model = "ButterSquishy", Lay = true, Height = 48, Color = Color3.fromRGB(250, 206, 80) },
 			{
 				Shape = "Stack",
 				Height = 24,
 				Color = Color3.fromRGB(255, 245, 250),
 				Accent = Color3.fromRGB(255, 170, 200),
 			},
-			{ Model = "Bluey", Height = 2, Color = Color3.fromRGB(160, 215, 255) },
+			{ Model = "Bluey", Height = 8, Color = Color3.fromRGB(160, 215, 255) },
 			{ Shape = "Sphere", Height = 14, Color = Color3.fromRGB(180, 245, 225) },
 			{ Model = "RubixCube", Height = 22, Color = Color3.fromRGB(255, 255, 255) },
 		},
