@@ -43,9 +43,6 @@ local GardenService = {}
 local plots: { Model } = {}
 local binPositions: { [Model]: Vector3 } = {}
 local worldFolder: Folder? = nil
--- Where the wall ended up, for anything that wants to stand just inside it.
--- Zero until the world is built.
-local wallRadius = 0
 local owners: { [Player]: Model } = {}
 local itemFolders: { [Model]: Folder } = {}
 -- The two places a garden says whose it is: the board over the back fence and
@@ -81,11 +78,6 @@ end
 
 -- Far enough out that neighbouring gardens and the hub never overlap. Hub.PlotGap
 -- is the knob for how spread out the arena feels.
--- The radius of the wall round the map. CanopyService lines its posts up on it.
-function GardenService.wallRadius(): number
-	return wallRadius
-end
-
 function GardenService.plotRadius(): number
 	local count = Balance.PlotCount
 	local fromHub = Hub.Clearance + Garden.Depth / 2
@@ -631,8 +623,7 @@ function GardenService.init()
 	)
 	-- Inside the ground's own edge, so the grass runs out behind it instead of
 	-- stopping at it and showing the drop.
-	wallRadius = groundSize / 2 - Balance.Wall.Inset
-	buildWall(world, wallRadius)
+	buildWall(world, groundSize / 2 - Balance.Wall.Inset)
 	buildStarfield(world)
 
 	local spawn = Instance.new("SpawnLocation")

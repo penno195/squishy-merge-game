@@ -340,7 +340,7 @@ local function buildPerimeter(parent: Instance, radius: number, def: Types.Canop
 
 	local tops = {}
 	for index = 1, fence.Posts do
-		local angle = (index - 0.5) / fence.Posts * math.pi * 2
+		local angle = (index - 1 + fence.Offset) / fence.Posts * math.pi * 2
 		local foot = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
 		local band = fence.Height / 8
 		for step = 1, 8 do
@@ -404,6 +404,62 @@ local function buildPerimeter(parent: Instance, radius: number, def: Types.Canop
 	end
 end
 
+-- Floodlights out past the backs of the gardens, standing in the gaps between
+-- them. A mast with a head on it, aimed down and inward at the ground it is
+-- meant to light.
+--
+-- A SpotLight rather than a point light, because that band of the map is wide
+-- and a point light capped at sixty studs of range would light a puddle. It
+-- points along its part's front face, so the head is simply turned to look at
+-- the spot it should cover and the light follows it.
+local function buildFloodlights(parent: Instance, radius: number, def: Types.CanopyDef)
+	local flood = Balance.Floodlights
+	local folder = Instance.new("Folder")
+	folder.Name = "Floodlights"
+	folder.Parent = parent
+
+	for gap = 1, flood.Count do
+		local angle = HubService.gapAngle(gap)
+		local outward = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		local foot = outward * radius
+		local band = flood.Height / 10
+		for step = 1, 10 do
+			makeColumn(
+				"MastBand",
+				band,
+				flood.Width,
+				foot + Vector3.new(0, (step - 1) * band, 0),
+				if step % 2 == 0 then def.PoleBand else def.Pole,
+				Enum.Material.SmoothPlastic,
+				folder,
+				true
+			)
+		end
+
+		-- The head looks at the ground a good way in front of the mast, so the
+		-- cone falls across the gap rather than straight down the post.
+		local top = foot + Vector3.new(0, flood.Height, 0)
+		local target = outward * (radius - 60)
+		local head = makePart(
+			"FloodHead",
+			Vector3.new(flood.Width * 2.2, flood.Width * 2.2, flood.Width * 1.6),
+			CFrame.lookAt(top, target),
+			def.Trim,
+			Enum.Material.SmoothPlastic,
+			folder,
+			true
+		)
+
+		local light = Instance.new("SpotLight")
+		light.Color = def.Trim
+		light.Brightness = flood.Brightness
+		light.Range = flood.Range
+		light.Angle = flood.Angle
+		light.Face = Enum.NormalId.Front
+		light.Parent = head
+	end
+end
+
 function CanopyService.init()
 	local def = Theme.Canopy
 	if not def then
@@ -433,11 +489,10 @@ function CanopyService.init()
 	buildCrown(folder, def)
 	buildBunting(folder, angles, radius, def)
 
-	-- Right round the edge of the land, standing just inside the wall.
-	local wall = GardenService.wallRadius()
-	if wall > 0 then
-		buildPerimeter(folder, wall - Balance.Perimeter.Inset, def)
-	end
+	-- Round the middle of the map, about where the gardens begin.
+	local plotRadius = GardenService.plotRadius()
+	buildPerimeter(folder, plotRadius * Balance.Perimeter.Radius, def)
+	buildFloodlights(folder, plotRadius * Balance.Floodlights.Radius, def)
 
 	-- The inside of the tent, lit. One hung under the crown for the middle, and
 	-- one on each pole for the rim, because a single light capped at sixty studs

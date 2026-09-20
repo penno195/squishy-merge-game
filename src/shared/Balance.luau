@@ -165,15 +165,34 @@ return {
 	-- Posts round the edge of the land with lights strung between them, which is
 	-- what turns a dark field into a fairground after closing.
 	Perimeter = {
-		Posts = 14,
-		-- How far in from the wall they stand.
-		Inset = 26,
+		Posts = 12,
+		-- As a fraction of the distance out to the gardens, so the ring sits
+		-- just in front of where the player areas begin rather than out at the
+		-- edge of the world where nobody walks.
+		Radius = 0.75,
+		-- A quarter of a slot round, which keeps every post clear of both the
+		-- paths out to the gardens and the ring of scenery on the same angles.
+		Offset = 0.25,
 		Height = 24,
 		Width = 1.6,
 		BulbsPerSpan = 9,
 		Sag = 7,
 		Brightness = 0.7,
 		Range = 44,
+	},
+
+	-- Floodlights in the gaps between the gardens, out past the backs of them.
+	-- The middle of the map is lit by the tent and the ring of posts; this is
+	-- what stops everything behind the gardens being a dark band.
+	Floodlights = {
+		Count = 6,
+		Radius = 1.3,
+		Height = 44,
+		Width = 2.2,
+		-- Aimed down and inward at the ground between the gardens.
+		Brightness = 3,
+		Range = 60,
+		Angle = 80,
 	},
 
 	-- Bright points hung high over the map. Roblox's own stars cannot be made
