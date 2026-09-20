@@ -43,6 +43,9 @@ local GardenService = {}
 local plots: { Model } = {}
 local binPositions: { [Model]: Vector3 } = {}
 local worldFolder: Folder? = nil
+-- Where the wall ended up, for anything that wants to stand just inside it.
+-- Zero until the world is built.
+local wallRadius = 0
 local owners: { [Player]: Model } = {}
 local itemFolders: { [Model]: Folder } = {}
 -- The two places a garden says whose it is: the board over the back fence and
@@ -78,6 +81,11 @@ end
 
 -- Far enough out that neighbouring gardens and the hub never overlap. Hub.PlotGap
 -- is the knob for how spread out the arena feels.
+-- The radius of the wall round the map. CanopyService lines its posts up on it.
+function GardenService.wallRadius(): number
+	return wallRadius
+end
+
 function GardenService.plotRadius(): number
 	local count = Balance.PlotCount
 	local fromHub = Hub.Clearance + Garden.Depth / 2
@@ -175,6 +183,42 @@ local function buildFenceRun(parent: Instance, origin: CFrame, fromLocal: Vector
 			Theme.World.FenceMaterial,
 			parent
 		)
+	end
+end
+
+-- Bright stars, as objects. Roblox's own twinkle and cost nothing, but there is
+-- no property for how bright they are -- only how many -- so the bright ones are
+-- hung here: small white neon points on a dome far enough out that they read as
+-- sky rather than as things floating over the map. Nothing queries or collides
+-- with them and they cast no light, so they cost a draw and nothing else.
+local function buildStarfield(parent: Instance)
+	local field = Balance.Starfield
+	local stars = Instance.new("Folder")
+	stars.Name = "Starfield"
+	stars.Parent = parent
+
+	for index = 1, field.Count do
+		-- Spread over the dome rather than the sphere: the half below the
+		-- horizon is under the ground.
+		local angle = math.random() * math.pi * 2
+		local height = field.MinHeight + math.random() * (field.Radius - field.MinHeight)
+		local ring = math.sqrt(math.max(field.Radius * field.Radius - height * height, 0))
+		local star = makePart(
+			"Star",
+			Vector3.one * (field.Size * (0.6 + math.random() * 0.9)),
+			CFrame.new(math.cos(angle) * ring, height, math.sin(angle) * ring),
+			Color3.fromRGB(255, 252, 245),
+			Enum.Material.Neon,
+			stars
+		)
+		star.Shape = Enum.PartType.Ball
+		star.CanCollide = false
+		star.CanQuery = false
+		star.CastShadow = false
+		if index % 7 == 0 then
+			-- A few of them are warmer, so the sky isn't uniform.
+			star.Color = Color3.fromRGB(255, 226, 196)
+		end
 	end
 end
 
@@ -587,7 +631,9 @@ function GardenService.init()
 	)
 	-- Inside the ground's own edge, so the grass runs out behind it instead of
 	-- stopping at it and showing the drop.
-	buildWall(world, groundSize / 2 - Balance.Wall.Inset)
+	wallRadius = groundSize / 2 - Balance.Wall.Inset
+	buildWall(world, wallRadius)
+	buildStarfield(world)
 
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Anchored = true

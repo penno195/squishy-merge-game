@@ -162,6 +162,32 @@ return {
 		LampSize = 1.8,
 	},
 
+	-- Posts round the edge of the land with lights strung between them, which is
+	-- what turns a dark field into a fairground after closing.
+	Perimeter = {
+		Posts = 14,
+		-- How far in from the wall they stand.
+		Inset = 26,
+		Height = 24,
+		Width = 1.6,
+		BulbsPerSpan = 9,
+		Sag = 7,
+		Brightness = 0.7,
+		Range = 44,
+	},
+
+	-- Bright points hung high over the map. Roblox's own stars cannot be made
+	-- brighter -- there is no property for it, only how many -- so the bright
+	-- ones are put there as objects: small, white, and far enough out to read as
+	-- sky rather than as things.
+	Starfield = {
+		Count = 110,
+		Radius = 620,
+		-- Nothing below this, or "stars" appear among the scenery.
+		MinHeight = 150,
+		Size = 5,
+	},
+
 	-- Where scenery stands. Each zone is a ring of evenly spaced slots which the
 	-- active theme fills from its own `Props` table, so the layout is shared and
 	-- only what stands in it changes between skins.

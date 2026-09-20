@@ -325,6 +325,85 @@ local function buildBunting(parent: Instance, angles: { number }, radius: number
 	end
 end
 
+-- Posts round the edge of the land with lights strung between them. The tent's
+-- bunting does the middle of the map; this does everything else, so the walk out
+-- to a garden is lit the whole way rather than going dark between the lamps.
+--
+-- Same shape as the bunting overhead: a sagging line of bulbs, drawn as neon
+-- rather than as lights, with a real light only on the posts themselves. Nine
+-- bulbs a span that each lit the ground would be a hundred and twenty lights.
+local function buildPerimeter(parent: Instance, radius: number, def: Types.CanopyDef)
+	local fence = Balance.Perimeter
+	local folder = Instance.new("Folder")
+	folder.Name = "Perimeter"
+	folder.Parent = parent
+
+	local tops = {}
+	for index = 1, fence.Posts do
+		local angle = (index - 0.5) / fence.Posts * math.pi * 2
+		local foot = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+		local band = fence.Height / 8
+		for step = 1, 8 do
+			makeColumn(
+				"PostBand",
+				band,
+				fence.Width,
+				foot + Vector3.new(0, (step - 1) * band, 0),
+				if step % 2 == 0 then def.PoleBand else def.Pole,
+				Enum.Material.SmoothPlastic,
+				folder,
+				true
+			)
+		end
+
+		local top = foot + Vector3.new(0, fence.Height, 0)
+		local bulb = makeBall("PostLamp", Balance.Lights.LampSize, top, def.Trim, Enum.Material.Neon, folder)
+		local light = Instance.new("PointLight")
+		light.Color = def.Trim
+		light.Brightness = fence.Brightness
+		light.Range = fence.Range
+		light.Parent = bulb
+		table.insert(tops, top)
+	end
+
+	if #def.Bulbs == 0 then
+		return
+	end
+	local steps = fence.BulbsPerSpan + 1
+	local bulb = 0
+	for index = 1, #tops do
+		local start = tops[index]
+		local finish = tops[index % #tops + 1]
+		local previous = start
+		for step = 1, steps do
+			local at = step / steps
+			local point = start:Lerp(finish, at) - Vector3.yAxis * (fence.Sag * 4 * at * (1 - at))
+			local span = point - previous
+			local middle = previous + span / 2
+			makePart(
+				"Cord",
+				Vector3.new(CORD_WIDTH, CORD_WIDTH, span.Magnitude),
+				CFrame.lookAt(middle, middle + span.Unit),
+				def.Trim,
+				Enum.Material.SmoothPlastic,
+				folder
+			)
+			if step < steps then
+				bulb += 1
+				makeBall(
+					"Bulb",
+					Canopy.BulbSize,
+					point - Vector3.yAxis * (Canopy.BulbSize / 2),
+					def.Bulbs[(bulb - 1) % #def.Bulbs + 1],
+					Enum.Material.Neon,
+					folder
+				)
+			end
+			previous = point
+		end
+	end
+end
+
 function CanopyService.init()
 	local def = Theme.Canopy
 	if not def then
@@ -353,6 +432,12 @@ function CanopyService.init()
 	buildHem(folder, radius, def)
 	buildCrown(folder, def)
 	buildBunting(folder, angles, radius, def)
+
+	-- Right round the edge of the land, standing just inside the wall.
+	local wall = GardenService.wallRadius()
+	if wall > 0 then
+		buildPerimeter(folder, wall - Balance.Perimeter.Inset, def)
+	end
 
 	-- The inside of the tent, lit. One hung under the crown for the middle, and
 	-- one on each pole for the rim, because a single light capped at sixty studs
