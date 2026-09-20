@@ -33,7 +33,7 @@ function Index.create(parent: Instance)
 		Parent = panel.Content,
 	})
 	Components.new("UIGridLayout", {
-		CellSize = UDim2.fromOffset(124, 116),
+		CellSize = UDim2.fromOffset(124, 126),
 		CellPadding = UDim2.fromOffset(8, 8),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = grid,
@@ -45,26 +45,28 @@ function Index.create(parent: Instance)
 		local swatch = Components.new("Frame", {
 			BackgroundColor3 = unit.Color,
 			BorderSizePixel = 0,
-			Size = UDim2.fromOffset(48, 48),
-			Position = UDim2.new(0.5, -24, 0, 8),
+			Size = UDim2.fromOffset(44, 44),
+			Position = UDim2.new(0.5, -22, 0, 8),
 			Parent = card,
 		})
-		Components.corner(24).Parent = swatch
+		Components.corner(22).Parent = swatch
+		-- Room for two lines, and scaled down from a ceiling rather than fixed:
+		-- names run to three words once a variant is in front of them, and at a
+		-- fixed size on one line they ran out of the sides of the card.
 		local name = Components.label({
 			Text = unit.Name,
-			Size = UDim2.new(1, -8, 0, 24),
-			Position = UDim2.fromOffset(4, 60),
-			TextScaled = false,
-			TextSize = 16,
+			Size = UDim2.new(1, -10, 0, 36),
+			Position = UDim2.fromOffset(5, 56),
+			TextWrapped = true,
+			MaxTextSize = 16,
 			Parent = card,
 		})
 		local income = Components.label({
 			Text = "",
-			Size = UDim2.new(1, -8, 0, 22),
-			Position = UDim2.fromOffset(4, 86),
+			Size = UDim2.new(1, -10, 0, 20),
+			Position = UDim2.fromOffset(5, 96),
 			TextColor3 = Palette.TextMuted,
-			TextScaled = false,
-			TextSize = 14,
+			MaxTextSize = 14,
 			Parent = card,
 		})
 		cells[tier] = { Swatch = swatch, Name = name, Income = income }
@@ -112,8 +114,9 @@ function Index.create(parent: Instance)
 				cell.Income.Text = ""
 			elseif sparkle then
 				-- What a sparkle is really worth is the permanent cut it adds,
-				-- so that's what the card leads with.
-				cell.Income.Text = `+{math.floor(sparkle.Bonus * 100)}% forever  ·  x{count}`
+				-- so that's what the card leads with. No "forever": with the count
+				-- beside it the line was too long for the card.
+				cell.Income.Text = `+{math.floor(sparkle.Bonus * 100)}% · x{count}`
 			else
 				cell.Income.Text = `{Format.number(Economy.tierIncome(index))} {Theme.Text.Currency}/s`
 			end

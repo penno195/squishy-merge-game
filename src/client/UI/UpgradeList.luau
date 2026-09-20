@@ -131,12 +131,12 @@ local function describe(id: string, data: Types.PlayerData, passes: { [string]: 
 		-- sell one: there is no clock to show and nothing left to buy.
 		if passBias then
 			local chance = math.floor(Economy.topTierChance(data, passBias) * 100 + 0.5)
-			return `Lucky for good — {chance}% {Config.Units[top].Name}`
+			return `Always on — {chance}% {Config.Units[top].Name}`
 		end
 		local remaining = Economy.luckRemaining(data)
 		if remaining > 0 then
 			local chance = math.floor(Economy.topTierChance(data) * 100 + 0.5)
-			return `Active — {Format.time(remaining)} left, {chance}% {Config.Units[top].Name}`
+			return `{Format.time(remaining)} left  ·  {chance}% {Config.Units[top].Name}`
 		end
 		-- Idle, the tile quotes what buying one would do rather than the odds
 		-- the player already has, which are the base weights.
@@ -149,17 +149,17 @@ local function describe(id: string, data: Types.PlayerData, passes: { [string]: 
 	elseif id == BOOST_ID then
 		local remaining = Economy.boostRemaining(data)
 		if remaining > 0 then
-			return `Active — {Format.time(remaining)} left`
+			return `{Format.time(remaining)} left`
 		end
 		local boost = Config.Balance.Boost
 		return `x{boost.Multiplier} {Theme.Text.Currency} for {Format.time(boost.Seconds)}`
 	elseif id == AUTO_MERGE_ID then
 		if passes.AutoMerge then
-			return `Your {Theme.Text.UnitPlural} merge themselves for good`
+			return `Pairs merge themselves, always`
 		end
 		local remaining = Economy.autoMergeRemaining(data)
 		if remaining > 0 then
-			return `Active — {Format.time(remaining)} left`
+			return `{Format.time(remaining)} left`
 		end
 		return `Pairs merge themselves for {Format.time(Economy.autoMergeSeconds())}`
 	end
@@ -344,6 +344,13 @@ function UpgradeList.stack(parent: Instance, ids: { string }): List
 	return { update = wrapped }
 end
 
+-- The price button on a panel row, and everything left of it that the text gets:
+-- the icon's column, the button, and a margin either side of it. The text used to
+-- be sized as a share of the row and ran under the button.
+local ROW_BUTTON_WIDTH = 150
+local ROW_TEXT_LEFT = 60
+local ROW_TEXT_WIDTH = -(ROW_TEXT_LEFT + 12 + ROW_BUTTON_WIDTH + 12)
+
 -- Rows: one per entry, stacked in a scrolling panel.
 function UpgradeList.rows(parent: Instance, ids: { string }): List
 	local list = Components.scroller({ Size = UDim2.fromScale(1, 1), Parent = parent })
@@ -370,16 +377,16 @@ function UpgradeList.rows(parent: Instance, ids: { string }): List
 		})
 		Components.label({
 			Text = entry.Name,
-			Size = UDim2.new(0.45, 0, 0, 26),
-			Position = UDim2.fromOffset(60, 10),
+			Size = UDim2.new(1, ROW_TEXT_WIDTH, 0, 26),
+			Position = UDim2.fromOffset(ROW_TEXT_LEFT, 10),
 			TextXAlignment = Enum.TextXAlignment.Left,
 			MaxTextSize = 24,
 			Parent = card,
 		})
 		local status = Components.label({
 			Text = "",
-			Size = UDim2.new(0.45, 0, 0, 20),
-			Position = UDim2.fromOffset(60, 36),
+			Size = UDim2.new(1, ROW_TEXT_WIDTH, 0, 20),
+			Position = UDim2.fromOffset(ROW_TEXT_LEFT, 36),
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextColor3 = Palette.Accent,
 			MaxTextSize = 18,
@@ -387,8 +394,8 @@ function UpgradeList.rows(parent: Instance, ids: { string }): List
 		})
 		local detail = Components.label({
 			Text = "",
-			Size = UDim2.new(0.55, 0, 0, 22),
-			Position = UDim2.fromOffset(60, 58),
+			Size = UDim2.new(1, ROW_TEXT_WIDTH, 0, 22),
+			Position = UDim2.fromOffset(ROW_TEXT_LEFT, 58),
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextColor3 = Palette.TextMuted,
 			MaxTextSize = 18,
@@ -398,7 +405,7 @@ function UpgradeList.rows(parent: Instance, ids: { string }): List
 			Text = "",
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.new(1, -12, 0.5, 0),
-			Size = UDim2.fromOffset(168, 58),
+			Size = UDim2.fromOffset(ROW_BUTTON_WIDTH, 58),
 			BackgroundColor3 = if isTimed then Palette.Accent else Palette.Positive,
 			TextColor3 = if isTimed then Palette.Background else Palette.Text,
 			Parent = card,

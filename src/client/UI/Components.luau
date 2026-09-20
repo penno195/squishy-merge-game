@@ -33,6 +33,8 @@ local PRESS_TWEEN = TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirect
 local RADIUS = 18
 local BUTTON_RADIUS = 16
 local PANEL_RADIUS = 24
+-- The least room kept clear round a panel that has had to shrink to fit.
+local PANEL_MARGIN = 12
 -- The lip under a button that makes it look raised. Pressing sinks onto it.
 local BEVEL = 6
 
@@ -774,10 +776,51 @@ function Components.panel(title: string, size: UDim2, parent: Instance): Panel
 		Parent = root,
 	})
 
+	-- Shrinks the whole panel, shadow and all, when the screen can't show it at
+	-- the size it was laid out for. The HUD's own scale stops at a floor so its
+	-- text stays readable, and below that floor a tall panel -- the machine, the
+	-- wheel -- ran off the top and bottom of a phone held sideways or a short
+	-- Studio window, taking its title and its buttons with it. A panel is only
+	-- ever on screen by itself, so it can go below the floor where the HUD can't:
+	-- smaller is better than cut off. Both are centred on their anchor, so
+	-- scaling them together keeps the shadow under the panel.
+	local screen = if parent:IsA("LayerCollector") then parent else parent:FindFirstAncestorWhichIsA("LayerCollector")
+	local fit: UIScale = Components.new("UIScale", { Parent = root })
+	local shadeFit: UIScale = Components.new("UIScale", { Parent = shade })
+	local function refit()
+		if not screen or size.X.Offset <= 0 or size.Y.Offset <= 0 then
+			return
+		end
+		local outer = screen:FindFirstChildOfClass("UIScale")
+		local hudScale = if outer then outer.Scale else 1
+		local room = screen.AbsoluteSize
+		local wanted = math.min(
+			1,
+			(room.X - PANEL_MARGIN * 2) / (size.X.Offset * hudScale),
+			(room.Y - PANEL_MARGIN * 2) / (size.Y.Offset * hudScale)
+		)
+		-- A screen with no size yet reads as zero room; leave it be until it has one.
+		if wanted > 0 then
+			fit.Scale = wanted
+			shadeFit.Scale = wanted
+		end
+	end
+	if screen then
+		screen:GetPropertyChangedSignal("AbsoluteSize"):Connect(refit)
+		local outer = screen:FindFirstChildOfClass("UIScale")
+		if outer then
+			outer:GetPropertyChangedSignal("Scale"):Connect(refit)
+		end
+	end
+	refit()
+
 	return {
 		Instance = root,
 		Content = content,
 		setOpen = function(open: boolean)
+			if open then
+				refit()
+			end
 			root.Visible = open
 			shade.Visible = open
 		end,

@@ -38,6 +38,12 @@ local MAX_ROWS = 3
 -- where it always did, so nobody pays for a pass they don't own in layout.
 local TAB_HEIGHT = 44
 local TAB_GAP = 8
+-- The row the start and second buttons share, and how much of it the start
+-- button has while the second is showing.
+local ACTION_TOP = 430
+local ACTION_HEIGHT = 66
+local ACTION_GAP = 8
+local START_SHARE = 0.56
 
 local Craft = {}
 
@@ -65,13 +71,14 @@ local function inputCard(order: number, parent: Instance)
 		Parent = card,
 	})
 	Components.corner(23).Parent = swatch
+	-- Scaled down from a ceiling rather than fixed: a variant's name is three
+	-- words, and at a fixed size the third line ran down over the level under it.
 	local name = Components.label({
 		Text = "",
-		Size = UDim2.new(1, -8, 0, 32),
-		Position = UDim2.fromOffset(4, 60),
+		Size = UDim2.new(1, -4, 0, 34),
+		Position = UDim2.fromOffset(2, 57),
 		TextWrapped = true,
-		TextScaled = false,
-		TextSize = 14,
+		MaxTextSize = 15,
 		Parent = card,
 	})
 	local level = Components.label({
@@ -225,10 +232,14 @@ function Craft.create(parent: Instance)
 	local collecting = false
 	local skipping = false
 
+	-- The two share a row, the main one wider, and the main one takes the whole
+	-- row back when the other has nothing to offer. Stacked, they left no room
+	-- for the tab strip a second slot adds, and the hint ran out of the bottom
+	-- of the panel.
 	local startButton = Components.button({
 		Text = "",
-		Position = UDim2.fromOffset(0, 430),
-		Size = UDim2.new(1, 0, 0, 66),
+		Position = UDim2.fromOffset(0, ACTION_TOP),
+		Size = UDim2.new(1, 0, 0, ACTION_HEIGHT),
 		BackgroundColor3 = Palette.Positive,
 		Parent = body,
 	}, function()
@@ -238,8 +249,9 @@ function Craft.create(parent: Instance)
 
 	local secondButton = Components.button({
 		Text = "",
-		Position = UDim2.fromOffset(0, 504),
-		Size = UDim2.new(1, 0, 0, 54),
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, ACTION_TOP),
+		Size = UDim2.new(1 - START_SHARE, -ACTION_GAP / 2, 0, ACTION_HEIGHT),
 		BackgroundColor3 = Palette.Secondary,
 		Parent = body,
 	}, function()
@@ -248,9 +260,9 @@ function Craft.create(parent: Instance)
 	end)
 
 	local hintLabel = Components.label({
-		Text = `Feed it up to {Economy.craftInputs()} {Theme.Text.UnitPlural}. Better ones, and more of them, mean better odds — and a variant raises the ceiling on them.`,
-		Position = UDim2.fromOffset(4, 566),
-		Size = UDim2.new(1, -8, 0, 24),
+		Text = "",
+		Position = UDim2.fromOffset(4, ACTION_TOP + ACTION_HEIGHT + 8),
+		Size = UDim2.new(1, -8, 0, 36),
 		TextColor3 = Palette.TextMuted,
 		TextWrapped = true,
 		MaxTextSize = 15,
@@ -416,21 +428,25 @@ function Craft.create(parent: Instance)
 		skipping = running and not ready
 		-- Nothing can be taken back out once the clock has started, so the
 		-- second button is only ever the gem skip while one is running.
-		secondButton.Instance.Visible = skipping or (not running and #inputs > 0)
+		local showSecond = skipping or (not running and #inputs > 0)
+		secondButton.Instance.Visible = showSecond
+		startButton.Instance.Size = if showSecond
+			then UDim2.new(START_SHARE, -ACTION_GAP / 2, 0, ACTION_HEIGHT)
+			else UDim2.new(1, 0, 0, ACTION_HEIGHT)
 		if skipping then
 			local cost = skipCosts[selected] or Economy.craftSkipCost(craft)
-			secondButton.setText(`Finish now — {cost}`)
+			secondButton.setText(`Finish — {cost}`)
 			secondButton.setIcon(Theme.Icons.Gems or "")
 			secondButton.setEnabled(data.Gems >= cost)
 		else
-			secondButton.setText(`Take them back`)
+			secondButton.setText(`Take back`)
 			secondButton.setIcon("")
 			secondButton.setEnabled(true)
 		end
 
 		if #outcomes == 0 and not running then
 			hintLabel.Text =
-				`Feed it up to {Economy.craftInputs()} {Theme.Text.UnitPlural}. Better ones, and more of them, mean better odds.`
+				`Up to {Economy.craftInputs()} {Theme.Text.UnitPlural}. Better ones, and more of them, give better odds.`
 		else
 			hintLabel.Text = `Whatever goes in is used up, however it turns out.`
 		end

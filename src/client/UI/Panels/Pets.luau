@@ -21,8 +21,17 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Palette = Components.Palette
 local Theme = Config.Theme
 
-local ROW_HEIGHT = 74
+-- Three lines to a row -- the name, then its rarity and numbers, then what its
+-- perk does. Squeezed onto two beside the buttons, they overlapped each other and
+-- ran under Equip.
+local ROW_HEIGHT = 90
 local SUMMARY_HEIGHT = 96
+-- Where a row's text starts, and how much of its right-hand side the buttons
+-- take: a margin, Release, a gap, Equip, and a gap before the text.
+local TEXT_LEFT = 66
+local EQUIP_WIDTH = 100
+local RELEASE_WIDTH = 50
+local BUTTONS_WIDTH = 12 + RELEASE_WIDTH + 8 + EQUIP_WIDTH + 8
 
 local Pets = {}
 
@@ -31,11 +40,45 @@ type Row = {
 	Swatch: Frame,
 	Ring: UIStroke,
 	Name: TextLabel,
-	Rarity: TextLabel,
-	Detail: TextLabel,
+	Stats: TextLabel,
+	Perk: TextLabel,
 	Equip: Components.Button,
 	Release: Components.Button,
 }
+
+-- A row's second line: rarity, strength and pay, as "Epic  ·  x2.3  ·  +10% Goo".
+-- The same numbers `describe` gives the summary, without the perk, which a row
+-- puts on a line of its own.
+local function stats(record: Types.PetRecord): string
+	local def = Economy.petDef(record.Id)
+	if not def then
+		return ""
+	end
+	local perk = Economy.petPerkDef(def.Perk)
+	local rarity = Economy.petRarityOf(record.Id)
+	local strength = Economy.petPerkStrength(record)
+	local multiplier = if rarity then rarity.Multiplier else 1
+	local unit = if perk then perk.Amount else 1
+	local scale = if unit > 0 then strength / unit else 1
+	local parts = {
+		`x{string.format("%.1f", scale)}`,
+		`+{string.format("%.0f", (multiplier - 1) * 100)}% {Theme.Text.Currency}`,
+	}
+	if rarity then
+		table.insert(parts, 1, rarity.Name)
+	end
+	return table.concat(parts, "  ·  ")
+end
+
+-- A row's third line: what the perk is for.
+local function perkText(record: Types.PetRecord): string
+	local def = Economy.petDef(record.Id)
+	if not def then
+		return ""
+	end
+	local perk = Economy.petPerkDef(def.Perk)
+	return if perk then perk.Description else def.Perk
+end
 
 -- What a pet does, in one line: what its perk is for, then how strong it is, then
 -- what it pays. In that order because that is the order the player cares about --
@@ -116,7 +159,7 @@ local function row(order: number, parent: Instance, onEquip: () -> (), onRelease
 		BackgroundColor3 = Palette.Background,
 		BorderSizePixel = 0,
 		Size = UDim2.fromOffset(44, 44),
-		Position = UDim2.fromOffset(12, 15),
+		Position = UDim2.new(0, 12, 0.5, -22),
 		Parent = card,
 	})
 	Components.corner(22).Parent = swatch
@@ -126,24 +169,24 @@ local function row(order: number, parent: Instance, onEquip: () -> (), onRelease
 	ring.Parent = swatch
 	local name = Components.label({
 		Text = "",
-		Size = UDim2.new(1, -330, 0, 26),
-		Position = UDim2.fromOffset(66, 9),
+		Size = UDim2.new(1, -(TEXT_LEFT + BUTTONS_WIDTH), 0, 24),
+		Position = UDim2.fromOffset(TEXT_LEFT, 8),
 		TextXAlignment = Enum.TextXAlignment.Left,
-		MaxTextSize = 22,
+		MaxTextSize = 20,
 		Parent = card,
 	})
-	local rarityLabel = Components.label({
+	local statsLabel = Components.label({
 		Text = "",
-		Size = UDim2.fromOffset(96, 22),
-		Position = UDim2.new(1, -290, 0, 11),
-		TextXAlignment = Enum.TextXAlignment.Right,
-		MaxTextSize = 17,
+		Size = UDim2.new(1, -(TEXT_LEFT + BUTTONS_WIDTH), 0, 20),
+		Position = UDim2.fromOffset(TEXT_LEFT, 35),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		MaxTextSize = 16,
 		Parent = card,
 	})
-	local detail = Components.label({
+	local perk = Components.label({
 		Text = "",
-		Size = UDim2.new(1, -212, 0, 26),
-		Position = UDim2.fromOffset(66, 38),
+		Size = UDim2.new(1, -(TEXT_LEFT + BUTTONS_WIDTH), 0, 20),
+		Position = UDim2.fromOffset(TEXT_LEFT, 60),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = Palette.TextMuted,
 		MaxTextSize = 16,
@@ -152,16 +195,18 @@ local function row(order: number, parent: Instance, onEquip: () -> (), onRelease
 	local equip = Components.button({
 		Text = "Equip",
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -96, 0.5, 0),
-		Size = UDim2.fromOffset(104, 50),
+		Position = UDim2.new(1, -(12 + RELEASE_WIDTH + 8), 0.5, 0),
+		Size = UDim2.fromOffset(EQUIP_WIDTH, 50),
 		BackgroundColor3 = Palette.Positive,
 		Parent = card,
 	}, onEquip)
+	-- An icon rather than the word, the way an inventory marks throwing something
+	-- away: "Release" squeezed into this width was the smallest text in the panel.
 	local release = Components.button({
-		Text = "Release",
+		Text = "🗑️",
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -12, 0.5, 0),
-		Size = UDim2.fromOffset(78, 50),
+		Size = UDim2.fromOffset(RELEASE_WIDTH, 50),
 		BackgroundColor3 = Palette.Negative,
 		Parent = card,
 	}, onRelease)
@@ -170,15 +215,15 @@ local function row(order: number, parent: Instance, onEquip: () -> (), onRelease
 		Swatch = swatch,
 		Ring = ring,
 		Name = name,
-		Rarity = rarityLabel,
-		Detail = detail,
+		Stats = statsLabel,
+		Perk = perk,
 		Equip = equip,
 		Release = release,
 	}
 end
 
 function Pets.create(parent: Instance)
-	local panel = Components.panel("Pets", UDim2.fromOffset(500, 540), parent)
+	local panel = Components.panel("Pets", UDim2.fromOffset(540, 560), parent)
 
 	-- What's equipped, spelled out above the list, because it's the one thing the
 	-- rest of the game is actually reading.
@@ -311,9 +356,9 @@ function Pets.create(parent: Instance)
 				entry.Swatch.BackgroundColor3 = Economy.petColor(record)
 				entry.Ring.Color = tone
 				entry.Name.Text = Economy.petName(record)
-				entry.Rarity.Text = if rarity then rarity.Name else ""
-				entry.Rarity.TextColor3 = tone
-				entry.Detail.Text = describe(record)
+				entry.Stats.Text = stats(record)
+				entry.Stats.TextColor3 = tone
+				entry.Perk.Text = perkText(record)
 				-- The equipped row's button takes the pet off rather than going
 				-- dead, because no pet is a choice a player might want -- it's the
 				-- only way to see what the garden earns on its own.

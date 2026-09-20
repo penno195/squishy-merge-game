@@ -8,7 +8,7 @@ local UpgradeList = require(script.Parent.Parent.UpgradeList)
 local Upgrades = {}
 
 function Upgrades.create(parent: Instance)
-	local panel = Components.panel("Upgrades", UDim2.fromOffset(520, 460), parent)
+	local panel = Components.panel("Upgrades", UDim2.fromOffset(560, 480), parent)
 	local list = UpgradeList.rows(panel.Content, UpgradeList.allIds())
 
 	return {

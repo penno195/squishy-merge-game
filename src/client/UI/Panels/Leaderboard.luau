@@ -20,8 +20,9 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Palette = Components.Palette
 local Theme = Config.Theme
 
--- The prize strip, and the gap under it before the columns start.
-local STRIP_HEIGHT = 86
+-- The prize strip, and the gap under it before the columns start. Tall enough
+-- for one claim row (ClaimList's 86) with the scroller's room round it.
+local STRIP_HEIGHT = 96
 
 local Leaderboard = {}
 
@@ -128,6 +129,10 @@ function Leaderboard.create(parent: Instance)
 			end
 			for rank, entry in entries do
 				local card = Components.card({ Size = UDim2.new(1, -8, 0, 30), LayoutOrder = rank, Parent = list })
+				-- Cut short with an ellipsis rather than shrunk: a name is the one
+				-- thing here that can be any length, and every row shrinking to its
+				-- own size would leave the column in a dozen type sizes. A display
+				-- name of twenty wide letters ran into the score beside it.
 				Components.label({
 					Text = `{rank}. {entry.Name}`,
 					Size = UDim2.new(0.62, -8, 1, -6),
@@ -135,6 +140,7 @@ function Leaderboard.create(parent: Instance)
 					TextXAlignment = Enum.TextXAlignment.Left,
 					TextScaled = false,
 					TextSize = 15,
+					TextTruncate = Enum.TextTruncate.AtEnd,
 					Parent = card,
 				})
 				Components.label({

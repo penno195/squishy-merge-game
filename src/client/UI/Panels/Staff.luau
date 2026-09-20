@@ -29,7 +29,15 @@ local Theme = Config.Theme
 
 local TAB_HEIGHT = 50
 local CHIP_HEIGHT = 44
-local EVENT_CARD_HEIGHT = 104
+-- An event card stacks a title, a description and a row of buttons, and is padded
+-- on every side. The height was a flat 104, which is ten pixels short of that, so
+-- the buttons -- pinned to the bottom of the card -- sat over the bottom half of
+-- every description. Adding the pieces up instead means it can't drift again.
+local EVENT_TITLE_HEIGHT = 30
+local EVENT_DESC_HEIGHT = 22
+local EVENT_CARD_PAD = 10
+local EVENT_CARD_GAP = 6
+local EVENT_CARD_HEIGHT = EVENT_CARD_PAD * 2 + EVENT_TITLE_HEIGHT + EVENT_DESC_HEIGHT + EVENT_CARD_GAP + CHIP_HEIGHT
 local UNIT_CELL_HEIGHT = 56
 local SPAWN_COUNTS = { 1, 5, 10, 25 }
 
@@ -230,10 +238,10 @@ function Staff.create(parent: Instance)
 			Pattern = true,
 			Parent = eventsPage,
 		})
-		Components.padding(10).Parent = card
+		Components.padding(EVENT_CARD_PAD).Parent = card
 		Components.label({
 			Text = `{def.Icon} {def.Name}`,
-			Size = UDim2.new(0.5, 0, 0, 30),
+			Size = UDim2.new(0.5, 0, 0, EVENT_TITLE_HEIGHT),
 			TextXAlignment = Enum.TextXAlignment.Left,
 			MaxTextSize = 24,
 			Stroke = 2,
@@ -243,7 +251,7 @@ function Staff.create(parent: Instance)
 			Text = "Off",
 			AnchorPoint = Vector2.new(1, 0),
 			Position = UDim2.fromScale(1, 0),
-			Size = UDim2.new(0.5, 0, 0, 30),
+			Size = UDim2.new(0.5, 0, 0, EVENT_TITLE_HEIGHT),
 			TextXAlignment = Enum.TextXAlignment.Right,
 			TextColor3 = Palette.TextMuted,
 			MaxTextSize = 20,
@@ -251,8 +259,8 @@ function Staff.create(parent: Instance)
 		})
 		Components.label({
 			Text = def.Description,
-			Position = UDim2.fromOffset(0, 30),
-			Size = UDim2.new(1, 0, 0, 20),
+			Position = UDim2.fromOffset(0, EVENT_TITLE_HEIGHT),
+			Size = UDim2.new(1, 0, 0, EVENT_DESC_HEIGHT),
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextColor3 = Palette.TextMuted,
 			MaxTextSize = 16,

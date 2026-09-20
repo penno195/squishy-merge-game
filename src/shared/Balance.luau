@@ -261,7 +261,7 @@ return {
 			{
 				Id = "DropLuck",
 				Name = "Charmed",
-				Description = "Tilts drops toward the top of your range",
+				Description = "Luckier drops from your range",
 				Amount = 0.35,
 			},
 			{

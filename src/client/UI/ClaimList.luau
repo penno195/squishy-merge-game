@@ -10,7 +10,13 @@ local Components = require(script.Parent.Components)
 
 local Palette = Components.Palette
 
-local ROW_HEIGHT = 74
+-- Three lines: what to do, what it pays, and how far along it is. Each gets its
+-- own line because run together on one they outgrew the space beside the
+-- button and slid under it -- "1h 12m / 1h 30m  ·  1.2K Goo + 20 Gems + a bonus
+-- Squishy" is longer than the row is wide.
+local ROW_HEIGHT = 86
+-- Everything to the left of the button: its width, its right margin and the gap.
+local BESIDE_BUTTON = 170
 
 export type Row = {
 	-- What the player is being asked to do.
@@ -33,6 +39,15 @@ export type ClaimList = {
 	render: (rows: { Row }) -> (),
 }
 
+type Built = {
+	Card: Frame,
+	Text: TextLabel,
+	Reward: TextLabel,
+	Bar: Components.Bar,
+	Progress: TextLabel,
+	Button: Components.Button,
+}
+
 local ClaimList = {}
 
 function ClaimList.create(props: { [string]: any }, onClaim: (index: number) -> ()): ClaimList
@@ -41,7 +56,7 @@ function ClaimList.create(props: { [string]: any }, onClaim: (index: number) -> 
 
 	-- Rows are built once and reused, so claiming one doesn't rebuild the list
 	-- underneath the player's finger.
-	local built: { { Card: Frame, Text: TextLabel, Progress: TextLabel, Button: any } } = {}
+	local built: { Built } = {}
 
 	local function rowAt(index: number)
 		local existing = built[index]
@@ -54,24 +69,40 @@ function ClaimList.create(props: { [string]: any }, onClaim: (index: number) -> 
 			Pattern = true,
 			Parent = scroller,
 		})
+		-- Scaled with a ceiling rather than a fixed size, so a long quest name
+		-- shrinks a little to fit instead of running under the button.
 		local text = Components.label({
 			Text = "",
 			Position = UDim2.fromOffset(12, 8),
-			Size = UDim2.new(1, -170, 0, 26),
+			Size = UDim2.new(1, -BESIDE_BUTTON, 0, 24),
 			TextXAlignment = Enum.TextXAlignment.Left,
-			TextScaled = false,
-			TextSize = 19,
+			MaxTextSize = 20,
 			Parent = card,
 		})
+		local reward = Components.label({
+			Text = "",
+			Position = UDim2.fromOffset(12, 34),
+			Size = UDim2.new(1, -BESIDE_BUTTON, 0, 20),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = Palette.Accent,
+			MaxTextSize = 17,
+			Parent = card,
+		})
+		local bar = Components.bar({
+			Position = UDim2.fromOffset(12, 60),
+			Size = UDim2.new(1, -BESIDE_BUTTON, 0, 18),
+			Parent = card,
+		})
+		-- Written over the bar rather than beside it, so the numbers never
+		-- compete with the reward for the same line.
 		local progress = Components.label({
 			Text = "",
-			Position = UDim2.fromOffset(12, 38),
-			Size = UDim2.new(1, -170, 0, 24),
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextColor3 = Palette.TextMuted,
-			TextScaled = false,
-			TextSize = 16,
-			Parent = card,
+			Position = UDim2.fromOffset(8, 1),
+			Size = UDim2.new(1, -16, 1, -2),
+			MaxTextSize = 15,
+			Stroke = 2,
+			ZIndex = 2,
+			Parent = bar.Instance,
 		})
 		local button = Components.button({
 			Text = "Claim",
@@ -83,7 +114,7 @@ function ClaimList.create(props: { [string]: any }, onClaim: (index: number) -> 
 		}, function()
 			onClaim(index)
 		end)
-		local entry = { Card = card, Text = text, Progress = progress, Button = button }
+		local entry = { Card = card, Text = text, Reward = reward, Bar = bar, Progress = progress, Button = button }
 		built[index] = entry
 		return entry
 	end
@@ -95,16 +126,16 @@ function ClaimList.create(props: { [string]: any }, onClaim: (index: number) -> 
 			entry.Text.Text = row.Text
 			local done = row.Progress >= row.Target
 
+			entry.Reward.Text = row.Reward
+			entry.Reward.TextColor3 = if row.Claimed then Palette.TextMuted else Palette.Accent
+			-- A row with nothing to count towards has no bar to fill.
+			entry.Bar.Instance.Visible = row.Claimed or row.Target > 0
 			if row.Claimed then
-				entry.Progress.Text = `Claimed — {row.Reward}`
-				entry.Progress.TextColor3 = Palette.TextMuted
+				entry.Bar.setProgress(1)
+				entry.Progress.Text = "Claimed"
 			elseif row.Target > 0 then
-				local along = row.ProgressText or `{row.Progress} / {row.Target}`
-				entry.Progress.Text = `{along}  ·  {row.Reward}`
-				entry.Progress.TextColor3 = if done then Palette.Positive else Palette.TextMuted
-			else
-				entry.Progress.Text = row.Reward
-				entry.Progress.TextColor3 = Palette.TextMuted
+				entry.Bar.setProgress(row.Progress / row.Target)
+				entry.Progress.Text = row.ProgressText or `{row.Progress} / {row.Target}`
 			end
 
 			entry.Button.setText(if row.Claimed then "Claimed" else "Claim")

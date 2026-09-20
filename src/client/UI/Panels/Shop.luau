@@ -29,6 +29,14 @@ local Theme = Config.Theme
 local SHOW_UNSET = RunService:IsStudio()
 local UNSET_TEXT = "No ID yet"
 
+-- A card's text gets everything left of the button. The button is only ever a
+-- price or a word, so it's kept narrow and the description -- the part that
+-- actually sells the thing -- gets two full lines at a readable size. With the
+-- text held to just over half the card it shrank to 10px to fit.
+local CARD_HEIGHT = 96
+local BUTTON_WIDTH = 120
+local TEXT_WIDTH = -(12 + BUTTON_WIDTH + 12 + 12)
+
 local Shop = {}
 
 local function fill(text: string): string
@@ -41,19 +49,26 @@ end
 
 -- Takes the bundle rather than a product key, because the starter pack's bundle
 -- lives under Monetisation.StarterPack and is described the same way.
+--
+-- Kept to the facts, joined with "+": this is read on a card two lines tall, and
+-- the starter pack's bundle written out as prose ran to over a hundred characters.
 local function rewardText(reward: Types.Reward): string
 	local parts = {}
 	if reward.IncomeMinutes then
-		table.insert(parts, fill(`{reward.IncomeMinutes} minutes of {Theme.Text.Currency} income`))
+		local minutes = reward.IncomeMinutes
+		local span = if minutes >= 60 and minutes % 60 == 0
+			then `{minutes // 60} {if minutes == 60 then "hour" else "hours"}`
+			else `{minutes} minutes`
+		table.insert(parts, `{span} of {Theme.Text.Currency} income`)
 	end
 	if reward.Gems then
-		table.insert(parts, `{reward.Gems} Gems, for earning boosts`)
+		table.insert(parts, `{reward.Gems} Gems`)
 	end
 	if reward.UnitTierBonus then
 		-- Plain string: the braces are placeholders for fill(), not interpolation.
-		table.insert(parts, fill("a bonus {Unit}, " .. reward.UnitTierBonus .. " tiers above your spawn"))
+		table.insert(parts, fill("a {Unit} " .. reward.UnitTierBonus .. " tiers above your drops"))
 	end
-	return table.concat(parts, " and ")
+	return table.concat(parts, " + ")
 end
 
 -- Products are keyed by a code name; these are what players actually see.
@@ -107,7 +122,7 @@ local PASSES: { PassEntry } = {
 	{
 		Key = "LuckCharm",
 		Title = "Lucky Forever",
-		Description = "The lucky charm, permanently — better drops with no clock and no Gems.",
+		Description = "The Lucky Charm, always on — no timer and no Gems.",
 	},
 	{
 		Key = "AutoCollect",
@@ -133,7 +148,7 @@ local PASSES: { PassEntry } = {
 
 -- `openAdmin` opens the admin panel, for the Admin card once it's owned.
 function Shop.create(parent: Instance, openAdmin: () -> ())
-	local panel = Components.panel("Shop", UDim2.fromOffset(480, 460), parent)
+	local panel = Components.panel("Shop", UDim2.fromOffset(520, 480), parent)
 	local list = Components.scroller({ Size = UDim2.fromScale(1, 1), Parent = panel.Content })
 	Components.listLayout({ Padding = UDim.new(0, 8) }).Parent = list
 
@@ -145,28 +160,36 @@ function Shop.create(parent: Instance, openAdmin: () -> ())
 
 	local function addEntry(title: string, description: string, id: number, infoType: Enum.InfoType, onBuy: () -> ())
 		order += 1
-		local card =
-			Components.card({ Size = UDim2.new(1, -12, 0, 80), LayoutOrder = order, Pattern = true, Parent = list })
+		local card = Components.card({
+			Size = UDim2.new(1, -12, 0, CARD_HEIGHT),
+			LayoutOrder = order,
+			Pattern = true,
+			Parent = list,
+		})
 		Components.label({
 			Text = title,
-			Size = UDim2.new(0.55, 0, 0, 28),
+			Size = UDim2.new(1, TEXT_WIDTH, 0, 28),
 			Position = UDim2.fromOffset(12, 8),
 			TextXAlignment = Enum.TextXAlignment.Left,
+			MaxTextSize = 24,
 			Parent = card,
 		})
 		Components.label({
 			Text = description,
-			Size = UDim2.new(0.55, 0, 0, 32),
+			Size = UDim2.new(1, TEXT_WIDTH, 0, 46),
 			Position = UDim2.fromOffset(12, 40),
 			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
 			TextColor3 = Palette.TextMuted,
+			TextWrapped = true,
+			MaxTextSize = 17,
 			Parent = card,
 		})
 		local button = Components.button({
 			Text = "Buy",
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.new(1, -12, 0.5, 0),
-			Size = UDim2.fromOffset(150, 56),
+			Size = UDim2.fromOffset(BUTTON_WIDTH, 56),
 			BackgroundColor3 = Palette.Positive,
 			Parent = card,
 		}, onBuy)
@@ -215,12 +238,12 @@ function Shop.create(parent: Instance, openAdmin: () -> ())
 				-- clickable at all. A UIListLayout skips invisible children, so
 				-- hiding it closes the gap too.
 				card.Visible = false
-				card.Size = UDim2.new(1, -12, 0, 104)
+				card.Size = UDim2.new(1, -12, 0, CARD_HEIGHT + 26)
 				card.BackgroundColor3 = Palette.Secondary
 				offerNote = Components.label({
 					Text = "",
-					Size = UDim2.new(1, -24, 0, 24),
-					Position = UDim2.fromOffset(12, 74),
+					Size = UDim2.new(1, TEXT_WIDTH, 0, 22),
+					Position = UDim2.fromOffset(12, CARD_HEIGHT - 4),
 					TextXAlignment = Enum.TextXAlignment.Left,
 					TextColor3 = Palette.Accent,
 					MaxTextSize = 18,
