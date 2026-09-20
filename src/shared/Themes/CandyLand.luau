@@ -70,10 +70,63 @@ local theme: Types.Theme = {
 	-- "Taco" by slyslush, a public-domain catalogue model.
 	TacoRainModel = 10615433240,
 
+	-- The big top over the hub, in the strawberry and cream the rest of the map
+	-- is trimmed in.
+	Canopy = {
+		Stripe = Color3.fromRGB(235, 70, 130),
+		StripeAlt = Color3.fromRGB(255, 252, 255),
+		Pole = Color3.fromRGB(255, 252, 255),
+		PoleBand = Color3.fromRGB(255, 138, 168),
+		Trim = Color3.fromRGB(255, 215, 100),
+		Bulbs = {
+			Color3.fromRGB(255, 145, 185),
+			Color3.fromRGB(120, 215, 235),
+			Color3.fromRGB(255, 225, 130),
+			Color3.fromRGB(170, 240, 195),
+			Color3.fromRGB(200, 165, 245),
+		},
+		Flag = Color3.fromRGB(120, 215, 235),
+	},
+
 	-- Scenery, keyed by the zones in Balance.PropZones. Each slot picks one of
 	-- its zone's entries at random. Swap any entry for `Model = "SomeModel"` to
 	-- use a real asset from ThemeAssets.Props instead of a built shape.
 	Props = {
+		-- Round the feet of the tent poles, under the roof with the stations.
+		-- Sized and coloured apart so the ring doesn't read as a repeat.
+		Ringside = {
+			{
+				Shape = "Lollipop",
+				Height = 9.5,
+				Color = Color3.fromRGB(255, 145, 185),
+				Accent = Color3.fromRGB(255, 252, 255),
+			},
+			{
+				Shape = "Lollipop",
+				Height = 8,
+				Color = Color3.fromRGB(120, 215, 235),
+				Accent = Color3.fromRGB(255, 252, 255),
+			},
+			{
+				Shape = "Blob",
+				Height = 7,
+				Color = Color3.fromRGB(200, 165, 245),
+				Accent = Color3.fromRGB(255, 252, 255),
+			},
+			{
+				Shape = "Blob",
+				Height = 8.5,
+				Color = Color3.fromRGB(170, 240, 195),
+				Accent = Color3.fromRGB(255, 252, 255),
+			},
+			{
+				Shape = "Donut",
+				Height = 9,
+				Color = Color3.fromRGB(235, 195, 145),
+				Accent = Color3.fromRGB(255, 145, 185),
+			},
+		},
+
 		-- Just outside the walkway: the big landmarks you see from the middle.
 		HubEdge = {
 			{

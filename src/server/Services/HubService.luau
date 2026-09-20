@@ -400,6 +400,11 @@ local function gapAngle(gap: number): number
 	return ((gap - 0.5) % gaps) / gaps * math.pi * 2
 end
 
+-- Shared with CanopyService, whose poles stand in those same gaps: a tent pole
+-- in front of a path would be the one thing in the hub standing where everybody
+-- walks.
+HubService.gapAngle = gapAngle
+
 -- Shortest way round between two angles, so 350 degrees and 10 are 20 apart.
 local function separation(a: number, b: number): number
 	local turn = math.pi * 2

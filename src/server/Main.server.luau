@@ -12,6 +12,7 @@ local Services = script.Parent.Services
 
 local AdminService = require(Services.AdminService)
 local AnalyticsService = require(Services.AnalyticsService)
+local CanopyService = require(Services.CanopyService)
 local CraftService = require(Services.CraftService)
 local DailyService = require(Services.DailyService)
 local DataService = require(Services.DataService)
@@ -45,6 +46,8 @@ StatsService.init()
 GardenService.init()
 -- After GardenService: these hang off the world it builds.
 HubService.init()
+-- After HubService: its poles stand in the same gaps between the paths.
+CanopyService.init()
 PropService.init()
 TacoService.init()
 PlinthService.init()

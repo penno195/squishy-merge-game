@@ -332,10 +332,11 @@ and `Balance.Variants = {}` turns them off entirely.
 Props are split the same way everything else is: **where** they stand is shared
 layout, **what** stands there is theme data.
 
-- `Balance.PropZones` defines rings of evenly spaced slots (`HubEdge`,
-  `Approach`, `BetweenGardens`, `Outer`) as fractions of the distance out to
-  the gardens: just clear of the walkway, out in the open ground, in the gaps
-  between gardens, and the far skyline. This never changes between skins.
+- `Balance.PropZones` defines rings of evenly spaced slots (`Ringside`,
+  `HubEdge`, `Approach`, `BetweenGardens`, `Outer`) as fractions of the distance
+  out to the gardens: round the feet of the canopy poles, just clear of the
+  walkway, out in the open ground, in the gaps between gardens, and the far
+  skyline. This never changes between skins.
   Each ring has to clear the walkway on the way in and the gardens on the way
   out, and a prop's own width counts against both.
 - A theme's `Props` table fills those slots. Each zone lists candidates and
@@ -380,6 +381,31 @@ the middle of the map, which is what makes a giant prop read as one of the
 things the game is about rather than as furniture. To swap in real
 artwork later, drop an `.rbxm` into `assets/props/` and name it in the entry's
 `Model` field — no placement or gameplay code changes.
+
+### The big top
+
+A canopy over the hub, so the middle of the map is a tent rather than open sky.
+Layout is `Balance.Canopy`; what it's made of is the theme's `Canopy` table, and
+a theme that omits that gets no tent and nothing else changes.
+
+It is a roof, not a room. The hub only works because you can stand anywhere in
+the middle and see all four stations at once, so it has no walls and nothing in
+the centre: six banded poles stand outside the walkway, in the same gaps between
+the garden paths the stations use, and the roof rests on them 30 studs up. At the
+default six gardens that's a tent 133 studs across, with the machine, the wheel,
+the leaderboard, the egg pads and the whole walkway under it.
+
+Each gore is cut into `PanelSteps` segments on the way up, each sized to the arc
+at its own radius. One rectangle per gore is the obvious way to build it and
+looks wrong: a gore is a triangle, so a rectangle wide enough for the eaves is
+three times wider than its share of the crown, and the top of the roof turns into
+a jumble of overlapping flaps.
+
+Two properties are load-bearing and easy to lose in an edit. Every canopy part
+except the poles sets **`CanQuery = false`**, because the camera picks its
+distance by raycasting at the player and would otherwise slam in against the roof
+every time somebody walks under it; and **`CastShadow = false`**, because a closed
+cone over the hub otherwise drops all four stations into shade.
 
 ## Quests
 

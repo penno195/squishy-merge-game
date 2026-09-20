@@ -35,6 +35,56 @@ return {
 		PadThickness = 1,
 	},
 
+	-- The big top over the hub. Where it stands and how big it is is shared
+	-- layout; what it's made of is the theme's `Canopy`, and a theme that leaves
+	-- that out gets an open sky.
+	--
+	-- It is a roof, not a room. The hub only works because a player standing
+	-- anywhere in the middle can see all four stations at once, so this has no
+	-- walls, and its poles stand outside the walkway in the gaps between the
+	-- paths -- the same gaps the stations use, which are the only angles nothing
+	-- is ever walking through.
+	Canopy = {
+		-- Where the poles stand and the eaves sit, as a fraction of the distance
+		-- out to the gardens. Just outside the walkway: inside it the poles would
+		-- be standing on a moving floor, and much further out they would be in
+		-- among the first ring of scenery.
+		Radius = 0.45,
+		-- The underside of the roof at its outer edge. Head height is five studs,
+		-- so this is six times clear of it -- a low eave over a crowd reads as a
+		-- lid, and the whole point is that the hub still feels open.
+		EavesHeight = 30,
+		-- Where the panels meet, and the spire standing on top of them.
+		CrownHeight = 52,
+		CrownRadius = 7,
+		SpireHeight = 14,
+		-- Overlapping gores, like real canvas. Even, so the two stripe colours
+		-- alternate the whole way round without two of the same meeting.
+		Panels = 12,
+		PanelThickness = 0.6,
+		-- Segments each gore is cut into on the way up. A gore is a triangle and
+		-- a part is a rectangle, so this is how the taper is got: more segments
+		-- is a smoother edge and more parts, and five is already hard to fault
+		-- from the ground.
+		PanelSteps = 5,
+		-- Slack on every segment, so neighbouring gores meet rather than leave a
+		-- seam of sky between them.
+		PanelOverlap = 1.06,
+		-- The poles, banded like a stick of rock.
+		PoleWidth = 2.6,
+		PoleBands = 10,
+		-- The scalloped hem hanging under the eaves, which is what stops the roof
+		-- ending in a hard edge.
+		HemDepth = 3,
+		Scallops = 48,
+		-- Bulbs strung from pole to pole. The sag is what keeps a string from
+		-- reading as a fence rail, and it hangs well above head height at its
+		-- lowest because the chord between two poles crosses the walkway.
+		BulbsPerSpan = 9,
+		BulbSize = 1.7,
+		BuntingSag = 9,
+	},
+
 	-- Where scenery stands. Each zone is a ring of evenly spaced slots which the
 	-- active theme fills from its own `Props` table, so the layout is shared and
 	-- only what stands in it changes between skins.
@@ -53,6 +103,12 @@ return {
 	-- way out, and a prop's own width counts against both. `HubEdge` sat at
 	-- 0.62 for a while, which put it on top of the walkway once that moved.
 	PropZones = {
+		-- Round the feet of the canopy's poles, close enough in to be under the
+		-- roof with the stations. Twelve slots at half a slot's offset puts each
+		-- one fifteen degrees off both a pole and a path, so nothing stands in
+		-- either. This ring is what keeps the giant squishies in the middle of
+		-- the map once there is a tent over it.
+		{ Id = "Ringside", Count = 12, Radius = 0.45, Offset = 0.5, Jitter = 2 },
 		-- A ring hugging the open side of the walkway, at a size you walk past.
 		{ Id = "HubEdge", Count = 12, Radius = 0.55, Offset = 0.5, Jitter = 3 },
 		-- Out in the middle of the open ground, between the walkway and the

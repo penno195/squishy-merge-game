@@ -71,6 +71,27 @@ local theme: Types.Theme = {
 	-- "Taco" by slyslush, a public-domain catalogue model.
 	TacoRainModel = 10615433240,
 
+	-- The big top over the hub. Pink and cream rather than the fairground's red
+	-- and white: the hub pad underneath is purple, and red over purple is the
+	-- one pairing in this palette that goes muddy.
+	Canopy = {
+		Stripe = Color3.fromRGB(255, 120, 190),
+		StripeAlt = Color3.fromRGB(255, 250, 245),
+		Pole = Color3.fromRGB(255, 252, 250),
+		PoleBand = Color3.fromRGB(255, 120, 190),
+		Trim = Color3.fromRGB(255, 220, 90),
+		-- Read in turn along each string, so the run of colours repeats rather
+		-- than landing at random and clumping.
+		Bulbs = {
+			Color3.fromRGB(255, 150, 200),
+			Color3.fromRGB(150, 220, 255),
+			Color3.fromRGB(255, 235, 130),
+			Color3.fromRGB(160, 240, 190),
+			Color3.fromRGB(205, 170, 255),
+		},
+		Flag = Color3.fromRGB(120, 200, 255),
+	},
+
 	-- Scenery, keyed by the zones in Balance.PropZones. Nothing here is required:
 	-- a theme that omits `Props` simply gets a bare map. Giant versions of the
 	-- toys the game is made of -- butter sticks, blobs and donuts -- so the
@@ -82,6 +103,21 @@ local theme: Types.Theme = {
 	-- footprint and the same clearance round it.
 	-- They squash on the spot like the ones in the gardens, only slower.
 	Props = {
+		-- Round the feet of the tent poles. These are the squishies that used to
+		-- have the middle of the map to themselves, kept where they were and now
+		-- stood under the roof: six colours at six sizes, all of them breathing,
+		-- so the busiest part of the map is still made of the thing the game is
+		-- about rather than of scenery.
+		Ringside = {
+			{ Model = "SakuraSquishyBun", Squish = true, Height = 9.5, Color = Color3.fromRGB(255, 160, 190) },
+			{ Model = "SakuraSquishyBun", Squish = true, Height = 7.5, Color = Color3.fromRGB(150, 220, 255) },
+			{ Model = "SakuraSquishyBun", Squish = true, Height = 8.5, Color = Color3.fromRGB(150, 235, 180) },
+			{ Model = "SakuraSquishyBun", Squish = true, Height = 6.5, Color = Color3.fromRGB(205, 170, 255) },
+			{ Model = "SakuraSquishyBun", Squish = true, Height = 9, Color = Color3.fromRGB(255, 225, 140) },
+			-- One of the butter sticks among them, for a shape that isn't a bun.
+			{ Model = "ButterSquishy", Scale = 1.9, Color = Color3.fromRGB(250, 206, 80) },
+		},
+
 		-- Ornament scale, in front of the gardens: these are things you walk
 		-- past on the way in, so nothing here is taller than a couple of
 		-- players. A Butter is 1.55 times as wide as it is tall, so 7 high is

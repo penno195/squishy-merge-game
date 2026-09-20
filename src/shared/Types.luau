@@ -177,6 +177,26 @@ export type PropDef = {
 	Squish: boolean?,
 }
 
+-- The big top over the hub, if the theme wants one. Where it stands and how big
+-- it is is Balance.Canopy's business; this is only what it is made of. A theme
+-- that leaves this out gets a hub open to the sky, and nothing else changes.
+export type CanopyDef = {
+	-- The two colours the roof's gores alternate between.
+	Stripe: Color3,
+	StripeAlt: Color3,
+	-- The poles, banded in these two the way a stick of rock is.
+	Pole: Color3,
+	PoleBand: Color3,
+	-- The hem under the eaves, the crown the panels meet at, the spire, and the
+	-- cord the bulbs hang from.
+	Trim: Color3,
+	-- Bulbs on the strings between the poles, taken in turn. An empty list
+	-- leaves the poles unstrung.
+	Bulbs: { Color3 },
+	-- The pennants on the poles and the spire. Unset uses Trim.
+	Flag: Color3?,
+}
+
 export type Palette = {
 	Primary: Color3,
 	Secondary: Color3,
@@ -278,6 +298,8 @@ export type Theme = {
 	-- up is decided by its Rarity, not by its place here. A theme with no Pets
 	-- still works: the egg pads simply aren't built.
 	Pets: { PetDef }?,
+	-- The big top over the hub. Nil leaves the hub open to the sky.
+	Canopy: CanopyDef?,
 	-- Scenery, keyed by the zone Ids in Balance.PropZones. Each slot in a zone
 	-- picks one of that zone's entries at random. A zone the theme says nothing
 	-- about is left bare, and a theme with no Props at all dresses no scenery.
