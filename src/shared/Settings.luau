@@ -77,7 +77,10 @@ local settings: Settings = {
 	-- has it already -- the creator when a person owns it, and anyone at or above
 	-- StaffGroupRank when a group does -- so this is for the other admins.
 	-- A user id is the number in the address of their profile page.
-	StaffUserIds = {},
+	StaffUserIds = {
+		10068109232, -- sillynoah676767
+		1446512024, -- louiepoolo05
+	},
 	-- 255 is the group's owner. Lower it to let a trusted rank in too.
 	StaffGroupRank = 255,
 

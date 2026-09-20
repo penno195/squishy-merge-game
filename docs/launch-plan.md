@@ -147,8 +147,10 @@ one player.
 
 ### 5B. Invite specific friends (recommended for the first real test)
 
-- [ ] **5B.1** Creator Hub → experience → **Collaborators**. Add each friend and
-  give them **Play** permission (not Edit).
+- [ ] **5B.1** In **Studio**, with the place open: the **Collaborate** button on
+  the right of the top bar. Add each friend and give them **Play** permission
+  (not Edit). It is not on the Creator Hub, which only lists who already has
+  access, under **Safety → Collaborators**.
 - [ ] **5B.2** Send them the link: `https://www.roblox.com/games/<placeId>`.
 - [ ] **5B.3** Join together. If a friend can't join, check they were added with
   Play permission, and try again after a few minutes.
