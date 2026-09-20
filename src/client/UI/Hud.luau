@@ -108,11 +108,26 @@ function Hud.start()
 	Reveal.mount(screen)
 
 	-- One scale factor keeps the layout usable from phone to desktop.
+	--
+	-- The floor is higher on a touch screen, and that is the whole difference
+	-- between the two. Scaling by height alone, a phone held sideways is about
+	-- 400 tall and lands on 0.6, which renders a 54-stud button at 32 pixels --
+	-- Apple asks for 44 points and Google for 48, and a thumb is about nine
+	-- millimetres wide whatever the screen says. At 0.8 the same button is 43
+	-- and a menu cell is 61, which is a target you can hit without looking.
+	--
+	-- The width term stops a narrow window from having a wide HUD pushed into
+	-- it; height alone was enough while the only narrow thing was a phone.
+	local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 	local scale: UIScale = Components.new("UIScale", { Parent = screen })
 	local function updateScale()
 		local camera = Workspace.CurrentCamera
 		if camera then
-			scale.Scale = math.clamp(camera.ViewportSize.Y / 800, 0.6, 1.25)
+			local viewport = camera.ViewportSize
+			local wanted = math.min(viewport.Y / 800, viewport.X / 1100)
+			-- 0.82 rather than 0.8 because 54 x 0.82 is 44 on the nose, and 44
+			-- is the number Apple publishes. A pixel under is still a miss.
+			scale.Scale = math.clamp(wanted, if touch then 0.82 else 0.6, 1.25)
 		end
 	end
 	updateScale()
@@ -128,9 +143,14 @@ function Hud.start()
 	-- Roblox's own chrome can sit above the inset on some devices, so start
 	-- below whatever it reserves rather than at a fixed margin.
 	local topInset = GuiService:GetGuiInset().Y
+	-- Wider margins on a touch screen. A phone held sideways puts a notch, a
+	-- rounded corner or a swipe-back gesture along the edge the UI is pinned
+	-- to, and none of them are reported to us -- the inset above covers
+	-- Roblox's own bar and nothing else.
+	local EDGE = if touch then 28 else 16
 	local column = Components.new("Frame", {
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(16, 16 + topInset),
+		Position = UDim2.fromOffset(EDGE, EDGE + topInset),
 		Size = UDim2.fromOffset(300, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Parent = screen,
@@ -236,6 +256,9 @@ function Hud.start()
 	-- The shop opens the admin panel from its own card, but the function that opens
 	-- panels is built from this list, so the shop is handed a way to reach it later.
 	local openByName: ((string) -> ())? = nil
+	-- The sheet the menu hides in on a phone, built further down once the grid
+	-- it holds exists. Declared here so opening a panel can put it away.
+	local menuSheet: Frame? = nil
 
 	local panels: { MenuEntry } = {
 		{ Name = "Upgrades", Icon = MENU_ICONS.Upgrades, Panel = UpgradesPanel.create(screen) },
@@ -361,6 +384,9 @@ function Hud.start()
 			other.Panel.setOpen(false)
 		end
 		entry.Panel.setOpen(opening)
+		if menuSheet then
+			menuSheet.Visible = false
+		end
 		Sound.play(Theme.Sounds.Purchase)
 	end
 	openByName = openPanel
@@ -413,7 +439,7 @@ function Hud.start()
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Parent = menuArea,
 	})
-	Components.new("UIGridLayout", {
+	local gridLayout: UIGridLayout = Components.new("UIGridLayout", {
 		CellSize = UDim2.fromOffset(CELL, CELL_HEIGHT),
 		CellPadding = UDim2.fromOffset(CELL_GAP, CELL_GAP),
 		FillDirectionMaxCells = COLUMNS,
@@ -426,6 +452,10 @@ function Hud.start()
 	local panelButtons: { [string]: Components.Button } = {}
 	local slotButtons: { [number]: Components.Button } = {}
 	local trays: { Frame } = {}
+	-- Each tray opens level with the row its own button is on, so a change to
+	-- the number of columns moves them. Kept with the order they were built in,
+	-- because that is what decides the row.
+	local trayRows: { { Tray: Frame, Order: number } } = {}
 
 	local function showTray(tray: Frame?)
 		for _, other in trays do
@@ -466,6 +496,7 @@ function Hud.start()
 		}).Parent =
 			tray
 		table.insert(trays, tray)
+		table.insert(trayRows, { Tray = tray, Order = order })
 
 		for itemOrder, name in slot.Opens do
 			local entry = panelByName[name]
@@ -482,6 +513,94 @@ function Hud.start()
 			showTray(if opening then tray else nil)
 			Sound.play(Theme.Sounds.Purchase)
 		end)
+	end
+
+	-- On a small screen the grid is put away behind one button.
+	--
+	-- Roblox owns two corners of a phone: the movement stick bottom left and
+	-- the jump button bottom right. The stats sit top left and the buy button
+	-- bottom centre, and a column of menu underneath the stats runs to about
+	-- 357 pixels of a 375 pixel screen -- straight through the stick. There is
+	-- no arrangement of seven always-visible buttons that clears both corners
+	-- and the two things already on screen, so on a phone they stop being
+	-- always-visible: one button opens them as a sheet over the middle, which
+	-- is the only part of a phone screen nobody else is using.
+	local sheet: Frame = Components.new("Frame", {
+		Name = "MenuSheet",
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.45,
+		Size = UDim2.fromScale(1, 1),
+		Visible = false,
+		ZIndex = Components.Layer.Panel,
+		Parent = screen,
+	})
+	menuSheet = sheet
+	local sheetBackdrop: TextButton = Components.new("TextButton", {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		Text = "",
+		ZIndex = Components.Layer.Panel,
+		Parent = sheet,
+	})
+	-- Anywhere off the buttons puts it away again, which is what a player
+	-- expects of a sheet and saves a close button in the corner.
+	sheetBackdrop.Activated:Connect(function()
+		sheet.Visible = false
+	end)
+
+	-- Top right, which is the one corner of a phone nobody has claimed: Roblox
+	-- has both bottom corners and its own bar top left, the stats are under
+	-- that, and the toasts run down the middle. Under the stats -- the obvious
+	-- place -- it would have landed on the movement stick, which is the whole
+	-- reason the menu moved in the first place.
+	local menuToggle = Components.button({
+		Text = "Menu",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -EDGE, 0, EDGE + topInset),
+		Size = UDim2.fromOffset(CELL * 2 + CELL_GAP, 58),
+		Visible = false,
+		Parent = screen,
+	}, function()
+		sheet.Visible = not sheet.Visible
+	end)
+
+	-- Two columns on a screen with room, four on one without.
+	--
+	-- Seven slots two abreast is four rows, and four rows of menu under the
+	-- stats is taller than a phone held sideways *is* -- which is why the whole
+	-- HUD was being shrunk to 0.6 to fit, taking every touch target down with
+	-- it. Four abreast is two rows, which buys back the height the bigger scale
+	-- spends, and a row of four is still only a third of the width of the
+	-- narrowest phone.
+	local function layoutMenu()
+		local camera = Workspace.CurrentCamera
+		local compact = camera ~= nil and camera.ViewportSize.Y < 620
+		local columns = if compact then 4 else COLUMNS
+		gridLayout.FillDirectionMaxCells = columns
+		local width = columns * CELL + (columns - 1) * CELL_GAP
+		menuArea.Size = UDim2.fromOffset(width, 0)
+		for _, entry in trayRows do
+			local row = (entry.Order - 1) // columns
+			entry.Tray.Position = UDim2.fromOffset(width + CELL_GAP, row * (CELL_HEIGHT + CELL_GAP) - TRAY_PADDING)
+		end
+
+		menuToggle.Instance.Visible = compact
+		if compact then
+			menuArea.AnchorPoint = Vector2.new(0.5, 0.5)
+			menuArea.Position = UDim2.fromScale(0.5, 0.5)
+			menuArea.ZIndex = Components.Layer.Panel + 1
+			menuArea.Parent = sheet
+		else
+			sheet.Visible = false
+			menuArea.AnchorPoint = Vector2.new(0, 0)
+			menuArea.Position = UDim2.fromOffset(0, 0)
+			menuArea.Parent = column
+		end
+	end
+
+	layoutMenu()
+	if Workspace.CurrentCamera then
+		Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(layoutMenu)
 	end
 
 	-- Hidden until a snapshot says otherwise, so it never flashes up for a frame.
@@ -548,7 +667,8 @@ function Hud.start()
 	local bottom = Components.new("Frame", {
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -16),
+		-- Clear of the home indicator, and of the jump button's halo on phones.
+		Position = UDim2.new(0.5, 0, 1, -EDGE),
 		Size = UDim2.fromOffset(360, 216),
 		Parent = screen,
 	})
