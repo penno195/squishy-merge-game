@@ -14,6 +14,7 @@
 -- Nothing here decides anything: the server has already chosen the pet and said
 -- so, and this is a ceremony performed over an answer that is in already.
 
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -21,6 +22,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Components = require(script.Parent.Components)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Sound = require(script.Parent.Sound)
+local Types = require(ReplicatedStorage.Shared.Types)
+local UnitVisuals = require(ReplicatedStorage.Shared.UnitVisuals)
 
 local Palette = Config.Theme.Palette
 local Theme = Config.Theme
@@ -156,45 +159,112 @@ local function crack(egg: GuiObject, index: number)
 	end
 end
 
+-- The pet itself, turning, in a ViewportFrame.
+--
+-- A viewport renders whatever is parented into it through a camera of its own,
+-- which is how a 3D model gets into a 2D menu. Three things it needs that are
+-- easy to miss: a Camera parented to the viewport *and* named as its
+-- CurrentCamera, a light setting of its own since it sees none of the world's,
+-- and the model placed at the origin rather than wherever it was built -- the
+-- pet is made in world space and would otherwise be rendered from the far side
+-- of the map.
+--
+-- The model turns rather than the camera. Spinning the camera round a model
+-- swings its lighting with it and the pet appears to strobe; turning the model
+-- under a fixed light is what makes it read as an object on a stand.
+local function spinningPet(parent: Frame, record: Types.PetRecord): Model?
+	local model = UnitVisuals.buildPet(record)
+	if not model then
+		return nil
+	end
+
+	local viewport: ViewportFrame = Components.new("ViewportFrame", {
+		Name = "Pet",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 44),
+		Size = UDim2.fromOffset(168, 168),
+		BackgroundTransparency = 1,
+		ZIndex = Components.Layer.Dialog,
+		Parent = parent,
+	})
+	-- Its own light, brighter than the world's: the card behind it is dark and a
+	-- pet lit for a night map would be a silhouette on it.
+	viewport.Ambient = Color3.fromRGB(190, 180, 205)
+	viewport.LightColor = Color3.fromRGB(255, 250, 245)
+	viewport.LightDirection = Vector3.new(-0.4, -1, -0.6)
+
+	local camera = Instance.new("Camera")
+	camera.Parent = viewport
+	viewport.CurrentCamera = camera
+
+	model.Parent = viewport
+	-- Sat on the origin, and framed by its own size so a big pet and a small one
+	-- both fill the box.
+	local _, size = model:GetBoundingBox()
+	local reach = math.max(size.X, size.Y, size.Z)
+	model:PivotTo(CFrame.new(0, 0, 0))
+	camera.CFrame = CFrame.lookAt(Vector3.new(0, reach * 0.35, reach * 2.1), Vector3.new(0, 0, 0))
+
+	local angle = 0
+	local spin = RunService.RenderStepped:Connect(function(delta: number)
+		angle = (angle + delta * 0.9) % (math.pi * 2)
+		model:PivotTo(CFrame.Angles(0, angle, 0))
+	end)
+	-- The card is destroyed out from under this, so the loop has to let go with
+	-- it or it runs for the rest of the session turning nothing.
+	viewport.Destroying:Connect(function()
+		spin:Disconnect()
+	end)
+	return model
+end
+
 -- The pet, once the shell is off it.
-local function revealPet(card: Frame, petId: string, close: () -> ())
+local function revealPet(card: Frame, record: Types.PetRecord, close: () -> ())
 	for _, child in card:GetChildren() do
 		if child:IsA("GuiObject") then
 			child:Destroy()
 		end
 	end
 
-	local pet = Config.PetById[petId]
+	local pet = Config.PetById[record.Id]
 	local rarity = pet and Config.PetRarityById[pet.Rarity]
 	local tone = if rarity then (Palette :: any)[rarity.Tone] else nil
 
 	Components.label({
 		Text = "YOU HATCHED",
-		Position = UDim2.fromOffset(0, 20),
+		Position = UDim2.fromOffset(0, 18),
 		Size = UDim2.new(1, 0, 0, 22),
 		TextColor3 = Palette.TextMuted,
 		MaxTextSize = 18,
 		Parent = card,
 	})
 
-	local blob: Frame = Components.new("Frame", {
+	-- A ring behind the pet, in its rarity's colour, so the rarity is read
+	-- before the label naming it is.
+	local halo: Frame = Components.new("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 52),
-		Size = UDim2.fromOffset(104, 104),
-		BackgroundColor3 = if pet then pet.Color else Palette.Primary,
+		Size = UDim2.fromOffset(152, 152),
+		BackgroundColor3 = if tone then tone:Lerp(Palette.Surface, 0.55) else Palette.Surface,
 		BorderSizePixel = 0,
-		ZIndex = Components.Layer.Dialog,
+		ZIndex = Components.Layer.Dialog - 1,
 		Parent = card,
 	})
-	Components.corner(52).Parent = blob
-	Components.stroke(tone or Palette.Text, 3).Parent = blob
+	Components.corner(76).Parent = halo
+	Components.stroke(tone or Palette.Text, 3).Parent = halo
 
-	local scale: UIScale = Components.new("UIScale", { Scale = 0.3, Parent = blob })
+	if not spinningPet(card, record) then
+		-- No model for this pet: the ring stands in for it rather than leaving a
+		-- hole where the thing you just hatched should be.
+		halo.BackgroundColor3 = if pet then pet.Color else Palette.Primary
+	end
+
+	local scale: UIScale = Components.new("UIScale", { Scale = 0.3, Parent = halo })
 	TweenService:Create(scale, POP, { Scale = 1 }):Play()
 
 	Components.label({
 		Text = if pet then pet.Name else "A pet",
-		Position = UDim2.fromOffset(12, 166),
+		Position = UDim2.fromOffset(12, 218),
 		Size = UDim2.new(1, -24, 0, 40),
 		TextColor3 = Palette.Accent,
 		Stroke = 3,
@@ -203,7 +273,7 @@ local function revealPet(card: Frame, petId: string, close: () -> ())
 	})
 	Components.label({
 		Text = if rarity then rarity.Name else "",
-		Position = UDim2.fromOffset(12, 206),
+		Position = UDim2.fromOffset(12, 258),
 		Size = UDim2.new(1, -24, 0, 26),
 		TextColor3 = tone or Palette.TextMuted,
 		MaxTextSize = 22,
@@ -223,8 +293,9 @@ local function revealPet(card: Frame, petId: string, close: () -> ())
 end
 
 -- An egg to tap open. The pet is already decided; this is the ceremony.
-function Reveal.egg(petId: string)
-	local card, close = stage(330, 330)
+function Reveal.egg(petId: string, variant: number?)
+	local record: Types.PetRecord = { Id = petId, Variant = variant or 0 }
+	local card, close = stage(330, 386)
 
 	local prompt = Components.label({
 		Text = "Tap the egg!",
@@ -294,7 +365,7 @@ function Reveal.egg(petId: string)
 		burst:Play()
 		burst.Completed:Connect(function()
 			if card.Parent then
-				revealPet(card, petId, close)
+				revealPet(card, record, close)
 			end
 		end)
 	end)
