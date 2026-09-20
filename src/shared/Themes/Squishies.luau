@@ -117,22 +117,11 @@ local theme: Types.Theme = {
 	-- "Taco" by slyslush, a public-domain catalogue model.
 	TacoRainModel = 10615433240,
 
-	-- Night, with stars. Drawn by `scripts/make-sky.py <dir> night` and uploaded
-	-- 2026-09-20; these are the image ids, not the decal ids Open Cloud hands
-	-- back. The stars are points in space projected onto whichever faces they
-	-- land on, so one sitting on an edge appears on both sides of it.
-	--
-	-- The tent sky this replaced is still in the script under `tent`, and the
-	-- big top over the hub is unchanged -- the map is now a fairground at night
-	-- rather than a fairground inside a tent.
-	Sky = {
-		Up = "rbxassetid://103204462478397",
-		Dn = "rbxassetid://131775157176953",
-		Lf = "rbxassetid://92606180858753",
-		Rt = "rbxassetid://88264055260240",
-		Ft = "rbxassetid://127074462287942",
-		Bk = "rbxassetid://133955608513485",
-	},
+	-- No `Sky`: the map takes Roblox's own night sky, whose stars twinkle and
+	-- whose moon moves. A painted one was drawn, uploaded and pointed at first
+	-- -- the six faces are still in assets/source/textures and every one of them
+	-- is Approved, Active and decodes cleanly -- and it never rendered in game,
+	-- three attempts running. Set `Sky` here to try them again.
 
 	-- Lit for a fairground after dark, which is not the same as lit for night.
 	-- The point of a fairground at night is that everything on the ground is
@@ -148,6 +137,10 @@ local theme: Types.Theme = {
 		ExposureCompensation = 0.05,
 		BloomIntensity = 0.35,
 		BloomThreshold = 1.7,
+		-- Roblox's own, on its own skybox. Well above the default thousand,
+		-- because a fairground at night wants a sky worth looking up at.
+		StarCount = 6000,
+		CelestialBodies = true,
 		Ambient = Color3.fromRGB(96, 88, 126),
 		OutdoorAmbient = Color3.fromRGB(118, 108, 152),
 		ColorShiftTop = Color3.fromRGB(186, 196, 255),

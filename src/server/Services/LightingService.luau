@@ -20,39 +20,45 @@ local Theme = Config.Theme
 local LightingService = {}
 
 function LightingService.init()
+	local settings = Theme.Lighting
 	local sky = Theme.Sky
+
+	-- Whatever the place was made from brings its own weather with it, and an
+	-- Atmosphere or a bank of Terrain clouds is drawn *in front of* the skybox:
+	-- at midnight both render as flat black, so the sky goes out and anything
+	-- behind it is never seen.
+	for _, thing in Lighting:GetChildren() do
+		if thing:IsA("Sky") or thing:IsA("Atmosphere") then
+			thing:Destroy()
+		end
+	end
+	local clouds = Workspace.Terrain:FindFirstChildOfClass("Clouds")
+	if clouds then
+		clouds:Destroy()
+	end
+
+	-- A fresh Sky is Roblox's own: its skybox, its sun and moon, and its stars,
+	-- which twinkle. Only the faces a theme actually supplies are painted over,
+	-- so a theme with no `Sky` gets the stock night sky rather than nothing.
+	--
+	-- Painted stars were tried first and never appeared, on assets that are
+	-- Approved, Active and decode cleanly -- so whatever the reason, it is not
+	-- one this code can see. Roblox's own cannot fail to load, and they move.
+	local instance = Instance.new("Sky")
 	if sky then
-		-- Whatever the place was made from brings its own weather with it, and
-		-- an Atmosphere or a bank of Terrain clouds is drawn *in front of* the
-		-- skybox: at midnight both render as flat black, so the sky goes out
-		-- like a light and the stars behind it are never seen. A theme that
-		-- brings its own sky wants nothing else in the way of it.
-		for _, thing in Lighting:GetChildren() do
-			if thing:IsA("Sky") or thing:IsA("Atmosphere") then
-				thing:Destroy()
-			end
-		end
-		local clouds = Workspace.Terrain:FindFirstChildOfClass("Clouds")
-		if clouds then
-			clouds:Destroy()
-		end
-		local instance = Instance.new("Sky")
 		instance.SkyboxUp = sky.Up
 		instance.SkyboxDn = sky.Dn
 		instance.SkyboxLf = sky.Lf
 		instance.SkyboxRt = sky.Rt
 		instance.SkyboxFt = sky.Ft
 		instance.SkyboxBk = sky.Bk
-		-- The skybox carries its own sun, moon and stars if it wants them, drawn
-		-- where the theme decided rather than wherever Roblox's clock puts
-		-- them. Roblox's own stars stay on top of a night sky, though: they
-		-- twinkle, which a painted one cannot.
-		instance.CelestialBodiesShown = false
-		instance.StarCount = 3000
-		instance.Parent = Lighting
 	end
+	if settings then
+		instance.StarCount = settings.StarCount or 3000
+		instance.CelestialBodiesShown = settings.CelestialBodies == true
+	end
+	instance.Parent = Lighting
 
-	local settings = Theme.Lighting
 	if not settings then
 		return
 	end

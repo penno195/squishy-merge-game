@@ -235,6 +235,12 @@ export type LightingDef = {
 	-- thing into a white blot with a face somewhere inside it.
 	BloomIntensity: number?,
 	BloomThreshold: number?,
+	-- Roblox's own stars, which twinkle and cost nothing to load. They only
+	-- show on Roblox's own skybox, so a theme that supplies `Sky` is choosing
+	-- painted stars instead and this does nothing for it.
+	StarCount: number?,
+	-- Its sun and moon, on the same terms.
+	CelestialBodies: boolean?,
 }
 
 export type Palette = {
