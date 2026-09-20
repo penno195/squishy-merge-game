@@ -64,11 +64,17 @@ function Wheel.create(parent: Instance)
 		WheelController.requestSpin()
 	end)
 
+	-- Auto takes a third of the row from the right, Spin two thirds from the
+	-- left, and the twelve studs each of them gives up in the middle is the gap
+	-- between them: 12 + (0.66W - 24) leaves Spin's edge at 0.66W - 12, and
+	-- W - 12 - (0.34W - 12) puts Auto's at 0.66W. At the sizes these were,
+	-- both edges landed on the same pixel -- and Spin's badge is built to hang
+	-- six past its own corner, so the count sat on top of Auto.
 	local autoButton = Components.button({
 		Text = "Auto",
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -12, 0, WHEEL_SIZE + 58),
-		Size = UDim2.new(0.34, -6, 0, 66),
+		Size = UDim2.new(0.34, -12, 0, 66),
 		BackgroundColor3 = Palette.Secondary,
 		Parent = panel.Content,
 	}, function()
@@ -117,7 +123,7 @@ function Wheel.create(parent: Instance)
 		spinButton.setEnabled(ready and not auto)
 		local showAuto = spins > 1 or auto
 		autoButton.Instance.Visible = showAuto
-		spinButton.Instance.Size = if showAuto then UDim2.new(0.66, -18, 0, 66) else UDim2.new(1, -24, 0, 66)
+		spinButton.Instance.Size = if showAuto then UDim2.new(0.66, -24, 0, 66) else UDim2.new(1, -24, 0, 66)
 		autoButton.setText(if auto then "Stop" else "Auto")
 		autoButton.setColor(if auto then Palette.Negative else Palette.Secondary)
 		-- The count rides on the button, so it's read at the moment of pressing.
