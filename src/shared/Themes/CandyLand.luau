@@ -49,6 +49,11 @@ local theme: Types.Theme = {
 		-- Whipped-cream ground, with a strawberry-and-mint hub on top of it.
 		Ground = Color3.fromRGB(255, 232, 242),
 		GroundMaterial = Enum.Material.SmoothPlastic,
+		-- No mural on this one: the image is the other theme's sky, and a skin
+		-- without one gets a wall in its own colour, which is the point of the
+		-- field being optional.
+		Wall = Color3.fromRGB(255, 205, 225),
+		WallMaterial = Enum.Material.SmoothPlastic,
 		PlotBase = Color3.fromRGB(186, 240, 214),
 		PlotMaterial = Enum.Material.Sand,
 		Fence = Color3.fromRGB(255, 138, 168),

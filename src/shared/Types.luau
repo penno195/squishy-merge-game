@@ -255,6 +255,13 @@ export type Theme = {
 		-- Ground outside the gardens; PlotBase is the garden floor itself.
 		Ground: Color3,
 		GroundMaterial: Enum.Material,
+		-- The wall round the edge of the map, and an image papered round the
+		-- inside of it as `rbxassetid://...`. The image tiles every
+		-- `Balance.Wall.MuralWidth` studs, so it wants to join to itself at its
+		-- left and right edges. Unset leaves the wall a flat colour.
+		Wall: Color3,
+		WallMaterial: Enum.Material,
+		WallMural: string?,
 		PlotBase: Color3,
 		PlotMaterial: Enum.Material,
 		Fence: Color3,

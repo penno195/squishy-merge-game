@@ -178,6 +178,57 @@ local function buildFenceRun(parent: Instance, origin: CFrame, fromLocal: Vector
 	end
 end
 
+-- The wall round the edge of the map. Players walking off the world is the one
+-- thing scenery cannot fix, and the wall is also the back of every photograph
+-- anyone takes of the game, so it carries the mural.
+--
+-- Straight segments in a ring, overlapping a little the way the walkway's do, so
+-- a circle made of flats has no gaps at its joins. The mural is papered on the
+-- inward face only -- nobody is ever outside it, and a texture on a face nobody
+-- sees is a texture drawn for nothing.
+local function buildWall(parent: Instance, radius: number)
+	local wall = Instance.new("Folder")
+	wall.Name = "Wall"
+	wall.Parent = parent
+
+	local count = Balance.Wall.Segments
+	local length = (2 * math.pi * radius / count) * 1.06
+	local mural = Theme.World.WallMural
+
+	for index = 1, count do
+		local angle = (index - 0.5) / count * math.pi * 2
+		local position = Vector3.new(math.cos(angle) * radius, Balance.Wall.Height / 2, math.sin(angle) * radius)
+		-- Facing the middle, so the part's front -- and the mural on it -- turns
+		-- inward at every point of the circle.
+		local segment = makePart(
+			"WallSegment",
+			Vector3.new(length, Balance.Wall.Height, Balance.Wall.Thickness),
+			CFrame.lookAt(position, Vector3.new(0, position.Y, 0)),
+			Theme.World.Wall,
+			Theme.World.WallMaterial,
+			wall
+		)
+		-- A wall this tall would drop the whole outer ring of the map into its
+		-- own shadow through half the day cycle.
+		segment.CastShadow = false
+		if mural then
+			local paper = Instance.new("Texture")
+			paper.Texture = mural
+			paper.Face = Enum.NormalId.Front
+			-- One copy of the image every MuralWidth studs across, and exactly
+			-- one up the wall's height: a mural repeating vertically would read
+			-- as wallpaper rather than as a view.
+			paper.StudsPerTileU = Balance.Wall.MuralWidth
+			paper.StudsPerTileV = Balance.Wall.Height
+			-- Segments are cut from a continuous circle, so each one starts the
+			-- image where the one before it left off rather than at its own
+			-- left edge.
+			paper.OffsetStudsU = (index - 1) * (2 * math.pi * radius / count)
+			paper.Parent = segment
+		end
+	end
+end
+
 -- Fence around all four sides, with a gap at the front for the gate.
 local function buildFence(plot: Model, origin: CFrame)
 	local halfWidth = Garden.Width / 2
@@ -509,6 +560,9 @@ function GardenService.init()
 		Theme.World.GroundMaterial,
 		world
 	)
+	-- Inside the ground's own edge, so the grass runs out behind it instead of
+	-- stopping at it and showing the drop.
+	buildWall(world, groundSize / 2 - Balance.Wall.Inset)
 
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Anchored = true

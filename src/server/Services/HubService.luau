@@ -158,6 +158,37 @@ local function buildWalkway(parent: Instance, radius: number)
 			ring
 		)
 		segment.AssemblyLinearVelocity = tangent * Hub.RingSpeed
+
+		-- Sweets across the segment, in lanes. Laid on top and left to collide
+		-- with nothing, so the player is still standing on the slab and is
+		-- still carried by it -- the tiles are scenery on a moving floor rather
+		-- than the floor itself.
+		local tiles = Theme.World.PathTiles
+		if not tiles or #tiles == 0 then
+			continue
+		end
+		local tile = Hub.PathTile
+		local outward = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		local lanes = Hub.RingTileLanes
+		local laneWidth = Hub.RingWidth / lanes
+		-- The segments overlap so their slabs leave no seam; the tiles must not,
+		-- or every join would have one sweet sitting on top of another.
+		local laneLength = 2 * math.pi * radius / count
+		for lane = 1, lanes do
+			local spot = position
+				+ outward * ((lane - 0.5) * laneWidth - Hub.RingWidth / 2)
+				+ Vector3.new(0, PAD_THICKNESS / 2 + tile.Rise / 2, 0)
+			local sweet = makePart(
+				"WalkwayTile",
+				Vector3.new(laneWidth - tile.Gap, tile.Rise, laneLength - tile.Gap),
+				CFrame.lookAt(spot, spot + tangent),
+				tiles[math.random(#tiles)],
+				Theme.World.PathMaterial,
+				ring
+			)
+			sweet.CanCollide = false
+			sweet.CastShadow = false
+		end
 	end
 
 	-- Kerbs on both edges, so the walkway reads as a track rather than a stripe.

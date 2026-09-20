@@ -27,6 +27,13 @@ return {
 		-- How fast the walkway carries players, in studs per second. Roughly
 		-- doubles walking speed without making it hard to step off.
 		RingSpeed = 26,
+		-- Sweets laid over the walkway as well, in lanes across it. They do not
+		-- stop it working: a tile is a third of a stud proud and collides with
+		-- nothing, so a player still stands on the slab underneath and is still
+		-- carried by it. The tiles are anchored and still, which is what the
+		-- walkway's own segments are -- the floor never moves, only what stands
+		-- on it does.
+		RingTileLanes = 3,
 		-- Straight segments the ring is built from: more is smoother, and more
 		-- parts. 48 keeps each segment under 7 studs long.
 		RingSegments = 48,
@@ -45,9 +52,9 @@ return {
 			-- a row is split into `MinAcross` to `MaxAcross` tiles of differing
 			-- widths that between them fill it exactly, so the path is paved
 			-- edge to edge and no two rows are cut the same.
-			Size = 3.1,
-			MinAcross = 2,
-			MaxAcross = 4,
+			Size = 2.2,
+			MinAcross = 3,
+			MaxAcross = 5,
 			-- Grouting between tiles, so the slab shows through as the line.
 			Gap = 0.35,
 			Rise = 0.3,
@@ -104,6 +111,25 @@ return {
 		BulbsPerSpan = 9,
 		BulbSize = 1.7,
 		BuntingSag = 9,
+	},
+
+	-- The wall round the whole map. Players walking off the edge of the world is
+	-- the one thing scenery cannot fix, and a wall is also the back of every
+	-- photograph anyone takes of the game, so it carries the mural.
+	--
+	-- It stands inside the ground's own edge, so the ground runs out behind it
+	-- rather than stopping at it, and it is a ring of straight segments like the
+	-- walkway: enough of them and the eye reads a circle.
+	Wall = {
+		Height = 72,
+		Thickness = 4,
+		Segments = 72,
+		-- How far inside the ground's edge it stands.
+		Inset = 20,
+		-- Studs of wall one copy of the mural covers. The circle is about 1500
+		-- studs round, so this is a dozen or so repeats -- far enough apart that
+		-- two copies are never in the same glance.
+		MuralWidth = 128,
 	},
 
 	-- Where scenery stands. Each zone is a ring of evenly spaced slots which the

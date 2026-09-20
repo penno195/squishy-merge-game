@@ -46,8 +46,17 @@ local theme: Types.Theme = {
 	},
 
 	World = {
-		Ground = Color3.fromRGB(190, 230, 245),
-		GroundMaterial = Enum.Material.SmoothPlastic,
+		-- Grass everywhere the paths, gardens and hub aren't. The pale blue this
+		-- was read as water from above, which made every gap in the map look
+		-- like somewhere you shouldn't stand.
+		Ground = Color3.fromRGB(126, 200, 110),
+		GroundMaterial = Enum.Material.Grass,
+		-- The wall round the edge of the world, papered with the mural in
+		-- assets/source/textures/candy-mural.png. The colour is what shows
+		-- through where the image doesn't reach, so it matches its sky.
+		Wall = Color3.fromRGB(196, 226, 250),
+		WallMaterial = Enum.Material.SmoothPlastic,
+		WallMural = "rbxassetid://88525227539208",
 		-- The garden floor inside the fence.
 		PlotBase = Color3.fromRGB(150, 220, 160),
 		PlotMaterial = Enum.Material.Grass,

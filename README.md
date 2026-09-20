@@ -395,6 +395,27 @@ things the game is about rather than as furniture. To swap in real
 artwork later, drop an `.rbxm` into `assets/props/` and name it in the entry's
 `Model` field — no placement or gameplay code changes.
 
+### The wall and its mural
+
+A wall rings the whole map at `Balance.Wall` -- 72 studs tall, standing 20 studs
+inside the ground's own edge so the grass runs out behind it rather than stopping
+at a drop. It exists because scenery cannot stop a player walking off the world,
+and because it is the back of every screenshot anyone takes of the game.
+
+The inside of it is papered with `World.WallMural`, one copy every
+`Wall.MuralWidth` studs -- about twelve times round the circle at the default six
+gardens. The image therefore has to join to itself: `scripts/make-mural.py` draws
+one that does, with hills that are sine waves of a whole number of periods and
+everything else drawn three times so whatever crosses the seam comes back in the
+other side. A theme that sets no mural gets a wall in its own colour.
+
+Uploading an image is `scripts/upload-image.sh`, which exists because Studio's
+own uploader has never worked on this machine and because Open Cloud hands back
+the id of a *Decal* -- a wrapper naming the image inside it. A Texture given the
+wrapper draws nothing at all, and Roblox's thumbnails of both ids come back
+blank, so the preview agrees with the wrong conclusion. The script follows the
+wrapper and prints the id you actually want.
+
 ### The big top
 
 A canopy over the hub, so the middle of the map is a tent rather than open sky.
