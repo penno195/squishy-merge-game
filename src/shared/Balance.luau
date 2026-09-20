@@ -24,9 +24,12 @@ return {
 		-- walkway onto a path is the start of the walk home, not the end of it.
 		RingFraction = 0.36,
 		RingWidth = 12,
-		-- How fast the walkway carries players, in studs per second. Roughly
-		-- doubles walking speed without making it hard to step off.
-		RingSpeed = 26,
+		-- How fast the walkway carries players, in studs per second. A player
+		-- walks at 16, so this is a shade quicker than walking -- enough to be
+		-- worth stepping onto, slow enough to stand still on and look at the
+		-- gardens going past. The tiles on it are turned at whatever this is,
+		-- so the two can never disagree.
+		RingSpeed = 19.2,
 		-- Sweets laid over the walkway as well, in lanes across it. They do not
 		-- stop it working: a tile is a third of a stud proud and collides with
 		-- nothing, so a player still stands on the slab underneath and is still
