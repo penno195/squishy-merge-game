@@ -88,6 +88,12 @@ function GardenService.plotRadius(): number
 end
 
 -- Two rails and a line of posts between two points in the garden's local space.
+--
+-- A rail is one part and a part is one colour, so a striped rail has to be cut
+-- into bands. That is the whole cost of the candy-cane look -- about a hundred
+-- extra parts a garden at the default band length -- and `Garden.FenceStripe` is
+-- the one number that buys it back. A theme with no `FenceStripe` gets the plain
+-- rail it always had, one part per run.
 local function buildFenceRun(parent: Instance, origin: CFrame, fromLocal: Vector3, toLocal: Vector3)
 	local delta = toLocal - fromLocal
 	local length = delta.Magnitude
@@ -96,27 +102,49 @@ local function buildFenceRun(parent: Instance, origin: CFrame, fromLocal: Vector
 	end
 	local direction = delta.Unit
 	local middle = fromLocal + delta / 2
+	local stripe = Theme.World.FenceStripe
 
 	for _, height in RAIL_HEIGHTS do
 		local up = Vector3.new(0, FLOOR_HEIGHT + height, 0)
-		makePart(
-			"Rail",
-			Vector3.new(RAIL_THICKNESS, RAIL_THICKNESS * 2.5, length),
-			origin * CFrame.lookAt(middle + up, middle + up + direction),
-			Theme.World.Fence,
-			Theme.World.FenceMaterial,
-			parent
-		)
+		if stripe then
+			local bands = math.max(math.floor(length / Garden.FenceStripe), 1)
+			local bandLength = length / bands
+			for index = 1, bands do
+				-- Bands overlap a little, the way the walkway's segments do, so
+				-- the join between two colours never shows as a seam of sky.
+				local point = fromLocal + direction * ((index - 0.5) * bandLength) + up
+				makePart(
+					"Rail",
+					Vector3.new(RAIL_THICKNESS, RAIL_THICKNESS * 2.5, bandLength * 1.02),
+					origin * CFrame.lookAt(point, point + direction),
+					if index % 2 == 0 then stripe else Theme.World.Fence,
+					Theme.World.FenceMaterial,
+					parent
+				)
+			end
+		else
+			makePart(
+				"Rail",
+				Vector3.new(RAIL_THICKNESS, RAIL_THICKNESS * 2.5, length),
+				origin * CFrame.lookAt(middle + up, middle + up + direction),
+				Theme.World.Fence,
+				Theme.World.FenceMaterial,
+				parent
+			)
+		end
 	end
 
 	local postCount = math.max(math.floor(length / POST_SPACING), 1)
 	for index = 0, postCount do
 		local point = fromLocal + direction * (length * index / postCount)
+		-- Whole posts alternate rather than being banded themselves: a post is
+		-- half a stud wide, so bands on one would cost five parts each to say
+		-- something nobody can see from the hub.
 		makePart(
 			"Post",
 			Vector3.new(POST_SIZE, Garden.FenceHeight, POST_SIZE),
 			origin * CFrame.new(point + Vector3.new(0, FLOOR_HEIGHT + Garden.FenceHeight / 2, 0)),
-			Theme.World.Fence,
+			if stripe and index % 2 == 1 then stripe else Theme.World.Fence,
 			Theme.World.FenceMaterial,
 			parent
 		)

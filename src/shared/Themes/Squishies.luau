@@ -51,13 +51,28 @@ local theme: Types.Theme = {
 		-- The garden floor inside the fence.
 		PlotBase = Color3.fromRGB(150, 220, 160),
 		PlotMaterial = Enum.Material.Grass,
-		Fence = Color3.fromRGB(225, 160, 120),
-		FenceMaterial = Enum.Material.Wood,
+		-- Candy cane: white rails banded in red, and posts alternating between
+		-- the two. Wood is gone with it -- a striped plank reads as a deckchair,
+		-- and plastic is what a stick of rock is made of. `Fence` is also the
+		-- frame round the upgrade board and the name board, so those turn white
+		-- with it, which suits them.
+		Fence = Color3.fromRGB(255, 250, 250),
+		FenceMaterial = Enum.Material.SmoothPlastic,
+		FenceStripe = Color3.fromRGB(230, 60, 70),
 		Border = Color3.fromRGB(255, 120, 190),
 		-- The hub pad and the walkway ringing it.
 		Hub = Color3.fromRGB(95, 70, 135),
+		-- The slab under the cobbles, which is what shows between them.
 		Path = Color3.fromRGB(150, 130, 200),
 		PathMaterial = Enum.Material.SmoothPlastic,
+		PathStones = {
+			Color3.fromRGB(255, 150, 200),
+			Color3.fromRGB(160, 240, 190),
+			Color3.fromRGB(255, 235, 140),
+			Color3.fromRGB(150, 215, 255),
+			Color3.fromRGB(205, 170, 255),
+			Color3.fromRGB(255, 175, 150),
+		},
 	},
 
 	Sounds = {

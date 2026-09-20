@@ -259,11 +259,19 @@ export type Theme = {
 		PlotMaterial: Enum.Material,
 		Fence: Color3,
 		FenceMaterial: Enum.Material,
+		-- The second colour of a candy-cane fence: rails are banded between this
+		-- and `Fence`, and the posts alternate between them. Unset leaves the
+		-- fence one colour and one part per rail.
+		FenceStripe: Color3?,
 		Border: Color3,
 		-- The hub pad and the moving walkway ringing it.
 		Hub: Color3,
 		Path: Color3,
 		PathMaterial: Enum.Material,
+		-- Cobbles strewn over the paths, taken at random. `Path` stays as the
+		-- slab under them, so it reads as the mortar between. Unset or empty
+		-- leaves the paths plain.
+		PathStones: { Color3 }?,
 	},
 	Sounds: {
 		Merge: string?,

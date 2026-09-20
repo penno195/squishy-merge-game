@@ -53,10 +53,18 @@ local theme: Types.Theme = {
 		PlotMaterial = Enum.Material.Sand,
 		Fence = Color3.fromRGB(255, 138, 168),
 		FenceMaterial = Enum.Material.SmoothPlastic,
+		FenceStripe = Color3.fromRGB(255, 252, 255),
 		Border = Color3.fromRGB(235, 70, 130),
 		Hub = Color3.fromRGB(150, 90, 165),
 		Path = Color3.fromRGB(255, 175, 205),
 		PathMaterial = Enum.Material.SmoothPlastic,
+		PathStones = {
+			Color3.fromRGB(255, 145, 185),
+			Color3.fromRGB(170, 240, 195),
+			Color3.fromRGB(255, 225, 130),
+			Color3.fromRGB(120, 215, 235),
+			Color3.fromRGB(200, 165, 245),
+		},
 	},
 
 	Sounds = {

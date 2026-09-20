@@ -345,6 +345,16 @@ layout, **what** stands there is theme data.
 - A zone the theme says nothing about is left bare, and a theme with no `Props`
   at all gets a clean map.
 
+The fences and the paths are dressed from the same theme data. `World.FenceStripe`
+bands each rail between that colour and `World.Fence` and alternates the posts
+between them, which is what makes a candy-cane fence; `World.PathStones` strews
+cobbles over the path slabs, with `World.Path` showing between them as the mortar.
+Both are optional, and a theme that omits them gets the plain fence and plain
+paths the base always had. They are not free: at the default
+`Garden.FenceStripe` of 3.5 studs a fence costs about 155 parts a garden instead
+of 10, and the cobbles about 84 a path. Those two numbers -- `Garden.FenceStripe`
+and `Hub.PathCobble.Spacing` -- are the dials if that ever matters.
+
 Each entry is either a real model or a shape built from parts:
 
 ```lua

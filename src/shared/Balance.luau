@@ -33,6 +33,16 @@ return {
 		-- The pad players spawn on before they're sent to their garden.
 		SpawnOffset = 22,
 		PadThickness = 1,
+		-- Cobbles scattered over the paths out to the gardens. Laid on a grid
+		-- with every other row shifted half a step and each stone nudged off its
+		-- spot, which is what keeps it from reading as tiling. A theme with no
+		-- `PathStones` gets the plain slab underneath and none of this.
+		PathCobble = {
+			Spacing = 2.6,
+			Size = 2.9,
+			Rise = 0.35,
+			Jitter = 0.35,
+		},
 	},
 
 	-- The big top over the hub. Where it stands and how big it is is shared
@@ -146,6 +156,11 @@ return {
 		Width = 76,
 		Depth = 66,
 		FenceHeight = 5,
+		-- How long each band of a striped fence rail is. A rail is one part and
+		-- a part is one colour, so a candy cane has to be cut into bands -- which
+		-- is the whole cost of this look, at roughly a hundred parts a garden.
+		-- Raise it for fatter stripes and fewer parts.
+		FenceStripe = 3.5,
 		-- Gap in the fence at the front so players can run in.
 		GateWidth = 12,
 		-- The upgrade screen standing over the back wall. It spans the full

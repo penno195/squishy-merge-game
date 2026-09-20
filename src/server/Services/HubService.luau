@@ -189,6 +189,61 @@ local function buildWalkway(parent: Instance, radius: number)
 	end
 end
 
+-- Cobbles over a path slab. They sit on the slab rather than replacing it, so
+-- what shows between them reads as the mortar they are set into.
+--
+-- Laid on a grid, then talked out of looking like one: every other row is shifted
+-- half a step, every stone is nudged off its spot, and no two are quite the same
+-- size or quite the same height. That last one is not only for looks -- flat
+-- discs that overlap at exactly the same height z-fight along the overlap, and
+-- varying the rise is what stops it.
+local function cobblePath(
+	parent: Instance,
+	centre: Vector3,
+	direction: Vector3,
+	length: number,
+	width: number,
+	stones: { Color3 }
+)
+	local cobble = Hub.PathCobble
+	local across = Vector3.new(-direction.Z, 0, direction.X)
+	local rows = math.max(math.floor(length / cobble.Spacing), 1)
+	local columns = math.max(math.floor(width / cobble.Spacing), 1)
+	local rowStep = length / rows
+	local columnStep = width / columns
+
+	for row = 1, rows do
+		-- Half a step across on every other row, the way brickwork is laid.
+		local shift = if row % 2 == 0 then columnStep / 2 else 0
+		for column = 1, columns do
+			local along = (row - 0.5) * rowStep - length / 2
+			local side = (column - 0.5) * columnStep - width / 2 + shift
+			-- The shifted row's last stone runs off the edge of the slab. Drop
+			-- it rather than leave one sitting out on the grass.
+			if math.abs(side) > width / 2 - cobble.Size / 2 then
+				continue
+			end
+			local spot = centre
+				+ direction * (along + (math.random() * 2 - 1) * cobble.Jitter)
+				+ across * (side + (math.random() * 2 - 1) * cobble.Jitter)
+			local size = cobble.Size * (0.82 + math.random() * 0.36)
+			local rise = cobble.Rise * (0.8 + math.random() * 0.5)
+			local stone = makePart(
+				"Cobble",
+				Vector3.new(rise, size, size),
+				CFrame.new(spot + Vector3.new(0, PAD_THICKNESS + rise / 2, 0)) * CFrame.Angles(0, 0, math.pi / 2),
+				stones[math.random(#stones)],
+				Theme.World.PathMaterial,
+				parent
+			)
+			stone.Shape = Enum.PartType.Cylinder
+			-- Half a stud proud of the slab: walk over them, don't trip on them.
+			stone.CanCollide = false
+			stone.CastShadow = false
+		end
+	end
+end
+
 -- A path from the walkway out to each garden gate, so it's obvious where to
 -- step off.
 local function buildPaths(parent: Instance, ringRadius: number, plotRadius: number)
@@ -203,10 +258,13 @@ local function buildPaths(parent: Instance, ringRadius: number, plotRadius: numb
 		return
 	end
 
+	local stones = Theme.World.PathStones
+
 	for index = 1, Balance.PlotCount do
 		local angle = (index - 1) / Balance.PlotCount * math.pi * 2
 		local direction = Vector3.new(math.cos(angle), 0, math.sin(angle))
-		local position = direction * (inner + length / 2) + Vector3.new(0, PAD_THICKNESS / 2, 0)
+		local centre = direction * (inner + length / 2)
+		local position = centre + Vector3.new(0, PAD_THICKNESS / 2, 0)
 		makePart(
 			"Path",
 			Vector3.new(Garden.GateWidth, PAD_THICKNESS, length),
@@ -215,6 +273,9 @@ local function buildPaths(parent: Instance, ringRadius: number, plotRadius: numb
 			Theme.World.PathMaterial,
 			paths
 		)
+		if stones and #stones > 0 then
+			cobblePath(paths, centre, direction, length, Garden.GateWidth, stones)
+		end
 	end
 end
 
