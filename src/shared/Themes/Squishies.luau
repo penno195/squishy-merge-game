@@ -65,14 +65,19 @@ local theme: Types.Theme = {
 		-- The slab under the cobbles, which is what shows between them.
 		Path = Color3.fromRGB(150, 130, 200),
 		PathMaterial = Enum.Material.SmoothPlastic,
-		PathStones = {
+		-- Sweets and squares of chocolate, mixed. The two browns are what keep it
+		-- from going to sugar: a path of nothing but pastels reads as a quilt.
+		PathTiles = {
 			Color3.fromRGB(255, 150, 200),
 			Color3.fromRGB(160, 240, 190),
 			Color3.fromRGB(255, 235, 140),
 			Color3.fromRGB(150, 215, 255),
 			Color3.fromRGB(205, 170, 255),
-			Color3.fromRGB(255, 175, 150),
+			Color3.fromRGB(255, 190, 160),
+			Color3.fromRGB(120, 78, 55),
+			Color3.fromRGB(155, 105, 70),
 		},
+		PathKerb = Color3.fromRGB(95, 60, 42),
 	},
 
 	Sounds = {

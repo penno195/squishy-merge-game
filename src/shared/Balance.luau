@@ -33,15 +33,21 @@ return {
 		-- The pad players spawn on before they're sent to their garden.
 		SpawnOffset = 22,
 		PadThickness = 1,
-		-- Cobbles scattered over the paths out to the gardens. Laid on a grid
-		-- with every other row shifted half a step and each stone nudged off its
-		-- spot, which is what keeps it from reading as tiling. A theme with no
-		-- `PathStones` gets the plain slab underneath and none of this.
-		PathCobble = {
-			Spacing = 2.6,
-			Size = 2.9,
-			Rise = 0.35,
-			Jitter = 0.35,
+		-- Sweets laid over the paths out to the gardens, with a kerb down each
+		-- side to frame them. Tiles are laid square and butted up, not scattered:
+		-- a path is made, and the thing that keeps it from reading as a texture
+		-- is the colours being mixed, not the tiles being crooked. Every other
+		-- row is shifted half a tile, the way paving is laid.
+		--
+		-- A theme with no `PathTiles` gets the plain slab and none of this.
+		PathTile = {
+			-- One tile across the path, before the gap is taken off it.
+			Size = 3.1,
+			-- Grouting between tiles, so the slab shows through as the line.
+			Gap = 0.35,
+			Rise = 0.3,
+			KerbWidth = 1.1,
+			KerbHeight = 0.7,
 		},
 	},
 

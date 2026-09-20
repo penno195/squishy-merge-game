@@ -189,58 +189,75 @@ local function buildWalkway(parent: Instance, radius: number)
 	end
 end
 
--- Cobbles over a path slab. They sit on the slab rather than replacing it, so
--- what shows between them reads as the mortar they are set into.
+-- Sweets laid over a path slab, with a kerb down each side. They sit on the slab
+-- rather than replacing it, so what shows in the grouting between them is the
+-- slab's own colour.
 --
--- Laid on a grid, then talked out of looking like one: every other row is shifted
--- half a step, every stone is nudged off its spot, and no two are quite the same
--- size or quite the same height. That last one is not only for looks -- flat
--- discs that overlap at exactly the same height z-fight along the overlap, and
--- varying the rise is what stops it.
-local function cobblePath(
+-- Laid square and butted up, not scattered. A path is *made*, and what keeps a
+-- grid from reading as a repeat is the colours being mixed and every other row
+-- being shifted half a tile, the way paving is laid -- not the tiles being
+-- crooked. The row that the shift pushes over the edge is dropped rather than
+-- left hanging over the grass.
+local function tilePath(
 	parent: Instance,
 	centre: Vector3,
 	direction: Vector3,
 	length: number,
 	width: number,
-	stones: { Color3 }
+	tiles: { Color3 }
 )
-	local cobble = Hub.PathCobble
+	local tile = Hub.PathTile
 	local across = Vector3.new(-direction.Z, 0, direction.X)
-	local rows = math.max(math.floor(length / cobble.Spacing), 1)
-	local columns = math.max(math.floor(width / cobble.Spacing), 1)
+	local step = tile.Size + tile.Gap
+	-- The tiles fill the space between the kerbs, not the whole slab, or the
+	-- outermost row would be laid underneath them.
+	local paved = width - tile.KerbWidth * 2
+	-- Rounded, not floored: the tile size is what a tile should look like, and
+	-- the path is whatever width it is. Flooring 2.8 tiles' worth of room to two
+	-- lays them half a stud wider than they were meant to be, which is the
+	-- difference between a paved path and a row of slabs.
+	local rows = math.max(math.round(length / step), 1)
+	local columns = math.max(math.round(paved / step), 1)
 	local rowStep = length / rows
-	local columnStep = width / columns
+	local columnStep = paved / columns
 
 	for row = 1, rows do
-		-- Half a step across on every other row, the way brickwork is laid.
 		local shift = if row % 2 == 0 then columnStep / 2 else 0
 		for column = 1, columns do
 			local along = (row - 0.5) * rowStep - length / 2
-			local side = (column - 0.5) * columnStep - width / 2 + shift
-			-- The shifted row's last stone runs off the edge of the slab. Drop
-			-- it rather than leave one sitting out on the grass.
-			if math.abs(side) > width / 2 - cobble.Size / 2 then
+			local side = (column - 0.5) * columnStep - paved / 2 + shift
+			if math.abs(side) > paved / 2 - columnStep / 2 then
 				continue
 			end
-			local spot = centre
-				+ direction * (along + (math.random() * 2 - 1) * cobble.Jitter)
-				+ across * (side + (math.random() * 2 - 1) * cobble.Jitter)
-			local size = cobble.Size * (0.82 + math.random() * 0.36)
-			local rise = cobble.Rise * (0.8 + math.random() * 0.5)
-			local stone = makePart(
-				"Cobble",
-				Vector3.new(rise, size, size),
-				CFrame.new(spot + Vector3.new(0, PAD_THICKNESS + rise / 2, 0)) * CFrame.Angles(0, 0, math.pi / 2),
-				stones[math.random(#stones)],
+			local spot = centre + direction * along + across * side
+			local sweet = makePart(
+				"PathTile",
+				Vector3.new(columnStep - tile.Gap, tile.Rise, rowStep - tile.Gap),
+				CFrame.lookAt(spot + Vector3.new(0, PAD_THICKNESS + tile.Rise / 2, 0), spot + direction),
+				tiles[math.random(#tiles)],
 				Theme.World.PathMaterial,
 				parent
 			)
-			stone.Shape = Enum.PartType.Cylinder
-			-- Half a stud proud of the slab: walk over them, don't trip on them.
-			stone.CanCollide = false
-			stone.CastShadow = false
+			-- A third of a stud proud of the slab: walk over them, don't trip.
+			sweet.CanCollide = false
+			sweet.CastShadow = false
 		end
+	end
+
+	-- The kerb framing both sides, which is what turns a field of tiles into a
+	-- path. It runs the full length, including past the last row, so the path
+	-- ends square rather than frayed.
+	for _, side in { -1, 1 } do
+		local spot = centre + across * (side * (width / 2 - tile.KerbWidth / 2))
+		local kerb = makePart(
+			"PathKerb",
+			Vector3.new(tile.KerbWidth, tile.KerbHeight, length),
+			CFrame.lookAt(spot + Vector3.new(0, PAD_THICKNESS + tile.KerbHeight / 2, 0), spot + direction),
+			Theme.World.PathKerb or Theme.World.Border,
+			Theme.World.PathMaterial,
+			parent
+		)
+		kerb.CanCollide = false
 	end
 end
 
@@ -258,7 +275,7 @@ local function buildPaths(parent: Instance, ringRadius: number, plotRadius: numb
 		return
 	end
 
-	local stones = Theme.World.PathStones
+	local tiles = Theme.World.PathTiles
 
 	for index = 1, Balance.PlotCount do
 		local angle = (index - 1) / Balance.PlotCount * math.pi * 2
@@ -273,8 +290,8 @@ local function buildPaths(parent: Instance, ringRadius: number, plotRadius: numb
 			Theme.World.PathMaterial,
 			paths
 		)
-		if stones and #stones > 0 then
-			cobblePath(paths, centre, direction, length, Garden.GateWidth, stones)
+		if tiles and #tiles > 0 then
+			tilePath(paths, centre, direction, length, Garden.GateWidth, tiles)
 		end
 	end
 end

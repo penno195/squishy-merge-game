@@ -268,10 +268,12 @@ export type Theme = {
 		Hub: Color3,
 		Path: Color3,
 		PathMaterial: Enum.Material,
-		-- Cobbles strewn over the paths, taken at random. `Path` stays as the
-		-- slab under them, so it reads as the mortar between. Unset or empty
+		-- Sweets laid over the paths, taken at random. `Path` stays as the slab
+		-- under them, so what shows between them is the grouting. Unset or empty
 		-- leaves the paths plain.
-		PathStones: { Color3 }?,
+		PathTiles: { Color3 }?,
+		-- The kerb down both sides of a path. Unset uses `Border`.
+		PathKerb: Color3?,
 	},
 	Sounds: {
 		Merge: string?,

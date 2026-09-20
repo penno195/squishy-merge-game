@@ -58,7 +58,8 @@ local theme: Types.Theme = {
 		Hub = Color3.fromRGB(150, 90, 165),
 		Path = Color3.fromRGB(255, 175, 205),
 		PathMaterial = Enum.Material.SmoothPlastic,
-		PathStones = {
+		PathKerb = Color3.fromRGB(120, 78, 55),
+		PathTiles = {
 			Color3.fromRGB(255, 145, 185),
 			Color3.fromRGB(170, 240, 195),
 			Color3.fromRGB(255, 225, 130),
