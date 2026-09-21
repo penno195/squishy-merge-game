@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local AdminController = require(script.Parent.Controllers.AdminController)
 local Board = require(script.Parent.UI.Board)
+local BounceController = require(script.Parent.Controllers.BounceController)
 local CarryController = require(script.Parent.Controllers.CarryController)
 local Config = require(ReplicatedStorage.Shared.Config)
 local CraftController = require(script.Parent.Controllers.CraftController)
@@ -28,6 +29,7 @@ WheelController.start()
 CraftController.start()
 TacoController.start()
 WalkwayController.start()
+BounceController.start()
 State.start()
 
 -- The background track, for as long as the session lasts. Under the UI and the

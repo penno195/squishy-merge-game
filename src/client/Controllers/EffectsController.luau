@@ -11,6 +11,7 @@ local Workspace = game:GetService("Workspace")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
 local PropVisuals = require(ReplicatedStorage.Shared.PropVisuals)
+local Sound = require(script.Parent.Parent.UI.Sound)
 local UnitVisuals = require(ReplicatedStorage.Shared.UnitVisuals)
 
 local SQUASH = 0.09
@@ -189,35 +190,12 @@ local function animate(now: number)
 	end
 end
 
--- A sound at a point in the world, on a part of its own that clears itself up.
-local function soundAt(position: Vector3, soundId: string)
-	local origin = Instance.new("Part")
-	origin.Anchored = true
-	origin.CanCollide = false
-	origin.CanQuery = false
-	origin.Transparency = 1
-	origin.Size = Vector3.one
-	origin.CFrame = CFrame.new(position)
-	origin.Parent = Workspace
-
-	local sound = Instance.new("Sound")
-	sound.SoundId = soundId
-	sound.RollOffMaxDistance = 120
-	sound.Parent = origin
-	sound:Play()
-
-	Debris:AddItem(origin, 3)
-end
-
 -- A unit landing in the garden. Variants and sparkles get their own sound where
 -- the theme names one, because those are the drops worth looking up for.
 local function playSpawnEffect(position: Vector3, tier: number)
 	local def = Config.Units[tier]
 	local sounds = Config.Theme.Sounds
-	local soundId = if def.Variant or def.Sparkle then sounds.SpawnShiny or sounds.Spawn else sounds.Spawn
-	if soundId then
-		soundAt(position, soundId)
-	end
+	Sound.at(position, if def.Variant or def.Sparkle then sounds.SpawnShiny or sounds.Spawn else sounds.Spawn)
 end
 
 local function playMergeEffect(position: Vector3, tier: number)
@@ -244,10 +222,7 @@ local function playMergeEffect(position: Vector3, tier: number)
 	particles.Parent = origin
 	particles:Emit(28)
 
-	local soundId = Config.Theme.Sounds.Merge
-	if soundId then
-		soundAt(position, soundId)
-	end
+	Sound.at(position, Config.Theme.Sounds.Merge)
 
 	Debris:AddItem(origin, 2)
 end
