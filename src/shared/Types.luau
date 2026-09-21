@@ -336,9 +336,20 @@ export type Theme = {
 	},
 	Sounds: {
 		Merge: string?,
+		-- A unit dropping into the garden. SpawnShiny covers anything off the
+		-- plain ladder -- a variant or a sparkle -- and falls back to Spawn when
+		-- unset, so a theme can name one sound and have both.
 		Spawn: string?,
+		SpawnShiny: string?,
 		Purchase: string?,
 		Rebirth: string?,
+		-- The payoff moment: the wheel's prize card, and the pet under a hatched
+		-- egg. Falls back to Purchase.
+		Winner: string?,
+		-- One tap on an egg, before it opens. Falls back to Merge.
+		EggCrack: string?,
+		-- A player bouncing off a squishy prop.
+		Bounce: string?,
 		Error: string?,
 		Music: string?,
 		-- Looped for as long as the Taco Rain event runs. Unset, it rains in silence.

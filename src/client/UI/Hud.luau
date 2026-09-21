@@ -760,6 +760,9 @@ function Hud.start()
 	end
 
 	local function toast(message: string, kind: string)
+		if kind == "Error" then
+			Sound.play(Theme.Sounds.Error)
+		end
 		while #live >= MAX_TOASTS do
 			dismiss(live[1])
 		end

@@ -189,6 +189,37 @@ local function animate(now: number)
 	end
 end
 
+-- A sound at a point in the world, on a part of its own that clears itself up.
+local function soundAt(position: Vector3, soundId: string)
+	local origin = Instance.new("Part")
+	origin.Anchored = true
+	origin.CanCollide = false
+	origin.CanQuery = false
+	origin.Transparency = 1
+	origin.Size = Vector3.one
+	origin.CFrame = CFrame.new(position)
+	origin.Parent = Workspace
+
+	local sound = Instance.new("Sound")
+	sound.SoundId = soundId
+	sound.RollOffMaxDistance = 120
+	sound.Parent = origin
+	sound:Play()
+
+	Debris:AddItem(origin, 3)
+end
+
+-- A unit landing in the garden. Variants and sparkles get their own sound where
+-- the theme names one, because those are the drops worth looking up for.
+local function playSpawnEffect(position: Vector3, tier: number)
+	local def = Config.Units[tier]
+	local sounds = Config.Theme.Sounds
+	local soundId = if def.Variant or def.Sparkle then sounds.SpawnShiny or sounds.Spawn else sounds.Spawn
+	if soundId then
+		soundAt(position, soundId)
+	end
+end
+
 local function playMergeEffect(position: Vector3, tier: number)
 	local def = Config.Units[tier]
 	local origin = Instance.new("Part")
@@ -215,11 +246,7 @@ local function playMergeEffect(position: Vector3, tier: number)
 
 	local soundId = Config.Theme.Sounds.Merge
 	if soundId then
-		local sound = Instance.new("Sound")
-		sound.SoundId = soundId
-		sound.RollOffMaxDistance = 120
-		sound.Parent = origin
-		sound:Play()
+		soundAt(position, soundId)
 	end
 
 	Debris:AddItem(origin, 2)
@@ -235,6 +262,7 @@ function EffectsController.start()
 		end)
 	end
 	Net.event("MergeEffect").OnClientEvent:Connect(playMergeEffect)
+	Net.event("SpawnEffect").OnClientEvent:Connect(playSpawnEffect)
 end
 
 return EffectsController

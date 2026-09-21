@@ -130,7 +130,7 @@ function Reveal.prize(label: string, description: string)
 		Parent = card,
 	}, close)
 
-	Sound.play(Theme.Sounds.Purchase)
+	Sound.play(Theme.Sounds.Winner or Theme.Sounds.Purchase)
 	-- Takes itself away, because the next spin is behind it.
 	task.delay(PRIZE_SECONDS, function()
 		if card.Parent then
@@ -289,7 +289,7 @@ local function revealPet(card: Frame, record: Types.PetRecord, close: () -> ())
 		Parent = card,
 	}, close)
 
-	Sound.play(Theme.Sounds.Rebirth or Theme.Sounds.Purchase)
+	Sound.play(Theme.Sounds.Winner or Theme.Sounds.Purchase)
 end
 
 -- An egg to tap open. The pet is already decided; this is the ceremony.
@@ -335,7 +335,7 @@ function Reveal.egg(petId: string, variant: number?)
 		end
 		taps += 1
 		crack(egg, taps)
-		Sound.play(Theme.Sounds.Merge)
+		Sound.play(Theme.Sounds.EggCrack or Theme.Sounds.Merge)
 
 		-- Knocked sideways and back, so each tap lands on something.
 		local side = if taps % 2 == 0 then 1 else -1

@@ -42,6 +42,9 @@ local EVENTS = {
 	"StateUpdate",
 	"Notify",
 	"MergeEffect",
+	-- A unit dropping in: where it lands, and its index in Config.Units, so the
+	-- client knows whether it was a plain one or something off the ladder.
+	"SpawnEffect",
 	"SpinResult",
 	"SellPrompt",
 	"CraftResult",

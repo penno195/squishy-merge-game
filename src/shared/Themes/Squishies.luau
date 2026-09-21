@@ -111,6 +111,16 @@ local theme: Types.Theme = {
 		-- song is the artist's own upload of it -- Roblox's library, public, so it
 		-- is cleared for use. Anything put here has to be, and a reupload of a
 		-- commercial track is not.
+		Merge = "rbxassetid://85132289764366",
+		Spawn = "rbxassetid://137935424222814",
+		SpawnShiny = "rbxassetid://140594092271010",
+		Purchase = "rbxassetid://10066947742",
+		Rebirth = "rbxassetid://116975598122611",
+		Winner = "rbxassetid://127039883737564",
+		EggCrack = "rbxassetid://9113959332",
+		Bounce = "rbxassetid://105190106289384",
+		Error = "rbxassetid://1464205581",
+		Music = "rbxassetid://112008510815356",
 		TacoRain = "rbxassetid://142376088",
 	},
 

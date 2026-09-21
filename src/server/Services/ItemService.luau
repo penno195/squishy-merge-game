@@ -159,6 +159,9 @@ function ItemService.dropItem(player: Player, tier: number, restCFrame: CFrame?,
 	model.Parent = folder
 	if falling then
 		animateFall(model, rest)
+		-- Only a fresh drop makes a noise. A garden rendered back at join lands
+		-- every unit at once and would otherwise be a wall of them.
+		Net.event("SpawnEffect"):FireAllClients(rest.Position, tier)
 	end
 
 	local item: Item = { model = model, tier = tier, position = rest.Position }
