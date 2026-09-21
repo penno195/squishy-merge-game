@@ -942,6 +942,86 @@ for _, egg in Config.Balance.Pets.Eggs do
 	check(`{egg.Id} with Hatch Luck still rolls a real pet`, rolled ~= nil and Economy.petDef(rolled.Id) ~= nil)
 end
 
+-- Rewards ---------------------------------------------------------------
+--
+-- The reward ladder is the thing that went wrong last time: rewards were a
+-- percentage of production, so they never stopped being worth the same and the
+-- day's claims came to several times what playing earned. These checks are the
+-- shape of the fix rather than the exact numbers, so the numbers stay tunable.
+
+local Balance = Config.Balance
+local rewards = Balance.Rewards
+
+check("band 1 pays the base bundle", Economy.bandPayout(1) == math.floor(rewards.Base))
+check("a band below 1 is still band 1", Economy.bandPayout(0) == Economy.bandPayout(1))
+check("bands climb", Economy.bandPayout(5) > Economy.bandPayout(4))
+check(
+	"a band is worth Growth times the one below",
+	math.abs(Economy.bandPayout(6) / Economy.bandPayout(5) - rewards.Growth) < 0.01
+)
+check("a payout is its share of the bundle", Economy.rewardCash(3, 0.5) == math.floor(Economy.bandPayout(3) * 0.5))
+
+-- The whole point: rewards must climb slower than production does, or they are
+-- a percentage of income wearing a different name.
+check("rewards climb slower than income", rewards.Growth < Balance.Income.TierGrowth)
+local earlyShare = Economy.bandPayout(1) / Balance.Income.TierGrowth ^ 0
+local lateShare = Economy.bandPayout(20) / Balance.Income.TierGrowth ^ 19
+check("a bundle is worth less of a bigger garden", lateShare < earlyShare)
+
+-- Every reward in the game, wherever it is written down.
+local function everyReward(): { { name: string, reward: any } }
+	local found = {}
+	for day, reward in Balance.DailyRewards do
+		table.insert(found, { name = `daily day {day}`, reward = reward })
+	end
+	for _, rung in Balance.Playtime.Rungs do
+		table.insert(found, { name = `playtime {rung.Minutes}m`, reward = rung.Reward })
+	end
+	for _, quest in Balance.Quests.Daily do
+		table.insert(found, { name = quest.Id, reward = quest.Reward })
+	end
+	for _, quest in Balance.Quests.Weekly do
+		table.insert(found, { name = quest.Id, reward = quest.Reward })
+	end
+	for _, prize in Balance.Wheel.Prizes do
+		table.insert(found, { name = `wheel {prize.Label}`, reward = prize.Reward })
+	end
+	table.insert(found, { name = "starter pack", reward = Balance.Monetisation.StarterPack.Reward })
+	for key, reward in Balance.Monetisation.ProductRewards do
+		table.insert(found, { name = `product {key}`, reward = reward })
+	end
+	return found
+end
+
+for _, entry in everyReward() do
+	local reward = entry.reward
+	check(`{entry.name} has no income-scaled leftovers`, reward.IncomeMinutes == nil and reward.MinCash == nil)
+	check(`{entry.name} gives something`, reward.Payout ~= nil or reward.Gems ~= nil or reward.UnitTierBonus ~= nil)
+	if reward.Payout then
+		check(`{entry.name} pays a positive share`, reward.Payout > 0)
+		check(`{entry.name} pays real cash at band 1`, Economy.rewardCash(1, reward.Payout) > 0)
+	end
+end
+
+-- The inversion that started all this: a full sitting on the playtime ladder
+-- used to pay more than three times the best day of the streak, which made
+-- sitting still the best-paid thing in the game.
+local ladder = 0
+for _, rung in Balance.Playtime.Rungs do
+	ladder += rung.Reward.Payout or 0
+end
+local bestDaily = 0
+for _, reward in Balance.DailyRewards do
+	bestDaily = math.max(bestDaily, reward.Payout or 0)
+end
+check("the daily streak out-pays a whole playtime ladder", bestDaily > ladder, `daily {bestDaily} ladder {ladder}`)
+
+-- A paid bundle should beat the best free one, or there is no reason to buy it.
+check(
+	"the biggest paid bundle beats the best free one",
+	(Balance.Monetisation.ProductRewards.CashLarge.Payout :: number) > bestDaily
+)
+
 print(`{checks - failures} / {checks} checks passed`)
 if failures > 0 then
 	error(`{failures} checks failed`)

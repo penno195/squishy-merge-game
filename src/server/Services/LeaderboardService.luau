@@ -125,6 +125,11 @@ local function rollOver(player: Player)
 	if data.Weekly.Week ~= thisWeek then
 		data.Weekly.Week = thisWeek
 		data.Weekly.Base = data.TotalEarned
+		-- The rung every reward is paid at for the coming week. Set here because
+		-- this is the one place a week is already known to have turned over, and
+		-- it runs on join, so a player who has never had a band gets one before
+		-- anything can be claimed.
+		Economy.refreshRewardBand(data)
 		StateService.markDirty(player)
 	end
 end

@@ -10,6 +10,8 @@ local EVENTS = {
 	-- Client -> server
 	"DropCarried",
 	"SellCarried",
+	-- Puts the carried sparkle on its plinth: the trophy, and the bonus with it.
+	"SendToPlinth",
 	"BuyUnit",
 	"BuyUpgrade",
 	"BuyBoost",

@@ -717,6 +717,21 @@ function Hud.start()
 		Net.event("DropCarried"):FireServer()
 	end)
 
+	-- Only while carrying a sparkle, and it shares the drop row rather than
+	-- taking one of its own: the bottom strip is sized to clear a phone's home
+	-- indicator, and a fourth button would push the rest of it up the screen.
+	local plinthButton = Components.button({
+		Text = "Send To Plinth",
+		Position = UDim2.new(0.5, 4, 0, 158),
+		Size = UDim2.new(0.5, -4, 0, 54),
+		BackgroundColor3 = Palette.Accent,
+		Parent = bottom,
+	}, function()
+		Sound.play(Theme.Sounds.Purchase)
+		Net.event("SendToPlinth"):FireServer()
+	end)
+	plinthButton.Instance.Visible = false
+
 	-- Selling at the bin (centre) ----------------------------------------
 	local confirm = Confirm.create(screen)
 	Net.event("SellPrompt").OnClientEvent:Connect(function(tier: number?, amount: number?)
@@ -869,6 +884,12 @@ function Hud.start()
 			sinceBadges = 0
 			refreshBadges(snapshot)
 		end
+
+		-- The drop row gives up half its width when there is somewhere else for
+		-- what is being carried to go.
+		local banking = data.Carried ~= 0 and Economy.isSparkle(data.Carried)
+		plinthButton.Instance.Visible = banking
+		dropButton.Instance.Size = if banking then UDim2.new(0.5, -4, 0, 54) else UDim2.new(1, 0, 0, 54)
 
 		local boostLeft = Economy.boostRemaining(data)
 		boostPill.setVisible(boostLeft > 0)

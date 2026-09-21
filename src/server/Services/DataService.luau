@@ -46,7 +46,7 @@ local TEMPLATE: PlayerData = {
 	Codes = {},
 	Tutorial = 0,
 	Quests = { Day = -1, Week = -1, Active = {} },
-	Weekly = { Week = -1, Base = 0, PaidWeek = -1 },
+	Weekly = { Week = -1, Base = 0, PaidWeek = -1, Band = 0 },
 }
 
 local DataService = {}

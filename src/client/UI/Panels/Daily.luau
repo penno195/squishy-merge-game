@@ -86,14 +86,14 @@ function Daily.create(parent: Instance)
 
 	local function update(snapshot: { [string]: any })
 		local data: Types.PlayerData = snapshot.Data
-		local income = snapshot.IncomePerSecond or 0
+		local band = Economy.rewardBand(data)
 		local available, streak = Economy.dailyStatus(data, snapshot.Now)
 
 		for day, entry in cards do
 			local reward = Rewards[day]
 			local parts = {}
-			if reward.IncomeMinutes or reward.MinCash then
-				local amount = Economy.incomeReward(income, reward.IncomeMinutes or 0, reward.MinCash or 0)
+			if reward.Payout then
+				local amount = Economy.rewardCash(band, reward.Payout)
 				table.insert(parts, `{Theme.Icons.Currency or ""} {Format.number(amount)}`)
 			end
 			if reward.Gems then

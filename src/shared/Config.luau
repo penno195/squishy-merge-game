@@ -57,7 +57,7 @@ for position, sparkle in sparkles do
 		Name = sparkle.Name,
 		Color = sparkle.Color,
 		Model = sparkle.Model or theme.CreatureModel,
-		Scale = sparkle.Scale,
+		Scale = sparkle.Scale or balance.Craft.SparkleScale,
 		Sparkle = true,
 	}
 end

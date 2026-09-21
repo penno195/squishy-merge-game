@@ -18,6 +18,7 @@ local ItemService = require(script.Parent.ItemService)
 local Net = require(ReplicatedStorage.Shared.Net)
 local PassService = require(script.Parent.PassService)
 local PetService = require(script.Parent.PetService)
+local PlinthService = require(script.Parent.PlinthService)
 local RewardService = require(script.Parent.RewardService)
 local StateService = require(script.Parent.StateService)
 
@@ -269,6 +270,35 @@ function GameplayService.init()
 		end
 		playerTimers.sellPrompt = false
 		Net.event("SellPrompt"):FireClient(player)
+	end)
+
+	-- A sparkle carried onto a plinth: the trophy, and the permanent bonus with
+	-- it. Anywhere on the plot will do -- the plinths stand outside the fence
+	-- where nothing can be carried, so asking the player to stand at one would
+	-- be asking for something the garden does not allow.
+	Net.event("SendToPlinth").OnServerEvent:Connect(function(player)
+		local data = DataService.get(player)
+		if not data or data.Carried == 0 then
+			return
+		end
+		if not Economy.isSparkle(data.Carried) then
+			StateService.notify(player, `Only {Theme.Text.SparklePlural} go on a plinth.`, "Error")
+			return
+		end
+		local index = ItemService.takeCarried(player)
+		if not index then
+			return
+		end
+		local first, owned = PlinthService.award(player, index)
+		local sparkle = Economy.sparkleAt(index)
+		StateService.notify(
+			player,
+			if first and sparkle
+				then `{sparkle.Name} on its plinth: +{math.floor(sparkle.Bonus * 100)}% {Theme.Text.Currency} for good.`
+				else `Your plinth now shows {owned}.`,
+			"Discovery"
+		)
+		ActionService.fire(player, "SparkleBanked", { Value = index, Fields = { Owned = tostring(owned) } })
 	end)
 
 	Net.event("BuyUnit").OnServerEvent:Connect(function(player)

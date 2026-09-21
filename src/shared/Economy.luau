@@ -281,9 +281,32 @@ function Economy.incomePerSecond(data: Types.PlayerData, passMultiplier: number,
 	return base * Economy.cashMultiplier(data, passMultiplier, boostMultiplier)
 end
 
--- Rewards defined as "minutes of current income" with a floor.
-function Economy.incomeReward(incomePerSecond: number, incomeMinutes: number, minCash: number): number
-	return math.max(math.floor(incomePerSecond * incomeMinutes * 60), minCash)
+-- Rewards ----------------------------------------------------------------
+
+-- One full reward bundle at a band. Balance.Rewards carries the reasoning; the
+-- short of it is that this climbs slower than income does, so a bundle is worth
+-- steadily less of a garden as the garden grows.
+function Economy.bandPayout(band: number): number
+	local rewards = Balance.Rewards
+	return math.floor(rewards.Base * rewards.Growth ^ (math.max(band, 1) - 1))
+end
+
+-- What a reward pays: its share of one bundle at that band.
+function Economy.rewardCash(band: number, payout: number): number
+	return math.floor(Economy.bandPayout(band) * payout)
+end
+
+-- The band a player's rewards are paid at. Read rather than computed, because
+-- it is frozen between weekly rollovers -- a band that moved with the drop tier
+-- the moment it changed would put the day's rewards up mid-claim.
+function Economy.rewardBand(data: Types.PlayerData): number
+	return math.max(data.Weekly.Band, 1)
+end
+
+-- Re-reads the band off the player's progress. Called when the week rolls over,
+-- which is also the first thing that happens to a player who has never had one.
+function Economy.refreshRewardBand(data: Types.PlayerData)
+	data.Weekly.Band = Economy.dropTier(data)
 end
 
 -- `autoCollect` is the pass: it replaces both halves of the deal at once, the

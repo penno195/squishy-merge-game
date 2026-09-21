@@ -54,12 +54,12 @@ end
 -- the starter pack's bundle written out as prose ran to over a hundred characters.
 local function rewardText(reward: Types.Reward): string
 	local parts = {}
-	if reward.IncomeMinutes then
-		local minutes = reward.IncomeMinutes
-		local span = if minutes >= 60 and minutes % 60 == 0
-			then `{minutes // 60} {if minutes == 60 then "hour" else "hours"}`
-			else `{minutes} minutes`
-		table.insert(parts, `{span} of {Theme.Text.Currency} income`)
+	if reward.Payout then
+		-- These cards are built at module scope, where there is no player to
+		-- read a band off, so a bundle is described by size rather than by a
+		-- figure. What it is actually worth is the band's business.
+		local size = if reward.Payout >= 3 then "huge" elseif reward.Payout >= 1.5 then "big" else "handy"
+		table.insert(parts, `a {size} {Theme.Text.Currency} bundle`)
 	end
 	if reward.Gems then
 		table.insert(parts, `{reward.Gems} Gems`)

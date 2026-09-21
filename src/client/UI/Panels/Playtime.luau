@@ -19,13 +19,13 @@ local Theme = Config.Theme
 
 local Playtime = {}
 
--- What a bundle pays, in the same words the quest and daily panels use.
--- Income-scaled rewards need the player's income to mean anything, so it's
--- passed in rather than read here.
-local function describe(reward: Types.Reward, income: number): string
+-- What a bundle pays, in the same words the quest and daily panels use. A
+-- payout is a share of the band's bundle, so the band is passed in -- the
+-- reward table on its own says nothing a player can read.
+local function describe(reward: Types.Reward, band: number): string
 	local parts = {}
-	if reward.IncomeMinutes or reward.MinCash then
-		local amount = Economy.incomeReward(income, reward.IncomeMinutes or 0, reward.MinCash or 0)
+	if reward.Payout then
+		local amount = Economy.rewardCash(band, reward.Payout)
 		table.insert(parts, `{Format.number(amount)} {Theme.Text.Currency}`)
 	end
 	if reward.Gems then
@@ -64,7 +64,7 @@ function Playtime.create(parent: Instance)
 		if not snapshot then
 			return
 		end
-		local income = snapshot.IncomePerSecond or 0
+		local band = Economy.rewardBand(snapshot.Data)
 		-- The session clock runs on the server; the panel counts against it
 		-- rather than being told the time, so the rows tick between snapshots.
 		local startedAt = snapshot.SessionStartedAt
@@ -80,7 +80,7 @@ function Playtime.create(parent: Instance)
 				Progress = done,
 				Target = target,
 				ProgressText = `{Format.time(done)} / {Format.time(target)}`,
-				Reward = describe(rung.Reward, income),
+				Reward = describe(rung.Reward, band),
 				Claimed = claimed[index] == true,
 			})
 		end

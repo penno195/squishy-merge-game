@@ -142,6 +142,13 @@ local function animate(now: number)
 		if not rest then
 			continue
 		end
+		-- A trophy on a plinth turns on the spot. Turning the rest pose rather
+		-- than the model is what keeps it compatible with the squash below,
+		-- which builds every frame from that pose.
+		local spin = model:GetAttribute("Spin")
+		if typeof(spin) == "number" then
+			rest *= CFrame.Angles(0, now * spin, 0)
+		end
 
 		-- Offset each unit's phase by where it stands, so a garden full of them
 		-- doesn't pulse in lockstep.

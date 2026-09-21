@@ -800,9 +800,15 @@ local function addLabel(model: Model, name: string, tier: number, index: number,
 	end
 	makeText(name, Theme.Palette.Text, UDim2.fromScale(0, 0), UDim2.fromScale(1, 0.46))
 	-- A sparkle has no tier to speak of: it sits off the end of the ladder and
-	-- can't be merged, so it's labelled by what it is instead.
+	-- can't be merged. What it has instead is the permanent bonus it pays once
+	-- it's on a plinth, which is the number worth reading -- the same way an
+	-- ordinary unit is read by what it earns.
+	local sparkleDef = if sparkle then Economy.sparkleAt(index) else nil
 	makeText(
-		if sparkle then Theme.Text.Sparkle else `Lv. {tier}`,
+		if sparkleDef
+			then `+{math.floor(sparkleDef.Bonus * 100)}% {Theme.Text.Currency} forever`
+			elseif sparkle then Theme.Text.Sparkle
+			else `Lv. {tier}`,
 		Theme.Palette.Accent,
 		UDim2.fromScale(0, 0.46),
 		UDim2.fromScale(1, 0.27)

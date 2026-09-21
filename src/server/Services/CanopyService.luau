@@ -412,51 +412,61 @@ end
 -- and a point light capped at sixty studs of range would light a puddle. It
 -- points along its part's front face, so the head is simply turned to look at
 -- the spot it should cover and the light follows it.
-local function buildFloodlights(parent: Instance, radius: number, def: Types.CanopyDef)
-	local flood = Balance.Floodlights
-	local folder = Instance.new("Folder")
-	folder.Name = "Floodlights"
-	folder.Parent = parent
+type FloodBank = typeof(Balance.Floodlights.Banks[1])
 
-	for gap = 1, flood.Count do
-		local angle = HubService.gapAngle(gap)
-		local outward = Vector3.new(math.cos(angle), 0, math.sin(angle))
-		local foot = outward * radius
-		local band = flood.Height / 10
-		for step = 1, 10 do
-			makeColumn(
-				"MastBand",
-				band,
-				flood.Width,
-				foot + Vector3.new(0, (step - 1) * band, 0),
-				if step % 2 == 0 then def.PoleBand else def.Pole,
-				Enum.Material.SmoothPlastic,
-				folder,
-				true
-			)
-		end
-
-		-- The head looks at the ground a good way in front of the mast, so the
-		-- cone falls across the gap rather than straight down the post.
-		local top = foot + Vector3.new(0, flood.Height, 0)
-		local target = outward * (radius - 60)
-		local head = makePart(
-			"FloodHead",
-			Vector3.new(flood.Width * 2.2, flood.Width * 2.2, flood.Width * 1.6),
-			CFrame.lookAt(top, target),
-			def.Trim,
+-- One mast, standing `radius` out along `angle` and looking down at the ground
+-- `Reach` studs in front of its own foot.
+local function buildFloodMast(folder: Instance, angle: number, radius: number, bank: FloodBank, def: Types.CanopyDef)
+	local outward = Vector3.new(math.cos(angle), 0, math.sin(angle))
+	local foot = outward * radius
+	local band = bank.Height / 10
+	for step = 1, 10 do
+		makeColumn(
+			"MastBand",
+			band,
+			bank.Width,
+			foot + Vector3.new(0, (step - 1) * band, 0),
+			if step % 2 == 0 then def.PoleBand else def.Pole,
 			Enum.Material.SmoothPlastic,
 			folder,
 			true
 		)
+	end
 
-		local light = Instance.new("SpotLight")
-		light.Color = def.Trim
-		light.Brightness = flood.Brightness
-		light.Range = flood.Range
-		light.Angle = flood.Angle
-		light.Face = Enum.NormalId.Front
-		light.Parent = head
+	local top = foot + Vector3.new(0, bank.Height, 0)
+	local target = outward * (radius - bank.Reach)
+	local head = makePart(
+		"FloodHead",
+		Vector3.new(bank.Width * 2.2, bank.Width * 2.2, bank.Width * 1.6),
+		CFrame.lookAt(top, target),
+		def.Trim,
+		Enum.Material.SmoothPlastic,
+		folder,
+		true
+	)
+
+	local light = Instance.new("SpotLight")
+	light.Color = def.Trim
+	light.Brightness = bank.Brightness
+	light.Range = bank.Range
+	light.Angle = bank.Angle
+	light.Face = Enum.NormalId.Front
+	light.Parent = head
+end
+
+local function buildFloodlights(parent: Instance, plotRadius: number, def: Types.CanopyDef)
+	local folder = Instance.new("Folder")
+	folder.Name = "Floodlights"
+	folder.Parent = parent
+
+	for _, bank in Balance.Floodlights.Banks do
+		for post = 1, bank.Count do
+			-- Gap-aligned masts keep clear of the paths out to the gardens.
+			-- An evenly spread bank is placed the way the prop rings are, so
+			-- the two line up instead of drifting against each other.
+			local angle = if bank.Gaps then HubService.gapAngle(post) else (post - 1) / bank.Count * math.pi * 2
+			buildFloodMast(folder, angle, plotRadius * bank.Radius, bank, def)
+		end
 	end
 end
 
@@ -492,7 +502,7 @@ function CanopyService.init()
 	-- Round the middle of the map, about where the gardens begin.
 	local plotRadius = GardenService.plotRadius()
 	buildPerimeter(folder, plotRadius * Balance.Perimeter.Radius, def)
-	buildFloodlights(folder, plotRadius * Balance.Floodlights.Radius, def)
+	buildFloodlights(folder, plotRadius, def)
 
 	-- The inside of the tent, lit. One hung under the crown for the middle, and
 	-- one on each pole for the rim, because a single light capped at sixty studs

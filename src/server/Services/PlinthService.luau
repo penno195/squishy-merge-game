@@ -15,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local DataService = require(script.Parent.DataService)
+local Economy = require(ReplicatedStorage.Shared.Economy)
 local GardenService = require(script.Parent.GardenService)
 local UnitVisuals = require(ReplicatedStorage.Shared.UnitVisuals)
 
@@ -35,6 +36,16 @@ local HEIGHT_STEP = 0.7
 -- read as an ornament rather than loom over the fence.
 local TROPHY_SCALE = 0.45
 local TROPHY_LIGHT_RANGE = 9
+-- Radians a second. Slow: a trophy turning at any pace reads as a thing being
+-- shown off, and a fast one reads as a thing being advertised.
+local TROPHY_SPIN = 0.5
+-- The bulb hung over an occupied plinth. It is parented to the display rather
+-- than to the plinth, so it is cleared along with the trophy -- an empty plinth
+-- staying dark is what makes the lit ones legible from across the garden.
+local LAMP_HEIGHT = 4.6
+local LAMP_SIZE = 0.9
+local LAMP_RANGE = 16
+local LAMP_BRIGHTNESS = 2.2
 -- How far the nameplates carry. Sixty gardens' worth of them legible from the
 -- middle of the map turns the skyline into a wall of text, so they reach far
 -- enough to read your own collection from your gate (44 studs to the furthest
@@ -184,12 +195,54 @@ local function setTrophy(plinth: Plinth, index: number, count: number)
 	-- anything tagged that knows where it rests.
 	model:SetAttribute("Rest", plinth.Anchor)
 	model:SetAttribute("Landed", true)
+	-- The client turns anything carrying this, about the pose it rests at. The
+	-- pivot sits at the model's base, so it spins where it stands.
+	model:SetAttribute("Spin", TROPHY_SPIN)
 	model.Parent = plinth.Display
 
+	local lamp = makePart(
+		"Lamp",
+		Vector3.one * LAMP_SIZE,
+		plinth.Anchor + Vector3.new(0, LAMP_HEIGHT, 0),
+		Theme.Palette.Accent,
+		Enum.Material.Neon,
+		plinth.Display
+	)
+	lamp.Shape = Enum.PartType.Ball
+	local glow = Instance.new("PointLight")
+	glow.Brightness = LAMP_BRIGHTNESS
+	glow.Range = LAMP_RANGE
+	glow.Color = Theme.Palette.Accent
+	glow.Parent = lamp
+
+	local sparkle = Economy.sparkleAt(index)
 	plinth.Name.Text = Config.Units[index].Name
 	plinth.Name.TextColor3 = Theme.Palette.Text
-	plinth.Count.Text = if count > 1 then `Made x{count}` else "Made"
+	-- What it pays, not just how many were made: the bonus is the reason the
+	-- trophy is worth having, and it is invisible everywhere else.
+	local bonus = if sparkle then `+{math.floor(sparkle.Bonus * 100)}%` else ""
+	plinth.Count.Text = if count > 1 then `{bonus} · Made x{count}` else bonus
 	plinth.Count.TextColor3 = Theme.Palette.Accent
+end
+
+-- Records a sparkle as owned and stands it on its plinth. Returns whether this
+-- was the first of its kind and how many are now owned, which is all a caller
+-- needs to word the message.
+--
+-- The bonus is the plinth's, so it lands once however many copies are made: a
+-- second is still a very good unit, but it doesn't pay twice. Every route a
+-- sparkle can arrive by goes through here, so none of them can bank one without
+-- the trophy appearing to match.
+function PlinthService.award(player: Player, index: number): (boolean, number)
+	local data = DataService.get(player)
+	local sparkle = Economy.sparkleAt(index)
+	if not (data and sparkle) then
+		return false, 0
+	end
+	local owned = (data.Sparkles[sparkle.Id] or 0) + 1
+	data.Sparkles[sparkle.Id] = owned
+	PlinthService.refresh(player)
+	return owned == 1, owned
 end
 
 -- Re-reads a player's collection onto their garden's plinths.

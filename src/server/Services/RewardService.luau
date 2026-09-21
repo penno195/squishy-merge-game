@@ -76,9 +76,8 @@ function RewardService.grant(player: Player, reward: Types.Reward): (string, Gra
 	end
 	local parts = {}
 
-	if reward.IncomeMinutes or reward.MinCash then
-		local amount =
-			Economy.incomeReward(RewardService.incomePerSecond(player), reward.IncomeMinutes or 0, reward.MinCash or 0)
+	if reward.Payout then
+		local amount = Economy.rewardCash(Economy.rewardBand(data), reward.Payout)
 		RewardService.grantCash(player, amount)
 		granted.Cash += amount
 		table.insert(parts, `{Format.number(amount)} {Theme.Text.Currency}`)

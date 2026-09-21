@@ -442,6 +442,10 @@ export type WeeklyState = {
 	-- and kept separately from `Week` because a prize is claimed during the
 	-- week *after* the one it was won in.
 	PaidWeek: number,
+	-- The rung every reward is paid at, taken from the drop tier when the week
+	-- rolled over. Frozen for the week on purpose: a reward that moved with
+	-- progress would be a percentage of income by another name.
+	Band: number,
 }
 
 export type PlayerData = {
@@ -509,11 +513,12 @@ export type PlayerData = {
 	Weekly: WeeklyState,
 }
 
--- A bundle of rewards (daily rewards, dev products). Cash is "minutes of the
--- player's current income", floored at MinCash.
+-- A bundle of rewards (daily rewards, dev products). `Payout` is a share of one
+-- full reward bundle at the player's band -- 1 is the standard bundle, 0.1 a
+-- tenth of one -- which Economy.rewardCash turns into cash. It is deliberately
+-- not a cash figure and deliberately not a share of income: see Balance.Rewards.
 export type Reward = {
-	IncomeMinutes: number?,
-	MinCash: number?,
+	Payout: number?,
 	UnitTierBonus: number?,
 	Gems: number?,
 }

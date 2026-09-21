@@ -18,11 +18,11 @@ local Theme = Config.Theme
 local Quests = {}
 
 -- What a bundle pays, in the words the daily panel already uses. Income-scaled
--- rewards need the player's income to mean anything, so it's passed in.
-local function describe(reward: Types.Reward, income: number): string
+-- rewards need the player's band to mean anything, so it's passed in.
+local function describe(reward: Types.Reward, band: number): string
 	local parts = {}
-	if reward.IncomeMinutes or reward.MinCash then
-		local amount = Economy.incomeReward(income, reward.IncomeMinutes or 0, reward.MinCash or 0)
+	if reward.Payout then
+		local amount = Economy.rewardCash(band, reward.Payout)
 		table.insert(parts, `{Format.number(amount)} {Theme.Text.Currency}`)
 	end
 	if reward.Gems then
@@ -53,7 +53,7 @@ function Quests.create(parent: Instance)
 
 	local function update(snapshot: { [string]: any })
 		local data: Types.PlayerData = snapshot.Data
-		local income = snapshot.IncomePerSecond or 0
+		local band = Economy.rewardBand(snapshot.Data)
 		local rows: { ClaimList.Row } = {}
 		local ready = 0
 
@@ -69,7 +69,7 @@ function Quests.create(parent: Instance)
 					Text = if slot.Weekly then `⭐ {quest.Text}` else quest.Text,
 					Progress = done,
 					Target = target,
-					Reward = describe(quest.Reward, income),
+					Reward = describe(quest.Reward, band),
 					Claimed = slot.Claimed,
 				})
 			end

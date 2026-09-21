@@ -181,18 +181,46 @@ return {
 		Range = 44,
 	},
 
-	-- Floodlights in the gaps between the gardens, out past the backs of them.
-	-- The middle of the map is lit by the tent and the ring of posts; this is
-	-- what stops everything behind the gardens being a dark band.
+	-- Floodlights out past the backs of the gardens. The middle of the map is
+	-- lit by the tent and the ring of posts; this is what stops everything
+	-- behind the gardens being a dark band.
+	--
+	-- Two banks, because one ring of them cannot cover both jobs. `Gaps` puts a
+	-- bank on the gaps between gardens, where a mast stands clear of every path;
+	-- the other spreads evenly, which is what the ring of scenery wants. `Reach`
+	-- is how far in from its own foot a mast aims, so the cone falls across the
+	-- ground in front of it rather than straight down the post.
 	Floodlights = {
-		Count = 6,
-		Radius = 1.3,
-		Height = 44,
-		Width = 2.2,
-		-- Aimed down and inward at the ground between the gardens.
-		Brightness = 3,
-		Range = 60,
-		Angle = 80,
+		Banks = {
+			-- The gaps between the gardens, aimed in at the ground there.
+			{
+				Gaps = true,
+				Count = 6,
+				Radius = 1.3,
+				Reach = 60,
+				Height = 44,
+				Width = 2.2,
+				Brightness = 3,
+				Range = 60,
+				Angle = 80,
+			},
+			-- The back of the map. The bank above is aimed inward from 1.3 and
+			-- so stops short of the Outer prop ring at 1.45 -- the biggest
+			-- scenery on the map stood in the dark behind its own floodlights.
+			-- These stand outside that ring and look back in at it, one behind
+			-- every second prop.
+			{
+				Gaps = false,
+				Count = 12,
+				Radius = 1.7,
+				Reach = 30,
+				Height = 46,
+				Width = 2,
+				Brightness = 2.6,
+				Range = 70,
+				Angle = 70,
+			},
+		},
 	},
 
 	-- Bright points hung high over the map. Roblox's own stars cannot be made
@@ -625,16 +653,44 @@ return {
 		Rate = 0.5,
 	},
 
-	-- Rewards scale with the player's current income so they stay useful at every stage.
-	-- `UnitTierBonus` drops an item that many tiers above the player's drop tier.
+	-- What every reward in the game is paid out of.
+	--
+	-- Rewards used to be "minutes of the player's current income", which is a
+	-- percentage of production dressed up as a number. A percentage never stops
+	-- being worth the same, so claiming buttons stayed as valuable as playing for
+	-- as long as the game lasted: at a mid-game garden the day's claims came to
+	-- nearly five hours of production against the ninety minutes the session
+	-- itself earned.
+	--
+	-- A payout is a flat figure read off a ladder instead. `Base` is one full
+	-- bundle at band 1 and `Growth` is what each band multiplies it by. The
+	-- number that matters is Growth against Income.TierGrowth: production climbs
+	-- 2.5 a rung and this climbs 2.35, so a bundle is worth about 6% less of a
+	-- garden with every rung earned. An hour of production a day at the start,
+	-- about three minutes a day by the end -- a leg-up that fades, which is what
+	-- a reward is for.
+	--
+	-- The band is the player's drop tier, frozen until the week rolls over
+	-- (Economy.refreshRewardBand). Drop tier because it is the pacing knob for
+	-- the whole game and cannot be moved by hoarding cash or by idling; frozen
+	-- because a band that tracked progress hour by hour would be a percentage
+	-- all over again.
+	Rewards = {
+		Base = 12000,
+		Growth = 2.35,
+	},
+
+	-- The daily streak, one rung a day. `Payout` is a share of the band's
+	-- bundle; `UnitTierBonus` drops an item that many tiers above the player's
+	-- drop tier. Day seven is the headline: nothing else free pays more at once.
 	DailyRewards = {
-		{ IncomeMinutes = 5, MinCash = 100 },
-		{ IncomeMinutes = 10, MinCash = 250, Gems = 5 },
-		{ IncomeMinutes = 15, MinCash = 500 },
-		{ IncomeMinutes = 20, MinCash = 1000, UnitTierBonus = 1, Gems = 10 },
-		{ IncomeMinutes = 30, MinCash = 2500 },
-		{ IncomeMinutes = 45, MinCash = 5000, Gems = 15 },
-		{ IncomeMinutes = 60, MinCash = 10000, UnitTierBonus = 2, Gems = 30 },
+		{ Payout = 0.25 },
+		{ Payout = 0.4, Gems = 5 },
+		{ Payout = 0.55 },
+		{ Payout = 0.8, UnitTierBonus = 1, Gems = 10 },
+		{ Payout = 1 },
+		{ Payout = 1.3, Gems = 15 },
+		{ Payout = 1.75, UnitTierBonus = 2, Gems = 30 },
 	},
 
 	Monetisation = {
@@ -659,15 +715,17 @@ return {
 		-- anyone who has already had it.
 		--
 		-- Priced as a pack rather than a pass: it is deliberately worth more than
-		-- its parts, because a first-session player has no income for
-		-- IncomeMinutes to multiply and the floor is what they actually get.
+		-- its parts. Paid bundles are paid at the same band as free ones, so what
+		-- was bought keeps pace with the garden instead of going stale.
 		StarterPack = {
 			Hours = 24,
-			Reward = { IncomeMinutes = 60, MinCash = 5000, Gems = 150, UnitTierBonus = 3 },
+			Reward = { Payout = 1.75, Gems = 150, UnitTierBonus = 3 },
 		},
 		ProductRewards = {
-			CashSmall = { IncomeMinutes = 15, MinCash = 1000 },
-			CashLarge = { IncomeMinutes = 120, MinCash = 10000 },
+			-- Twice what a whole day of free claims pays, which is what the money
+			-- is buying.
+			CashSmall = { Payout = 0.5 },
+			CashLarge = { Payout = 3.5 },
 			UnitBoost = { UnitTierBonus = 2 },
 			GemPack = { Gems = 120 },
 		},
@@ -685,12 +743,12 @@ return {
 		-- `Tone` names a Palette entry, so the wheel is coloured by the theme.
 		-- Weights are relative; they don't have to add up to anything.
 		Prizes = {
-			{ Label = "Small Cash", Weight = 26, Tone = "Positive", Reward = { IncomeMinutes = 3, MinCash = 250 } },
+			{ Label = "Small Cash", Weight = 26, Tone = "Positive", Reward = { Payout = 0.05 } },
 			{ Label = "3 Gems", Weight = 20, Tone = "Secondary", Reward = { Gems = 3 } },
-			{ Label = "Big Cash", Weight = 18, Tone = "Positive", Reward = { IncomeMinutes = 10, MinCash = 1000 } },
+			{ Label = "Big Cash", Weight = 18, Tone = "Positive", Reward = { Payout = 0.18 } },
 			{ Label = "8 Gems", Weight = 14, Tone = "Secondary", Reward = { Gems = 8 } },
 			{ Label = "Bonus Unit", Weight = 10, Tone = "Primary", Reward = { UnitTierBonus = 1 } },
-			{ Label = "Huge Cash", Weight = 7, Tone = "Accent", Reward = { IncomeMinutes = 45, MinCash = 10000 } },
+			{ Label = "Huge Cash", Weight = 7, Tone = "Accent", Reward = { Payout = 0.6 } },
 			{ Label = "25 Gems", Weight = 4, Tone = "Secondary", Reward = { Gems = 25 } },
 			{ Label = "Rare Unit", Weight = 1, Tone = "Negative", Reward = { UnitTierBonus = 3 } },
 			-- Annotated because the entries differ in shape, and Luau would
@@ -737,6 +795,11 @@ return {
 		-- A sparkle earns like an ordinary unit this many tiers above the top of
 		-- its band -- one better than the best a craft can otherwise produce.
 		SparkleIncomeTiers = 4,
+		-- Sparkles are sized off the end of the unit list, which is what makes
+		-- them the biggest things in a garden -- the point of them. At full
+		-- size they crowd a mid-game garden, where everything else is a third
+		-- their height, so they are trimmed without giving up the rank.
+		SparkleScale = 0.85,
 		-- What comes out when the sparkle doesn't: an ordinary unit this many
 		-- tiers above the best one fed in. `Share` splits whatever the sparkle
 		-- left behind. Both are capped at the top of the ladder, and collapse
@@ -764,49 +827,49 @@ return {
 				Text = "Merge units",
 				Stat = "Merges",
 				Target = 30,
-				Reward = { IncomeMinutes = 6, MinCash = 400 },
+				Reward = { Payout = 0.13 },
 			},
 			{
 				Id = "DailyCollect",
 				Text = "Collect drops",
 				Stat = "Drops",
 				Target = 40,
-				Reward = { IncomeMinutes = 5, MinCash = 300 },
+				Reward = { Payout = 0.11 },
 			},
 			{
 				Id = "DailyUpgrade",
 				Text = "Buy upgrades",
 				Stat = "Upgrades",
 				Target = 3,
-				Reward = { IncomeMinutes = 8, MinCash = 500 },
+				Reward = { Payout = 0.16 },
 			},
 			{
 				Id = "DailySell",
 				Text = "Sell units to the bin",
 				Stat = "Sales",
 				Target = 8,
-				Reward = { IncomeMinutes = 4, MinCash = 250 },
+				Reward = { Payout = 0.09 },
 			},
 			{
 				Id = "DailySpin",
 				Text = "Spin the prize wheel",
 				Stat = "Spins",
 				Target = 1,
-				Reward = { IncomeMinutes = 5, MinCash = 300, Gems = 2 },
+				Reward = { Payout = 0.11, Gems = 2 },
 			},
 			{
 				Id = "DailyCraft",
 				Text = "Start a craft",
 				Stat = "Crafts",
 				Target = 1,
-				Reward = { IncomeMinutes = 10, MinCash = 600, Gems = 3 },
+				Reward = { Payout = 0.2, Gems = 3 },
 			},
 			{
 				Id = "DailyDiscover",
 				Text = "Discover new units",
 				Stat = "Discoveries",
 				Target = 2,
-				Reward = { IncomeMinutes = 7, MinCash = 450 },
+				Reward = { Payout = 0.14 },
 			},
 		},
 		-- Pool for the one weekly. Bigger asks, bigger bundles.
@@ -816,28 +879,28 @@ return {
 				Text = "Merge units this week",
 				Stat = "Merges",
 				Target = 400,
-				Reward = { IncomeMinutes = 45, MinCash = 5000, Gems = 15 },
+				Reward = { Payout = 0.8, Gems = 15 },
 			},
 			{
 				Id = "WeekCraft",
 				Text = "Collect finished crafts",
 				Stat = "CraftsCollected",
 				Target = 3,
-				Reward = { IncomeMinutes = 60, MinCash = 8000, Gems = 25 },
+				Reward = { Payout = 1.1, Gems = 25 },
 			},
 			{
 				Id = "WeekDiscover",
 				Text = "Discover new units this week",
 				Stat = "Discoveries",
 				Target = 10,
-				Reward = { IncomeMinutes = 50, MinCash = 6000, Gems = 20 },
+				Reward = { Payout = 0.9, Gems = 20 },
 			},
 			{
 				Id = "WeekUpgrade",
 				Text = "Buy upgrades this week",
 				Stat = "Upgrades",
 				Target = 25,
-				Reward = { IncomeMinutes = 40, MinCash = 4000, Gems = 12 },
+				Reward = { Payout = 0.7, Gems = 12 },
 			},
 		},
 	},
@@ -847,18 +910,23 @@ return {
 	-- this is a reason to stay rather than a second daily -- which is why the
 	-- early ones land fast and the late ones are worth waiting for.
 	--
+	-- The whole ladder comes to about 1.1 bundles, which is less than day seven
+	-- of the streak pays on its own. It used to come to more than three times the
+	-- daily and more than twice what the session itself earned, which made
+	-- sitting still the best-paid thing in the game.
+	--
 	-- Rungs must be listed in ascending order; Economy asserts it, because a
 	-- ladder out of order would show the panel's rows climbing and falling.
 	Playtime = {
 		Rungs = {
-			{ Minutes = 1, Reward = { IncomeMinutes = 2, MinCash = 100 } },
-			{ Minutes = 5, Reward = { IncomeMinutes = 5, MinCash = 300 } },
-			{ Minutes = 10, Reward = { IncomeMinutes = 8, MinCash = 600, Gems = 2 } },
-			{ Minutes = 20, Reward = { IncomeMinutes = 14, MinCash = 1200 } },
-			{ Minutes = 30, Reward = { IncomeMinutes = 20, MinCash = 2000, Gems = 5 } },
-			{ Minutes = 45, Reward = { IncomeMinutes = 30, MinCash = 3500, UnitTierBonus = 1 } },
-			{ Minutes = 60, Reward = { IncomeMinutes = 45, MinCash = 6000, Gems = 12 } },
-			{ Minutes = 90, Reward = { IncomeMinutes = 70, MinCash = 10000, UnitTierBonus = 2, Gems = 20 } },
+			{ Minutes = 1, Reward = { Payout = 0.03 } },
+			{ Minutes = 5, Reward = { Payout = 0.06 } },
+			{ Minutes = 10, Reward = { Payout = 0.09, Gems = 2 } },
+			{ Minutes = 20, Reward = { Payout = 0.12 } },
+			{ Minutes = 30, Reward = { Payout = 0.15, Gems = 5 } },
+			{ Minutes = 45, Reward = { Payout = 0.18, UnitTierBonus = 1 } },
+			{ Minutes = 60, Reward = { Payout = 0.22, Gems = 12 } },
+			{ Minutes = 90, Reward = { Payout = 0.28, UnitTierBonus = 2, Gems = 20 } },
 		},
 	},
 

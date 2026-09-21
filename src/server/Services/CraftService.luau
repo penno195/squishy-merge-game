@@ -197,27 +197,44 @@ local function collect(player: Player, slot: unknown)
 	-- A Craft Luck event adds to the pet's boost: x2 is one more on top, and so on.
 	local boost = PetService.perk(player, "CraftLuck") + EventService.strength("CraftLuck") - 1
 	local unitIndex = Economy.rollCraft(craft.Inputs, boost)
-	if unitIndex == 0 or not ItemService.dropItem(player, unitIndex, nil, true) then
+	if unitIndex == 0 then
+		return
+	end
+	-- A sparkle whose garden has no room goes straight to its plinth instead of
+	-- being lost: the trophy is where it was heading anyway, and a full garden
+	-- is the normal state of one worth crafting in.
+	local crafted = Economy.sparkleAt(unitIndex)
+	local landed = ItemService.dropItem(player, unitIndex, nil, true) ~= nil
+	if not (landed or crafted) then
 		return
 	end
 	craft.Inputs = {}
 	craft.EndsAt = 0
 	announcedFor(player)[index] = nil
 
-	local sparkle = Economy.sparkleAt(unitIndex)
+	local sparkle = crafted
 	if sparkle then
-		local first = not Economy.hasSparkle(data, sparkle.Id)
-		data.Sparkles[sparkle.Id] = (data.Sparkles[sparkle.Id] or 0) + 1
-		-- The bonus is the plinth's, so it lands once: a second copy is still a
-		-- very good unit, but it doesn't pay twice.
-		StateService.notify(
-			player,
-			if first
-				then `{sparkle.Name}! +{math.floor(sparkle.Bonus * 100)}% {Theme.Text.Currency} for good, and it's on your plinth.`
-				else `Another {sparkle.Name}! Your plinth now shows {data.Sparkles[sparkle.Id]}.`,
-			"Discovery"
-		)
-		PlinthService.refresh(player)
+		if landed then
+			-- It is standing in the garden. Carrying it to a plinth is what
+			-- banks it, so the message says so rather than claiming a bonus
+			-- that has not been earned yet.
+			StateService.notify(
+				player,
+				`{sparkle.Name}! Carry it to a plinth for +{math.floor(sparkle.Bonus * 100)}% {Theme.Text.Currency} for good.`,
+				"Discovery"
+			)
+		else
+			local first, owned = PlinthService.award(player, unitIndex)
+			StateService.notify(
+				player,
+				if first
+					then `{sparkle.Name}! Your garden was full, so it went straight to its plinth: +{math.floor(
+						sparkle.Bonus * 100
+					)}% {Theme.Text.Currency} for good.`
+					else `Another {sparkle.Name} straight to the plinth, which now shows {owned}.`,
+				"Discovery"
+			)
+		end
 	else
 		StateService.notify(player, `The {Theme.Text.Machine} made you a {Config.Units[unitIndex].Name}.`, "Reward")
 	end
